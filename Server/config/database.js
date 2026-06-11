@@ -22,8 +22,8 @@ class DatabaseConnection {
     try {
       // Enhanced connection options for production-ready setup
       const options = {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
+        // useNewUrlParser: true,
+        // useUnifiedTopology: true,
         
         // Connection pool settings
         maxPoolSize: 10, // Maximum number of connections
@@ -39,7 +39,7 @@ class DatabaseConnection {
         heartbeatFrequencyMS: 10000, // How often to check server status
         
         // Buffer settings
-        bufferMaxEntries: 0, // Disable mongoose buffering
+        // bufferMaxEntries: 0, // Disable mongoose buffering
         bufferCommands: false, // Disable mongoose buffering
         
         // Write concern for data consistency
