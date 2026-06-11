@@ -371,15 +371,21 @@ export const logShutdown = (signal) => {
   });
 };
 
+// export default logger;
+// export {
+//   logger,
+//   httpLogger,
+//   errorLogger,
+//   securityLogger,
+//   performanceLogger,
+//   businessLogger,
+//   createChildLogger,
+//   logStartup,
+//   logShutdown
+// };
+
+// resolved
+// SyntaxError: Duplicate export of 'logShutdown'
+
 export default logger;
-export {
-  logger,
-  httpLogger,
-  errorLogger,
-  securityLogger,
-  performanceLogger,
-  businessLogger,
-  createChildLogger,
-  logStartup,
-  logShutdown
-};
+export { logger };
