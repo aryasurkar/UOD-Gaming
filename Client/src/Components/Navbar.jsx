@@ -97,14 +97,6 @@ const Navbar = () => {
           })}
         </ul>
 
-        {/* Gaming Stats Display */}
-        <div className="gaming-stats">
-          <div className="stat-item">
-            <Trophy className="stat-icon" />
-            <span>Level 42</span>
-          </div>
-        </div>
-
         {/* Mobile Menu Toggle */}
         <motion.button 
           className="mobile-toggle"
