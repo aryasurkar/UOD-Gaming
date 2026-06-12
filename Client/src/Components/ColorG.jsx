@@ -15,6 +15,7 @@ const ColorG = () => {
     return parseInt(localStorage.getItem('colorg_beststreak') || '0', 10);
   });
   const [hasGuessed, setHasGuessed] = useState(false);
+  const [selectedColor, setSelectedColor] = useState('');
 
   useEffect(() => {
     generateColors();
@@ -25,8 +26,10 @@ const ColorG = () => {
     setColors(newColors);
     setPickedColor(pickColor(newColors));
     setHasGuessed(false);
+    setSelectedColor('');
     setMessage('');
   };
+
 
   const pickColor = (colors) => {
     const random = Math.floor(Math.random() * colors.length);
@@ -52,6 +55,7 @@ const ColorG = () => {
     if (hasGuessed) return; // prevent multiple clicks in the same round
 
     setHasGuessed(true);
+    setSelectedColor(color);
     if (color === pickedColor) {
       setMessage("Correct! 🎉");
       setScore(prev => prev + 1);
@@ -66,10 +70,11 @@ const ColorG = () => {
       // Change all option swatches to the correct color
       setColors(colors.map(() => color));
     } else {
-      setMessage("Wrong Choice! Try Again 😢");
+      setMessage(`Wrong Choice! The correct color was ${pickedColor}. 😢`);
       setStreak(0);
     }
   };
+
 
   const handleReset = () => {
     generateColors();
@@ -157,13 +162,18 @@ const ColorG = () => {
             <button
               key={index}
               style={{ backgroundColor: color }}
-              className={`colorButton ${hasGuessed ? 'disabled-button' : ''}`}
+              className={`colorButton ${hasGuessed ? 'disabled-button' : ''} ${
+                hasGuessed && color === pickedColor ? 'correct-swatch' : ''
+              } ${
+                hasGuessed && color === selectedColor && color !== pickedColor ? 'incorrect-swatch' : ''
+              }`}
               onClick={() => handleColorClick(color)}
               disabled={hasGuessed}
               title={hasGuessed ? color : 'Guess color'}
             />
           ))}
         </div>
+
 
         {/* Message Banner */}
         {message && (
