@@ -696,7 +696,12 @@ const Snake = () => {
         </div>
 
         {/* Arcade Cabinet Frame */}
-        <div className="cabinet-screen">
+        <div className="cabinet-screen crt-screen">
+          {/* CRT scanlines, reflection and flicker overlay */}
+          <div className="crt-scanlines"></div>
+          <div className="crt-reflection"></div>
+          <div className="crt-flicker"></div>
+
           <canvas 
             ref={canvasRef} 
             id="gameCanvas" 
@@ -715,20 +720,23 @@ const Snake = () => {
                   <div className="settings-options">
                     <button 
                       onClick={() => { playSound('click'); setDifficulty('easy'); }}
-                      className={`setting-option-btn ${difficulty === 'easy' ? 'active' : ''}`}
+                      className={`setting-option-btn diff-easy ${difficulty === 'easy' ? 'active' : ''}`}
                     >
+                      <span className="active-dot"></span>
                       EASY
                     </button>
                     <button 
                       onClick={() => { playSound('click'); setDifficulty('medium'); }}
-                      className={`setting-option-btn ${difficulty === 'medium' ? 'active' : ''}`}
+                      className={`setting-option-btn diff-medium ${difficulty === 'medium' ? 'active' : ''}`}
                     >
+                      <span className="active-dot"></span>
                       MEDIUM
                     </button>
                     <button 
                       onClick={() => { playSound('click'); setDifficulty('hard'); }}
-                      className={`setting-option-btn ${difficulty === 'hard' ? 'active' : ''}`}
+                      className={`setting-option-btn diff-hard ${difficulty === 'hard' ? 'active' : ''}`}
                     >
+                      <span className="active-dot"></span>
                       HARD
                     </button>
                   </div>
@@ -740,20 +748,22 @@ const Snake = () => {
                     <button 
                       disabled={difficulty === 'hard'}
                       onClick={() => { playSound('click'); setWallMode('wrap'); }}
-                      className={`setting-option-btn ${wallMode === 'wrap' && difficulty !== 'hard' ? 'active' : ''} ${difficulty === 'hard' ? 'disabled' : ''}`}
+                      className={`setting-option-btn wall-wrap ${wallMode === 'wrap' && difficulty !== 'hard' ? 'active' : ''} ${difficulty === 'hard' ? 'disabled' : ''}`}
                     >
+                      <span className="active-dot"></span>
                       WRAP
                     </button>
                     <button 
                       disabled={difficulty === 'hard'}
                       onClick={() => { playSound('click'); setWallMode('solid'); }}
-                      className={`setting-option-btn ${wallMode === 'solid' || difficulty === 'hard' ? 'active' : ''} ${difficulty === 'hard' ? 'disabled-locked' : ''}`}
+                      className={`setting-option-btn wall-solid ${wallMode === 'solid' || difficulty === 'hard' ? 'active' : ''} ${difficulty === 'hard' ? 'disabled-locked' : ''}`}
                     >
+                      <span className="active-dot"></span>
                       SOLID
                     </button>
                   </div>
                   {difficulty === 'hard' && (
-                    <span className="settings-warning">Hard mode locks walls as solid!</span>
+                    <span className="settings-warning">HARD MODE LOCKS WALLS TO SOLID</span>
                   )}
                 </div>
 
@@ -820,19 +830,27 @@ const Snake = () => {
           )}
         </div>
 
-        {/* Cabinet Control Panel */}
-        {hasStarted && !isGameOver && (
-          <div className="cabinet-controls">
-            <button onClick={togglePause} className="control-btn pause-btn">
-              {isPaused ? <Play size={16} fill="currentColor" /> : <Pause size={16} />}
-              {isPaused ? 'Resume' : 'Pause'}
-            </button>
-            <button onClick={restartGame} className="control-btn restart-btn">
-              <RotateCcw size={16} />
-              Restart
-            </button>
-          </div>
-        )}
+        {/* Cabinet Control Panel - Always visible to simulate cabinet layout */}
+        <div className="cabinet-controls">
+          <button 
+            disabled={!hasStarted || isGameOver}
+            onClick={togglePause} 
+            className={`control-btn pause-btn ${(!hasStarted || isGameOver) ? 'disabled' : ''}`}
+            title="Pause/Resume Game"
+          >
+            {isPaused ? <Play size={18} fill="currentColor" /> : <Pause size={18} />}
+            <span>{isPaused ? 'Run' : 'Pause'}</span>
+          </button>
+          <button 
+            disabled={!hasStarted}
+            onClick={restartGame} 
+            className={`control-btn restart-btn ${!hasStarted ? 'disabled' : ''}`}
+            title="Restart Game"
+          >
+            <RotateCcw size={18} />
+            <span>Reset</span>
+          </button>
+        </div>
       </div>
 
       <Foote />
