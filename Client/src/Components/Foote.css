@@ -3,15 +3,16 @@
     src: url('../../public/fonts/Blanka.woff');
   } 
 
-img {
+footer img {
     max-width: 100%;
     height: auto;
 }
-        section {
+
+footer .contact-area {
             padding: 60px 0;
            /* min-height: 100vh;*/
         }
- ul {
+ footer ul {
             margin: 0;
             padding: 0;
             list-style: none;
@@ -78,7 +79,8 @@ img {
     max-width: 210px;
 }
 
-section, footer {
+footer,
+footer .contact-area {
     background: linear-gradient(to right, #333399,#ff00cc);
     color: #868c96;
 }
