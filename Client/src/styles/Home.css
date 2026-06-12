@@ -6,6 +6,7 @@
   min-height: 100vh;
   overflow-x: hidden;
   padding-top: 80px;
+<<<<<<< HEAD
 }
 
 /* Hero Section */
@@ -90,51 +91,146 @@
   margin-bottom: var(--space-2xl);
   flex-wrap: wrap;
 }
+=======
 
-.btn {
-  position: relative;
-  overflow: hidden;
-}
+  /* Hero Section */
+  .hero-section {
+    position: relative;
+    min-height: calc(100vh - 80px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: var(--space-3xl) 0;
+    background:
+      radial-gradient(circle at 78% 18%, rgba(255, 0, 110, 0.18), transparent 34%),
+      radial-gradient(circle at 16% 82%, rgba(0, 212, 255, 0.16), transparent 32%),
+      linear-gradient(135deg, rgba(0, 212, 255, 0.08), rgba(139, 92, 246, 0.08), rgba(255, 0, 110, 0.08));
+  }
 
-.btn-lg {
-  padding: var(--space-lg) var(--space-2xl);
-  font-size: 1.1rem;
-}
+  .hero-background {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+  }
 
-.btn-icon {
-  width: 20px;
-  height: 20px;
-}
+  .background-animation {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
 
+  .floating-particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: var(--primary-neon);
+    border-radius: 50%;
+    filter: blur(1px);
+  }
+
+  .hero-content {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: var(--space-3xl);
+    align-items: center;
+    width: 100%;
+    z-index: 2;
+  }
+
+  .hero-text {
+    max-width: 600px;
+  }
+
+  .hero-title {
+    display: block;
+    font-family: var(--font-primary);
+    font-size: clamp(3rem, 8vw, 6rem);
+    font-weight: 900;
+    line-height: 0.9;
+    margin-bottom: var(--space-lg);
+    text-transform: uppercase;
+  }
+
+  .title-line {
+    display: block;
+    overflow: hidden;
+  }
+
+  .hero-subtitle {
+    font-size: 1.25rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: var(--space-2xl);
+    max-width: 500px;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: var(--space-lg);
+    margin-bottom: var(--space-2xl);
+    flex-wrap: wrap;
+  }
+>>>>>>> fce51bf (feat(arcade): scope css styles, overhaul login and game info views, and upgrade mini-games including advanced snake audio synthesis/particles)
+
+  .btn {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-lg {
+    padding: var(--space-lg) var(--space-2xl);
+    font-size: 1.1rem;
+  }
+
+  .btn-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+<<<<<<< HEAD
 .home-wrapper .hero-stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: var(--space-lg);
   margin-top: var(--space-2xl);
 }
+=======
+  .hero-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-lg);
+    margin-top: var(--space-2xl);
+  }
+>>>>>>> fce51bf (feat(arcade): scope css styles, overhaul login and game info views, and upgrade mini-games including advanced snake audio synthesis/particles)
 
-.stat-item {
-  text-align: center;
-}
+  .stat-item {
+    text-align: center;
+  }
 
-.stat-value {
-  display: block;
-  font-family: var(--font-primary);
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--primary-neon);
-  text-shadow: 0 0 20px currentColor;
-}
+  .stat-value {
+    display: block;
+    font-family: var(--font-primary);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary-neon);
+    text-shadow: 0 0 20px currentColor;
+  }
 
-.stat-label {
-  display: block;
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-top: var(--space-xs);
-}
+  .stat-label {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: var(--space-xs);
+  }
 
+<<<<<<< HEAD
 /* Hero Visual */
 .home-wrapper .hero-visual {
   display: flex;
@@ -165,171 +261,301 @@
   font-size: 1.5rem;
   opacity: 0.7;
 }
+=======
+  /* Hero Visual */
+  .hero-visual {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
 
-/* Features Section */
-.features-section {
-  padding: var(--space-3xl) 0;
-  background: linear-gradient(180deg, transparent 0%, rgba(255, 0, 110, 0.05) 50%, transparent 100%);
-}
+  .gaming-controller {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 
-.section-header {
-  text-align: center;
-  margin-bottom: var(--space-3xl);
-}
+  .controller-glow {
+    color: var(--primary-neon);
+    filter: drop-shadow(0 0 30px currentColor);
+    animation: float 3s ease-in-out infinite;
+  }
 
-.section-title {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-md);
-  font-size: 3rem;
-  font-weight: 700;
-  margin-bottom: var(--space-lg);
-  text-transform: uppercase;
-}
+  .scroll-indicator {
+    position: absolute;
+    bottom: var(--space-2xl);
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--primary-neon);
+    font-size: 1.5rem;
+    opacity: 0.7;
+  }
+>>>>>>> fce51bf (feat(arcade): scope css styles, overhaul login and game info views, and upgrade mini-games including advanced snake audio synthesis/particles)
 
-.title-icon {
-  color: var(--secondary-neon);
-  filter: drop-shadow(0 0 10px currentColor);
-}
+  /* Features Section */
+  .features-section {
+    padding: var(--space-3xl) 0;
+    background: linear-gradient(180deg, transparent 0%, rgba(255, 0, 110, 0.05) 50%, transparent 100%);
+  }
 
-.section-subtitle {
-  font-size: 1.2rem;
-  color: var(--text-secondary);
-  max-width: 600px;
-  margin: 0 auto;
-}
+  .section-header {
+    text-align: center;
+    margin-bottom: var(--space-3xl);
+  }
 
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: var(--space-2xl);
-}
+  .section-title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-md);
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: var(--space-lg);
+    text-transform: uppercase;
+  }
 
-.feature-card {
-  padding: var(--space-2xl);
-  text-align: center;
-  border: 1px solid rgba(0, 212, 255, 0.1);
-  transition: all var(--transition-normal);
-  position: relative;
-  overflow: hidden;
-}
+  .title-icon {
+    color: var(--secondary-neon);
+    filter: drop-shadow(0 0 10px currentColor);
+  }
 
-.feature-card::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: conic-gradient(
-    transparent,
-    rgba(0, 212, 255, 0.1),
-    transparent 30%
-  );
-  animation: rotate 4s linear infinite;
-  opacity: 0;
-  transition: opacity var(--transition-normal);
-}
+  .section-subtitle {
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+    max-width: 600px;
+    margin: 0 auto;
+  }
 
-.feature-card:hover::before {
-  opacity: 1;
-}
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-2xl);
+  }
 
-.feature-card::after {
-  content: '';
-  position: absolute;
-  inset: 2px;
-  background: var(--bg-card);
-  border-radius: inherit;
-  z-index: 1;
-}
+  .feature-card {
+    padding: var(--space-2xl);
+    text-align: center;
+    border: 1px solid rgba(0, 212, 255, 0.1);
+    transition: all var(--transition-normal);
+    position: relative;
+    overflow: hidden;
 
-.feature-card > * {
-  position: relative;
-  z-index: 2;
-}
+    &::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: conic-gradient(
+        transparent,
+        rgba(0, 212, 255, 0.1),
+        transparent 30%
+      );
+      animation: rotate 4s linear infinite;
+      opacity: 0;
+      transition: opacity var(--transition-normal);
+    }
 
-.feature-icon {
-  width: 80px;
-  height: 80px;
-  margin: 0 auto var(--space-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--gradient-primary);
-  border-radius: var(--radius-round);
-  color: var(--text-primary);
-  box-shadow: var(--shadow-glow-primary);
-}
+    &:hover::before {
+      opacity: 1;
+    }
 
-.feature-title {
-  font-family: var(--font-gaming);
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: var(--space-md);
-  text-transform: uppercase;
-}
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 2px;
+      background: var(--bg-card);
+      border-radius: inherit;
+      z-index: 1;
+    }
 
-.feature-description {
-  color: var(--text-secondary);
-  line-height: 1.6;
-}
+    > * {
+      position: relative;
+      z-index: 2;
+    }
+  }
 
-/* CTA Section */
-.cta-section {
-  padding: var(--space-3xl) 0;
-  background: linear-gradient(135deg, 
-    rgba(0, 212, 255, 0.1) 0%, 
-    rgba(139, 92, 246, 0.1) 50%, 
-    rgba(255, 0, 110, 0.1) 100%
-  );
-  position: relative;
-  overflow: hidden;
-}
+  .feature-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto var(--space-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gradient-primary);
+    border-radius: var(--radius-round);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-glow-primary);
+  }
 
-.cta-section::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" patternUnits="userSpaceOnUse" width="100" height="100"><circle cx="50" cy="50" r="1" fill="%23ffffff" opacity="0.05"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-  opacity: 0.3;
-}
+  .feature-title {
+    font-family: var(--font-gaming);
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: var(--space-md);
+    text-transform: uppercase;
+  }
 
-.cta-content {
-  text-align: center;
-  position: relative;
-  z-index: 2;
-}
+  .feature-description {
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
 
-.cta-title {
-  font-size: 3.5rem;
-  font-weight: 700;
-  margin-bottom: var(--space-lg);
-  text-transform: uppercase;
-  background: var(--gradient-gaming);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
+  /* CTA Section */
+  .cta-section {
+    padding: var(--space-3xl) 0;
+    background: linear-gradient(135deg, 
+      rgba(0, 212, 255, 0.1) 0%, 
+      rgba(139, 92, 246, 0.1) 50%, 
+      rgba(255, 0, 110, 0.1) 100%
+    );
+    position: relative;
+    overflow: hidden;
 
-.cta-subtitle {
-  font-size: 1.3rem;
-  color: var(--text-secondary);
-  margin-bottom: var(--space-2xl);
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
-}
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" patternUnits="userSpaceOnUse" width="100" height="100"><circle cx="50" cy="50" r="1" fill="%23ffffff" opacity="0.05"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+      opacity: 0.3;
+    }
+  }
 
-.cta-actions {
-  display: flex;
-  gap: var(--space-lg);
-  justify-content: center;
-  flex-wrap: wrap;
+  .cta-content {
+    text-align: center;
+    position: relative;
+    z-index: 2;
+  }
+
+  .cta-title {
+    font-size: 3.5rem;
+    font-weight: 700;
+    margin-bottom: var(--space-lg);
+    text-transform: uppercase;
+    background: var(--gradient-gaming);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .cta-subtitle {
+    font-size: 1.3rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-2xl);
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .cta-actions {
+    display: flex;
+    gap: var(--space-lg);
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  /* Responsive Design */
+  @media (max-width: 1024px) {
+    .hero-content {
+      grid-template-columns: 1fr;
+      text-align: center;
+      gap: var(--space-2xl);
+    }
+
+    .hero-visual {
+      order: -1;
+    }
+
+    .hero-stats {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 768px) {
+    &.home-wrapper {
+      padding-top: 70px;
+    }
+
+    .hero-section {
+      min-height: calc(100vh - 70px);
+      padding: var(--space-2xl) 0;
+    }
+
+    .hero-title {
+      font-size: clamp(2.5rem, 10vw, 4rem);
+    }
+
+    .hero-subtitle {
+      font-size: 1.1rem;
+    }
+
+    .hero-actions {
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .btn {
+      width: 100%;
+      max-width: 300px;
+    }
+
+    .hero-stats {
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-md);
+    }
+
+    .section-title {
+      flex-direction: column;
+      font-size: 2.5rem;
+    }
+
+    .features-grid {
+      grid-template-columns: 1fr;
+      gap: var(--space-lg);
+    }
+
+    .cta-title {
+      font-size: 2.5rem;
+    }
+
+    .cta-actions {
+      flex-direction: column;
+      align-items: center;
+    }
+  }
+
+  @media (max-width: 480px) {
+    &.home-wrapper {
+      padding-top: 60px;
+    }
+
+    .hero-section {
+      min-height: auto;
+    }
+
+    .hero-stats {
+      grid-template-columns: 1fr;
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+    }
+
+    .feature-card {
+      padding: var(--space-lg);
+    }
+
+    .features-section,
+    .cta-section {
+      padding: var(--space-2xl) 0;
+    }
+  }
 }
 
 /* Animations */
@@ -343,6 +569,7 @@
   50% { transform: translateY(-20px); }
 }
 
+<<<<<<< HEAD
 /* Responsive Design */
 @media (max-width: 1024px) {
   .home-wrapper .hero-content {
@@ -440,18 +667,31 @@
   }
 }
 
+=======
+>>>>>>> fce51bf (feat(arcade): scope css styles, overhaul login and game info views, and upgrade mini-games including advanced snake audio synthesis/particles)
 /* High Performance Mode */
 @media (prefers-reduced-motion: reduce) {
-  .floating-particle,
-  .controller-glow,
-  .scroll-indicator > div,
-  .feature-card::before {
-    animation: none;
+  .home-wrapper {
+    .floating-particle,
+    .controller-glow,
+    .scroll-indicator > div,
+    .feature-card::before {
+      animation: none;
+    }
+    
+    .hero-content,
+    .feature-card,
+    .cta-content {
+      transition: none;
+    }
   }
+<<<<<<< HEAD
   
   .hero-content,
   .feature-card,
   .cta-content {
     transition: none;
   }
+=======
+>>>>>>> fce51bf (feat(arcade): scope css styles, overhaul login and game info views, and upgrade mini-games including advanced snake audio synthesis/particles)
 }

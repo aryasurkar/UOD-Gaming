@@ -93,7 +93,7 @@ const Sign = () => {
     };
 
     try {
-      const response = await axios.post('http://localhost:5000/api/v1/user/signup', userData);
+      const response = await axios.post('/api/v1/auth/signup', userData);
       
       setSuccess('Account created successfully! Redirecting to login...');
       setFormData({ username: '', email: '', password: '', confirmPassword: '' });

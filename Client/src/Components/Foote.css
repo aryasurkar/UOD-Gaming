@@ -1,8 +1,9 @@
 @font-face {
-    font-family: Blanka;
-    src: url('../../public/fonts/Blanka.woff');
-  } 
+  font-family: Blanka;
+  src: url('/fonts/Blanka.woff'); /* Use absolute public path */
+} 
 
+<<<<<<< HEAD
 footer img {
     max-width: 100%;
     height: auto;
@@ -18,63 +19,90 @@ footer .contact-area {
             list-style: none;
         }
 .contact-area {
+=======
+footer {
+  background: linear-gradient(to right, #333399, #ff00cc);
+  color: #868c96;
+
+  img {
+    max-width: 100%;
+    height: auto;
+    width: 44px;
+  }
+
+  .contact-area {
+    padding: 60px 0;
+>>>>>>> fce51bf (feat(arcade): scope css styles, overhaul login and game info views, and upgrade mini-games including advanced snake audio synthesis/particles)
     border-bottom: 1px solid #000000;
-}
+  }
 
-.contact-content p {
-    font-size: 15px;
-    margin: 30px 0 60px;
-    position: relative;
-}
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
 
-.contact-content p::after {
-    background: #000000;
-    bottom: -30px;
-    content: "";
-    height: 1px;
-    left: 50%;
-    position: absolute;
-    transform: translate(-50%);
-    width: 80%;
-}
+  .contact-content {
+    p {
+      font-size: 15px;
+      margin: 30px 0 60px;
+      position: relative;
 
-.contact-content h2 {
-    color: #000000;
-    font-family: Blanka;
-    font-size: 30px;
-    font-weight: 400;
-    margin-bottom: 10px;
-}
+      &::after {
+        background: #000000;
+        bottom: -30px;
+        content: "";
+        height: 1px;
+        left: 50%;
+        position: absolute;
+        transform: translate(-50%);
+        width: 80%;
+      }
+    }
 
-.contact-content span {
-    color: #353c47;
-    margin: 0 10px;
-}
+    h2 {
+      color: #000000;
+      font-family: Blanka;
+      font-size: 30px;
+      font-weight: 400;
+      margin-bottom: 10px;
+    }
 
-.contact-social {
+    span {
+      color: #353c47;
+      margin: 0 10px;
+    }
+
+    img {
+      max-width: 210px;
+    }
+  }
+
+  .contact-social {
     margin-top: 30px;
-}
 
-.contact-social > ul {
-    display: inline-flex;
-}
+    > ul {
+      display: inline-flex;
+    }
 
-.contact-social ul li a {
-    border: 1px solid #000000;
-    color: #000000;
-    display: inline-block;
-    height: 40px;
-    margin: 0 10px;
-    padding-top: 7px;
-    transition: all 0.4s ease 0s;
-    width: 40px;
-}
+    ul li a {
+      border: 1px solid #000000;
+      color: #000000;
+      display: inline-block;
+      height: 40px;
+      margin: 0 10px;
+      padding-top: 7px;
+      transition: all 0.4s ease 0s;
+      width: 40px;
 
-.contact-social ul li a:hover {
-    border: 1px solid #FAB702;
-    color: #FAB702;
-}
+      &:hover {
+        border: 1px solid #FAB702;
+        color: #FAB702;
+      }
+    }
+  }
 
+<<<<<<< HEAD
 .contact-content img {
     max-width: 210px;
 }
@@ -86,10 +114,17 @@ footer .contact-area {
 }
 
 footer p {
+=======
+  p {
+>>>>>>> fce51bf (feat(arcade): scope css styles, overhaul login and game info views, and upgrade mini-games including advanced snake audio synthesis/particles)
     padding: 40px 0;
     text-align: center;
+  }
 }
+<<<<<<< HEAD
 
 footer img {
     width: 44px;
 }
+=======
+>>>>>>> fce51bf (feat(arcade): scope css styles, overhaul login and game info views, and upgrade mini-games including advanced snake audio synthesis/particles)
