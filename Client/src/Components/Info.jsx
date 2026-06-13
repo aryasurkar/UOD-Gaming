@@ -1,64 +1,98 @@
 import React from 'react';
-import '../Css/Info.css'
+import { Link } from 'react-router-dom';
+import { Gamepad2, ArrowRight, Play } from 'lucide-react';
+import '../Css/Info.css';
+
 const Info = () => {
-    
+  const gamesInfo = [
+    {
+      id: 'ttt',
+      title: 'Tic Tac Toe',
+      tagline: 'All Time Favourite Duo-Clasher',
+      description: 'Experience the timeless fun of Tic Tac Toe, a game that never gets old. Relive the nostalgia of childhood and engage in school-notebook battles. This classic is the ultimate test of simple strategy and quick thinking for two players.',
+      image: 'https://play-lh.googleusercontent.com/zPxLgj5nvl20ahJV7aFC6S5mD8kii5CEEDj25j1P9CYAfXL9sdDuO-8eES0r4DhJHrU',
+      path: '/TTT',
+      badges: ['2 Players', 'Local Versus', 'Strategy'],
+      accentColor: 'var(--primary-neon)'
+    },
+    {
+      id: 'snake',
+      title: 'Snake Arcade',
+      tagline: 'The Ultimate Retro Challenge',
+      description: 'A beloved classic web-based challenge where players guide a snake to eat food and grow longer. Navigating the grid requires agility and strategy to avoid crashing into walls or your own tail. Eat, grow, and break your highscore!',
+      image: 'https://www.codewithc.com/wp-content/uploads/2014/04/snake-game3.png',
+      path: '/Snake',
+      badges: ['Single Player', 'Reflexes', 'Retro Classic'],
+      accentColor: 'var(--secondary-neon)'
+    },
+    {
+      id: 'color',
+      title: 'Color Guesser',
+      tagline: 'Test Your Color Reflexes',
+      description: 'An interactive web game where players guess RGB color values based on presented color swatches. Earn points, build your streak, and progress through increasingly challenging color spectrum levels. Perfect for casual gamers and enthusiasts alike!',
+      image: 'https://play-lh.googleusercontent.com/BE-Z-fyEJKI5Y69ETauqFK_jgNmVB1dn6cvrb-aOk_f6EdE3QVgInezDZym9FjKJJzlx',
+      path: '/ColorG',
+      badges: ['Single Player', 'Casual', 'Trivia'],
+      accentColor: 'var(--accent-purple)'
+    }
+  ];
+
   return (
-    
- <div>
-   
-<h1  id="explain"> GAMES INFO</h1>
-<div className="explain" id="explain">
-  <div className="explainom">
-    <div className="exp">
-   <h1>:<u>All Time favourite</u></h1>
-   <br/>
-    <h3>"Relive the nostalgia of childhood with Tic Tac Toe."</h3>    
-    <br/>
-    <h3> "Experience the timeless fun of Tic Tac Toe, a game that never gets old."</h3>
-    <br/>
-      <h3>"Bringing back memories of endless Tic Tac Toe battles on school notebooks."</h3>
-      <br/>  
-      <h3>"Take a trip down memory lane with the classNameic game of Tic Tac Toe."</h3>
-      <br/>    
-      <h3>"Rediscover the simple joy of Tic Tac Toe, a game that's been delighting players for generations."</h3>
+    <div className="info-container">
+      {/* Section Header */}
+      <div className="info-header">
+        <h2 className="info-section-title">
+          <Gamepad2 className="info-title-icon" />
+          Game Info & Guide
+        </h2>
+        <p className="info-section-subtitle">
+          Explore descriptions, controls, and launch guides for each retro game in our arcade.
+        </p>
+      </div>
 
-        </div>
- <img src="https://play-lh.googleusercontent.com/zPxLgj5nvl20ahJV7aFC6S5mD8kii5CEEDj25j1P9CYAfXL9sdDuO-8eES0r4DhJHrU" alt="tictacktoe"/>
+      {/* Game Info Cards list */}
+      <div className="info-content-wrapper">
+        {gamesInfo.map((game, index) => {
+          const isEven = index % 2 === 0;
+          return (
+            <div 
+              key={game.id} 
+              className={`info-card ${isEven ? 'row-normal' : 'row-reversed'}`}
+              style={{ '--accent-glow': game.accentColor }}
+            >
+              {/* Media Part */}
+              <div className="info-media">
+                <img src={game.image} alt={game.title} className="info-game-img" />
+                <div className="image-tint-glow" style={{ backgroundColor: game.accentColor }}></div>
+              </div>
 
-  </div>
-
-</div>
-
-
-<div className="explain">
-  <div className="explainom">
-    <div className="exp2">
-   <h1>:<u>Nostalgic</u></h1>
-   <br/>
-   "Snake Game" is a beloved classNameic web-based challenge where players guide a snake to eat food and grow longer, navigating obstacles to avoid collisions. With each food consumed, the snake increases in length, intensifying gameplay and testing agility. The game offers an immersive experience with intuitive controls, enticing players to strive for high scores and beat their previous achievements. Whether reliving nostalgic memories or seeking a thrilling diversion, "Snake Game" provides endless entertainment, making it a timeless favorite for casual gamers and enthusiasts alike. Get ready to embark on a journey of skill and strategy!
-        </div>
- <img src="https://www.codewithc.com/wp-content/uploads/2014/04/snake-game3.png" alt="tictacktoe"/>
-
-  </div>
-
-</div>
-
-
-<div className="explain">
-  <div className="explainom">
-    <div className="exp3">
-   <h1>:<u>Groover</u></h1>
-   <br/>
-   
-   "Color Guesser" is an interactive web game where players guess color names based on presented swatches. With each correct answer, players earn points and progress through increasingly challenging levels, testing their color recognition skills. The game features vibrant visuals and intuitive gameplay suitable for all ages. Whether you're a color enthusiast or just looking for a fun way to pass the time, "Color Guesser" offers an engaging experience that will keep you entertained while honing your color identification abilities.
-        </div>
- <img src="https://play-lh.googleusercontent.com/BE-Z-fyEJKI5Y69ETauqFK_jgNmVB1dn6cvrb-aOk_f6EdE3QVgInezDZym9FjKJJzlx" alt="tictacktoe"/>
-
-  </div>
-
-</div>
-
-</div>
+              {/* Text Part */}
+              <div className="info-text">
+                <div className="info-badge-list">
+                  {game.badges.map((badge, idx) => (
+                    <span key={idx} className="info-game-badge" style={{ borderColor: game.accentColor, color: game.accentColor }}>
+                      {badge}
+                    </span>
+                  ))}
+                </div>
+                <h3 className="info-game-title" style={{ color: game.accentColor }}>
+                  {game.title}
+                </h3>
+                <h4 className="info-game-tagline">{game.tagline}</h4>
+                <p className="info-game-description">{game.description}</p>
+                <div className="info-game-actions">
+                  <Link to={game.path} className="info-play-btn" style={{ '--btn-bg': game.accentColor }}>
+                    <Play size={16} fill="currentColor" />
+                    <span>Launch Game</span>
+                    <ArrowRight size={16} className="arrow-icon" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 };
 

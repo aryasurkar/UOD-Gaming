@@ -1,5 +1,5 @@
 // ImageDownloader.js
-import React from 'react';
+// import React from 'react';
 import '../Css/Download.css'
 import Foote from './Foote';
 
@@ -30,7 +30,7 @@ const Downloader = () => {
       });
   };
   return (
-    <div>
+    <div className="download-container">
         <h1>Get Some File Downloaded</h1>
     <div className="image-grid">
       {images.map((image, index) => (
