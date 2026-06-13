@@ -3,23 +3,6 @@
   src: url('/fonts/Blanka.woff'); /* Use absolute public path */
 } 
 
-<<<<<<< HEAD
-footer img {
-    max-width: 100%;
-    height: auto;
-}
-
-footer .contact-area {
-            padding: 60px 0;
-           /* min-height: 100vh;*/
-        }
- footer ul {
-            margin: 0;
-            padding: 0;
-            list-style: none;
-        }
-.contact-area {
-=======
 footer {
   background: linear-gradient(to right, #333399, #ff00cc);
   color: #868c96;
@@ -32,7 +15,6 @@ footer {
 
   .contact-area {
     padding: 60px 0;
->>>>>>> fce51bf (feat(arcade): scope css styles, overhaul login and game info views, and upgrade mini-games including advanced snake audio synthesis/particles)
     border-bottom: 1px solid #000000;
   }
 
@@ -102,29 +84,8 @@ footer {
     }
   }
 
-<<<<<<< HEAD
-.contact-content img {
-    max-width: 210px;
-}
-
-footer,
-footer .contact-area {
-    background: linear-gradient(to right, #333399,#ff00cc);
-    color: #868c96;
-}
-
-footer p {
-=======
   p {
->>>>>>> fce51bf (feat(arcade): scope css styles, overhaul login and game info views, and upgrade mini-games including advanced snake audio synthesis/particles)
     padding: 40px 0;
     text-align: center;
   }
 }
-<<<<<<< HEAD
-
-footer img {
-    width: 44px;
-}
-=======
->>>>>>> fce51bf (feat(arcade): scope css styles, overhaul login and game info views, and upgrade mini-games including advanced snake audio synthesis/particles)
