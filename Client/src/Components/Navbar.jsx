@@ -18,6 +18,7 @@ import '../styles/Navbar.css';
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(window.deferredPrompt || null);
   const location = useLocation();
 
   useEffect(() => {
@@ -27,6 +28,30 @@ const Navbar = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    const handleInstallPromptAvailable = () => {
+      setInstallPrompt(window.deferredPrompt);
+    };
+    const handleAppInstalled = () => {
+      setInstallPrompt(null);
+    };
+    window.addEventListener('pwa-install-available', handleInstallPromptAvailable);
+    window.addEventListener('pwa-installed', handleAppInstalled);
+    return () => {
+      window.removeEventListener('pwa-install-available', handleInstallPromptAvailable);
+      window.removeEventListener('pwa-installed', handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setInstallPrompt(null);
+    }
+  };
 
   const navItems = [
     { path: '/', label: 'Home', icon: Home },
@@ -97,14 +122,32 @@ const Navbar = () => {
           })}
         </ul>
 
-        {/* Mobile Menu Toggle */}
-        <motion.button 
-          className="mobile-toggle"
-          onClick={toggleMenu}
-          whileTap={{ scale: 0.9 }}
-        >
-          {isOpen ? <X /> : <Menu />}
-        </motion.button>
+        {/* Navbar Actions (Install & Menu Toggle) */}
+        <div className="navbar-actions">
+          {installPrompt && (
+            <motion.button 
+              onClick={handleInstallClick}
+              className="install-btn desktop-only"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Download className="install-icon" size={16} />
+              <span>Install App</span>
+            </motion.button>
+          )}
+
+          {/* Mobile Menu Toggle */}
+          <motion.button 
+            className="mobile-toggle"
+            onClick={toggleMenu}
+            whileTap={{ scale: 0.9 }}
+          >
+            {isOpen ? <X /> : <Menu />}
+          </motion.button>
+        </div>
       </div>
 
       {/* Mobile Navigation */}
@@ -140,12 +183,28 @@ const Navbar = () => {
                   </motion.div>
                 );
               })}
+
+              {installPrompt && (
+                <motion.button 
+                  onClick={() => {
+                    handleInstallClick();
+                    toggleMenu();
+                  }}
+                  className="mobile-install-btn"
+                  initial={{ x: -50, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: navItems.length * 0.1 }}
+                >
+                  <Download className="nav-icon" />
+                  <span>Install App</span>
+                </motion.button>
+              )}
               
               <motion.div 
                 className="mobile-menu-footer"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
+                transition={{ delay: (navItems.length + 1) * 0.1 }}
               >
                 <div className="user-status">
                   <div className="status-indicator online"></div>

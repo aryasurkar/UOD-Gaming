@@ -1,117 +1,205 @@
-// ImageDownloader.js
-// import React from 'react';
-import '../Css/Download.css'
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Download as DownloadIcon, Monitor, Smartphone, Shield, Zap, WifiOff, Check } from 'lucide-react';
+import '../Css/Download.css';
 import Foote from './Foote';
 
 const Downloader = () => {
-  const images = [
-    { src: 'https://qph.cf2.quoracdn.net/main-qimg-e26d8b7c07bda45bc6c3ebb4ae522946.webp', alt: 'Image 1' },
-    { src: 'https://store-images.s-microsoft.com/image/apps.23625.13806078025361171.9723cf5e-1e29-4d9d-ad0a-cc37a95bb75d.e02f4ead-d89b-45cd-8eb5-5dcbf44ae91f?q=90&w=256&h=384&mode=crop&format=jpg&background=%23FFFFFF', alt: 'Image 2' },
-    { src: 'https://static.javatpoint.com/top10-technologies/images/top-10-car-racing-games-for-pc-free-download1.jpg', alt: 'Image 3' },
+  const [installPrompt, setInstallPrompt] = useState(window.deferredPrompt || null);
+  const [isInstalled, setIsInstalled] = useState(false);
 
-    { src: 'https://hips.hearstapps.com/vader-prod.s3.amazonaws.com/1686588690-71tSb7u1q9L.jpg?crop=1.00xw:0.710xh;0,0.114xh&resize=980:*', alt: 'Image 1' },
-    { src: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7_5HL-0WePb6JhTa8fd168e1gcK_xnQpD_g&s', alt: 'Image 2' },
-    { src: 'https://i.ytimg.com/vi/3zwBKlwgpk4/maxresdefault.jpg', alt: 'Image 3' },
+  useEffect(() => {
+    const handleInstallPromptAvailable = () => {
+      setInstallPrompt(window.deferredPrompt);
+    };
+    const handleAppInstalled = () => {
+      setInstallPrompt(null);
+      setIsInstalled(true);
+    };
+    
+    window.addEventListener('pwa-install-available', handleInstallPromptAvailable);
+    window.addEventListener('pwa-installed', handleAppInstalled);
+    
+    // Check if running in standalone mode (already installed)
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+      setIsInstalled(true);
+    }
+    
+    return () => {
+      window.removeEventListener('pwa-install-available', handleInstallPromptAvailable);
+      window.removeEventListener('pwa-installed', handleAppInstalled);
+    };
+  }, []);
 
-    { src: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQiAj6EuyWmiefK4ewl14s0VMFeJ7B-GZJjlbM9F4pOiTrnvptWwkoro_IOPuB-TnPzMUM&usqp=CAU', alt: 'Image 1' },
-    { src: 'https://www.fullgamepc.com/wp-content/uploads/2020/01/Ready-or-Not-game-download-348x139.jpg', alt: 'Image 2' },
-    { src: 'https://products.eneba.games/resized-products/q8shkfzxblrn22o9dvra_350x200_3x-0.jpg', alt: 'Image 3' },
-    // Add more images to the array as needed
-  ];
-  const handleImageClick = (imageSrc) => {
-    fetch(imageSrc)
-      .then(response => response.blob())
-      .then(blob => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `image_${Date.now()}.jpg`;
-        a.click();
-      });
+  const handleInstallClick = async () => {
+    if (!installPrompt) {
+      if (isInstalled) {
+        alert('UOD Gaming is already installed on this device!');
+      } else {
+        alert('PWA installation is not automatically triggered by your browser. Please use your browser menu (e.g. "Add to Home Screen" or the install icon in the URL bar) to download the app.');
+      }
+      return;
+    }
+    
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setInstallPrompt(null);
+      setIsInstalled(true);
+    }
   };
+
+  const features = [
+    {
+      icon: WifiOff,
+      title: "Play 100% Offline",
+      desc: "Install once and play Snake, Tic Tac Toe, or Color Guesser anywhere, anytime, without an active internet connection."
+    },
+    {
+      icon: Zap,
+      title: "Instant Launch & Load",
+      desc: "Zero loading screens or server wait times. Cached assets load instantly from local storage for smooth, responsive gameplay."
+    },
+    {
+      icon: Monitor,
+      title: "Standalone Display",
+      desc: "Run in standalone window mode. Removes browser url bar, borders, tabs, and limits distractions for full gaming immersion."
+    },
+    {
+      icon: Shield,
+      title: "Safe & Secure",
+      desc: "Installs directly via standard browser sandbox APIs. Safe, lightweight (under 2MB), and never accesses your private files."
+    }
+  ];
+
   return (
-    <div className="download-container">
-        <h1>Get Some File Downloaded</h1>
-    <div className="image-grid">
-      {images.map((image, index) => (
-        <img
-          key={index}
-          src={image.src}
-          alt={image.alt}
-          onClick={() => handleImageClick(image.src)}
-          className="image"
-        />
-      ))}
+    <div className="download-page-wrapper">
+      <div className="download-hero">
+        <div className="hero-particles">
+          {[...Array(20)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="download-particle"
+              animate={{
+                y: [0, -40, 0],
+                opacity: [0.2, 0.6, 0.2],
+              }}
+              transition={{
+                duration: 4 + Math.random() * 3,
+                repeat: Infinity,
+                delay: Math.random() * 2,
+              }}
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+              }}
+            />
+          ))}
+        </div>
+
+        <div className="container">
+          <motion.div 
+            className="hero-content"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <h1 className="hero-title text-gaming">
+              <DownloadIcon className="title-icon animate-bounce" />
+              Download UOD Gaming
+            </h1>
+            <p className="hero-subtitle">
+              Bring the ultimate arcade experience directly to your desktop or mobile. Play offline, lag-free, and in pure fullscreen standalone mode!
+            </p>
+
+            <div className="cta-container">
+              {isInstalled ? (
+                <div className="installed-badge">
+                  <Check size={20} />
+                  <span>Installed & Ready to Play</span>
+                </div>
+              ) : (
+                <motion.button 
+                  className="btn-install-large"
+                  whileHover={{ scale: 1.05, boxShadow: '0 0 30px rgba(0, 212, 255, 0.6)' }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleInstallClick}
+                >
+                  <DownloadIcon size={24} />
+                  <span>{installPrompt ? 'Install Gaming App' : 'Get Desktop App'}</span>
+                </motion.button>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      </div>
+
+      <section className="features-section">
+        <div className="container">
+          <h2 className="section-title">Why Install Locally?</h2>
+          <div className="features-grid">
+            {features.map((feat, index) => {
+              const Icon = feat.icon;
+              return (
+                <motion.div 
+                  key={index} 
+                  className="feat-card"
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.15 }}
+                  whileHover={{ y: -8 }}
+                >
+                  <div className="feat-icon-wrapper">
+                    <Icon size={28} />
+                  </div>
+                  <h3 className="feat-title">{feat.title}</h3>
+                  <p className="feat-desc">{feat.desc}</p>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section className="guide-section">
+        <div className="container">
+          <h2 className="section-title">Installation Instructions</h2>
+          <div className="guide-grid">
+            <div className="guide-card">
+              <div className="device-type">
+                <Monitor size={24} />
+                <h3>Desktop (Chrome / Edge / Opera)</h3>
+              </div>
+              <ol className="instructions-list">
+                <li>Open this site in a supported browser (Chrome, Edge).</li>
+                <li>Click the <strong>"Install App"</strong> button in our navigation header, or on this page.</li>
+                <li>Alternatively, click the <strong>Install icon</strong> (small desktop computer with a down arrow) on the right side of the browser's address bar.</li>
+                <li>Confirm the installation prompt to add UOD Gaming to your desktop or applications folder.</li>
+              </ol>
+            </div>
+
+            <div className="guide-card">
+              <div className="device-type">
+                <Smartphone size={24} />
+                <h3>Mobile & Tablet (Android / iOS)</h3>
+              </div>
+              <ol className="instructions-list">
+                <li>
+                  <strong>iOS / Safari:</strong> Tap the <strong>Share</strong> button (box with up arrow) in the Safari bottom bar, then scroll down and select <strong>"Add to Home Screen"</strong>.
+                </li>
+                <li>
+                  <strong>Android / Chrome:</strong> Tap the **Download** button on this page, or click the **three dots menu** at the top right of Chrome and select <strong>"Install app"</strong>.
+                </li>
+                <li>An app icon will be added to your mobile home screen for quick, offline launch.</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <Foote />
     </div>
-    <Foote/>
-    </div>
-   
   );
 };
 
-//alternative for local Download
-// const handleImageClick = (imageSrc) => {
-//     const img = new Image();
-//     img.crossOrigin = 'anonymous'; // Add this line
-//     img.src = imageSrc;
-//     img.onload = () => {
-//       const canvas = document.createElement('canvas');
-//       canvas.width = img.width;
-//       canvas.height = img.height;
-//       const ctx = canvas.getContext('2d');
-//       ctx.drawImage(img, 0, 0);
-//       const url = canvas.toDataURL('image/jpeg');
-//       const a = document.createElement('a');
-//       a.href = url;
-//       a.download = `image_${Date.now()}.jpg`;
-//       a.click();
-//     };
-//   };
-
-
-// for the backend check this one time
-
-// import React from 'react';
-// import axios from 'axios'; // Add axios for making HTTP requests
-
-// const Downloader = () => {
-//   const images = [
-//     { src: 'https://example.com/image1.jpg', alt: 'Image 1' },
-//     { src: 'https://example.com/image2.pdf', alt: 'Image 2' },
-//     { src: 'https://example.com/image3.zip', alt: 'Image 3' },
-//     // Add more files to the array as needed
-//   ];
-
-//   const handleFileDownload = (fileUrl) => {
-//     axios({
-//       method: 'get',
-//       url: fileUrl,
-//       responseType: 'blob'
-//     })
-//     .then(response => {
-//       const url = window.URL.createObjectURL(new Blob([response.data]));
-//       const link = document.createElement('a');
-//       link.href = url;
-//       link.setAttribute('download', fileUrl.split('/').pop()); // Set the download filename
-//       link.click();
-//     })
-//     .catch(error => console.error(error));
-//   };
-
-//   return (
-//     <div className="image-grid">
-//       {images.map((image, index) => (
-//         <img
-//           key={index}
-//           src={image.src}
-//           alt={image.alt}
-//           onClick={() => handleFileDownload(image.src)}
-//           className="image"
-//         />
-//       ))}
-//     </div>
-//   );
-// };
-
-// export default Downloader; 
 export default Downloader;
