@@ -11,7 +11,8 @@ import {
   Heart,
   Volume2,
   VolumeX,
-  Zap
+  Zap,
+  Gamepad2
 } from 'lucide-react';
 import '../Css/BrickBreaker.css';
 import Foote from './Foote';
@@ -89,6 +90,7 @@ const BrickBreaker = () => {
   const [highScore, setHighScore] = useState(
     localStorage.getItem('breakout_high_score') ? parseInt(localStorage.getItem('breakout_high_score')) : 0
   );
+  const [isRunning, setIsRunning] = useState(false);
 
   // Mutable game physics references to avoid stale closures in requestAnimationFrame
   const gameState = useRef({
@@ -133,6 +135,7 @@ const BrickBreaker = () => {
     state.ball.vx = 2.5 * (Math.random() > 0.5 ? 1 : -1);
     state.ball.vy = -3.5;
     state.isRunning = false;
+    setIsRunning(false);
   };
 
   const initGame = () => {
@@ -142,6 +145,7 @@ const BrickBreaker = () => {
     setGameOver(false);
     setIsWon(false);
     setPaused(false);
+    setIsRunning(false);
 
     gameState.current.paddle.x = 255;
     gameState.current.ball.baseSpeed = 4.5;
@@ -169,6 +173,7 @@ const BrickBreaker = () => {
       if (e.key === 'ArrowRight') gameState.current.keys.right = true;
       if (e.key === ' ' && !gameState.current.isRunning && !gameOver && !paused) {
         gameState.current.isRunning = true;
+        setIsRunning(true);
       }
     };
 
@@ -190,7 +195,7 @@ const BrickBreaker = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const relativeX = e.clientX - rect.left;
+    const relativeX = (e.clientX - rect.left) * (canvas.width / rect.width);
     const state = gameState.current;
 
     state.paddle.x = Math.max(0, Math.min(600 - state.paddle.width, relativeX - state.paddle.width / 2));
@@ -203,6 +208,7 @@ const BrickBreaker = () => {
     const state = gameState.current;
     if (!state.isRunning && !gameOver && !paused) {
       state.isRunning = true;
+      setIsRunning(true);
     }
   };
 
@@ -348,7 +354,11 @@ const BrickBreaker = () => {
         ctx.strokeStyle = brick.color;
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.roundRect(brick.x, brick.y, brick.w, brick.h, 4);
+        if (ctx.roundRect) {
+          ctx.roundRect(brick.x, brick.y, brick.w, brick.h, 4);
+        } else {
+          ctx.rect(brick.x, brick.y, brick.w, brick.h);
+        }
         ctx.fill();
         ctx.stroke();
       });
@@ -358,7 +368,11 @@ const BrickBreaker = () => {
       ctx.strokeStyle = '#00d4ff';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.roundRect(state.paddle.x, 370, state.paddle.width, state.paddle.height, 6);
+      if (ctx.roundRect) {
+        ctx.roundRect(state.paddle.x, 370, state.paddle.width, state.paddle.height, 6);
+      } else {
+        ctx.rect(state.paddle.x, 370, state.paddle.width, state.paddle.height);
+      }
       ctx.fill();
       ctx.stroke();
 
@@ -416,7 +430,7 @@ const BrickBreaker = () => {
               className="breakout-canvas"
             />
 
-            {!gameState.current.isRunning && !gameOver && !paused && (
+            {!isRunning && !gameOver && !paused && (
               <div className="start-prompt-overlay" onClick={handleCanvasClick}>
                 <p>Press <strong>SPACEBAR</strong> or <strong>CLICK SCREEN</strong> to Launch Ball</p>
                 <span>Move your cursor or use Left/Right arrows to navigate the paddle.</span>

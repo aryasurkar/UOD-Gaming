@@ -57,8 +57,7 @@ const Navbar = () => {
     { path: '/', label: 'Home', icon: Home },
     { path: '/UODGaming', label: 'Games', icon: Gamepad2 },
     { path: '/Download', label: 'Download', icon: Download },
-    { path: '/login', label: 'Login', icon: LogIn },
-    { path: '/sign', label: 'Sign Up', icon: UserPlus }
+    { path: '/login', label: 'Login', icon: LogIn }
   ];
 
   const toggleMenu = () => setIsOpen(!isOpen);

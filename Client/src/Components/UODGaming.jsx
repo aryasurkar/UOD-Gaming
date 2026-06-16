@@ -77,7 +77,7 @@ const UODGaming = () => {
       description: "Classic neon arcade Snake with dynamic difficulty speed scaling, audio synths, and particles!",
       downloads: "5.2M",
       lastUpdated: "Just now",
-      featured: true,
+      featured: false,
       path: "/Snake",
       tags: ["Retro", "Arcade", "Singleplayer"]
     },
@@ -91,7 +91,7 @@ const UODGaming = () => {
       description: "Play Tic Tac Toe locally with custom names, round tracking, turn indicators, and neon animations!",
       downloads: "2.1M",
       lastUpdated: "1 day ago",
-      featured: true,
+      featured: false,
       path: "/TTT",
       tags: ["Board", "Multiplayer", "Local"]
     },
@@ -125,20 +125,6 @@ const UODGaming = () => {
     },
     {
       id: 5,
-      title: "Rock Paper Scissors Duo",
-      category: "casual",
-      rating: 4.7,
-      players: "980K",
-      image: "/rps_icon.png",
-      description: "Tactile Rock-Paper-Scissors combat against an automated AI. Track victory wins and streak scores!",
-      downloads: "1.8M",
-      lastUpdated: "1 day ago",
-      featured: false,
-      path: "/RPS",
-      tags: ["Versus", "CPU", "Casual"]
-    },
-    {
-      id: 6,
       title: "Cyber Block Stacker",
       category: "puzzle",
       rating: 4.8,
@@ -152,12 +138,12 @@ const UODGaming = () => {
       tags: ["Retro", "Puzzle", "Singleplayer"]
     },
     {
-      id: 7,
+      id: 6,
       title: "Neon Brick Breaker",
       category: "action",
       rating: 4.9,
       players: "1.4M",
-      image: "/brick_preview.png",
+      image: "/brick_icon.png",
       description: "Classic physics breakout brick bouncer. Control the safety paddle to break lines of glowing neon glass bricks!",
       downloads: "3.5M",
       lastUpdated: "Just now",
@@ -166,18 +152,46 @@ const UODGaming = () => {
       tags: ["Arcade", "Physics", "Singleplayer"]
     },
     {
-      id: 8,
+      id: 7,
       title: "Cyber Falcon",
       category: "action",
       rating: 4.7,
       players: "1.8M",
-      image: "/falcon_preview.png",
+      image: "/falcon_icon.png",
       description: "Thrust-based gravity avoider. Guide the ship through gaps between scrolling laser pillar obstacles!",
       downloads: "4.2M",
       lastUpdated: "Just now",
       featured: false,
       path: "/Falcon",
       tags: ["Endless", "Survival", "Singleplayer"]
+    },
+    {
+      id: 8,
+      title: "Neon Stack Tower",
+      category: "puzzle",
+      rating: 4.8,
+      players: "1.2M",
+      image: "/stack_icon.png",
+      description: "A precision timing block-stacker. Drop sliding blocks to build a tower—any offset portions are cut away!",
+      downloads: "2.8M",
+      lastUpdated: "Just now",
+      featured: false,
+      path: "/Stack",
+      tags: ["Precision", "Reflex", "Singleplayer"]
+    },
+    {
+      id: 9,
+      title: "Cyber Grid 1-25",
+      category: "casual",
+      rating: 4.8,
+      players: "980K",
+      image: "/schulte_icon.png",
+      description: "A cognitive speed-finder grid game. Find and click numbers 1 through 25 in sequential order as fast as you can!",
+      downloads: "1.9M",
+      lastUpdated: "Just now",
+      featured: false,
+      path: "/GridRush",
+      tags: ["Logic", "Reflex", "Casual"]
     }
   ];
 
@@ -199,7 +213,7 @@ const UODGaming = () => {
       case 'newest':
         return new Date(b.lastUpdated) - new Date(a.lastUpdated);
       default:
-        return b.featured ? 1 : -1;
+        return a.id - b.id;
     }
   });
 
@@ -220,7 +234,7 @@ const UODGaming = () => {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.8 }}
       transition={{ delay: index * 0.1 }}
-      className={`game-card ${viewMode} ${game.featured ? 'featured' : ''} ${game.isComingSoon ? 'coming-soon-card' : ''}`}
+      className={`game-card ${viewMode} ${game.isComingSoon ? 'coming-soon-card' : ''}`}
       whileHover={game.isComingSoon ? {} : { y: -5, transition: { duration: 0.2 } }}
     >
       <div className="game-image-container">
@@ -240,12 +254,7 @@ const UODGaming = () => {
               </motion.button>
             </div>
           )}
-          {game.featured && (
-            <div className="featured-badge">
-              <Flame size={16} />
-              Featured
-            </div>
-          )}
+
           {game.isComingSoon && (
             <div className="coming-soon-badge" style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(255, 0, 110, 0.85)', padding: '4px 10px', borderRadius: 4, fontFamily: 'var(--font-primary)', fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#fff' }}>
               Coming Soon
