@@ -309,9 +309,10 @@
   .game-image {
     width: 100%;
     height: 100%;
-    background-size: cover;
+    background-size: contain;
+    background-repeat: no-repeat;
     background-position: center;
-    background-color: var(--surface-2);
+    background-color: #0b0b11;
     position: relative;
 
     &:hover .game-overlay {

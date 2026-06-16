@@ -1,0 +1,70 @@
+/* ========================================
+   CYBER FALCON STYLES
+   ======================================== */
+
+.falcon-page-wrapper {
+  background-color: #0a0a0f;
+  color: var(--text-primary);
+  min-height: 100vh;
+  padding-top: 80px;
+  font-family: var(--font-primary);
+  overflow-x: hidden;
+}
+
+/* Two-Column split */
+.falcon-grid {
+  max-width: 950px !important;
+  display: grid;
+  grid-template-columns: 1.4fr 0.6fr;
+  gap: 40px;
+  padding: 30px !important;
+}
+
+.falcon-canvas-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.falcon-canvas {
+  width: 100%;
+  height: 100%;
+  border: 2px solid rgba(255, 0, 127, 0.2);
+  box-shadow: 0 0 30px rgba(255, 0, 127, 0.1);
+  box-sizing: border-box;
+  border-radius: var(--radius-md);
+  display: block;
+}
+
+/* Sidebar */
+.falcon-sidebar-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+  .falcon-grid {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+
+  .falcon-canvas-panel {
+    align-items: center;
+  }
+
+  .falcon-sidebar-panel {
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-top: 25px;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+@media (max-width: 650px) {
+  .falcon-sidebar-panel {
+    flex-direction: column;
+    gap: 20px;
+    align-items: stretch;
+  }
+}

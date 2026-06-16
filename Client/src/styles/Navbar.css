@@ -367,3 +367,71 @@
     }
   }
 }
+
+/* PWA Installation Styles */
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.install-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #00d4ff 0%, #8b5cf6 100%);
+  border: none;
+  border-radius: var(--radius-md);
+  color: #fff;
+  font-family: var(--font-gaming);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+  transition: all var(--transition-normal);
+}
+
+.install-btn:hover {
+  box-shadow: 0 0 25px rgba(0, 212, 255, 0.6);
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.install-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.mobile-install-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  width: 100%;
+  padding: var(--space-md);
+  background: linear-gradient(135deg, #00d4ff 0%, #8b5cf6 100%);
+  border: none;
+  border-radius: var(--radius-md);
+  color: #fff;
+  font-family: var(--font-gaming);
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  margin-top: var(--space-sm);
+  box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+  transition: all var(--transition-normal);
+}
+
+.mobile-install-btn:hover {
+  box-shadow: 0 0 25px rgba(0, 212, 255, 0.5);
+}
+
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+}

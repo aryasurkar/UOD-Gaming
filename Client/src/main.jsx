@@ -8,6 +8,20 @@ import AOS from 'aos';
 import 'aos/dist/aos.css';
 
 import './index.css'
+import './registerServiceWorker'
+
+// Global PWA installation event listener
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  window.deferredPrompt = e;
+  window.dispatchEvent(new CustomEvent('pwa-install-available'));
+});
+
+window.addEventListener('appinstalled', () => {
+  window.deferredPrompt = null;
+  window.dispatchEvent(new CustomEvent('pwa-installed'));
+  console.log('PWA was installed successfully');
+});
 
 // Initialize AOS
 AOS.init({
