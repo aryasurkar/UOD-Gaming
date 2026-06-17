@@ -442,6 +442,56 @@
       text-shadow: 0 0 5px rgba(139, 92, 246, 0.5);
     }
   }
+
+  /* Game Mode Selector Tabs */
+  .mode-selector-tabs {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    margin-bottom: var(--space-md);
+  }
+
+  .mode-tab-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1.5px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    padding: 10px 14px;
+    font-family: var(--font-gaming);
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.2);
+      color: #fff;
+    }
+
+    &.active {
+      background: var(--gradient-primary);
+      color: #fff;
+      border-color: transparent;
+      box-shadow: var(--shadow-glow-primary);
+      text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+    }
+  }
+
+  /* CPU Thinking Text styles */
+  .cpu-thinking-text {
+    font-family: var(--font-gaming);
+    color: var(--secondary-neon);
+    text-shadow: 0 0 10px rgba(255, 0, 110, 0.6);
+    animation: cpu-pulse 1.2s infinite ease-in-out;
+    letter-spacing: 1.5px;
+  }
 }
 
 /* Animations */
@@ -453,4 +503,9 @@
 @keyframes rotate-slow {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+@keyframes cpu-pulse {
+  0%, 100% { opacity: 0.6; filter: brightness(0.8); }
+  50% { opacity: 1; filter: brightness(1.2); }
 }
