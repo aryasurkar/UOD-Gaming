@@ -539,6 +539,17 @@
     }
   }
 
+  .menu-btn-overlay {
+    background: var(--accent-yellow);
+    color: #000 !important;
+    box-shadow: 0 0 20px rgba(255, 255, 0, 0.3);
+
+    &:hover {
+      filter: brightness(1.15);
+      box-shadow: 0 0 25px rgba(255, 255, 0, 0.5);
+    }
+  }
+
   .new-record-badge {
     font-family: var(--font-primary);
     font-size: 1rem;
@@ -618,6 +629,23 @@
       &:active:not(:disabled) {
         transform: translateY(1px);
         background: rgba(255, 0, 110, 0.2);
+      }
+    }
+
+    &.menu-btn {
+      border-color: var(--accent-yellow);
+      color: var(--accent-yellow);
+      text-shadow: 0 0 5px rgba(255, 255, 0, 0.8);
+      
+      &:hover:not(:disabled) {
+        background: rgba(255, 255, 0, 0.1);
+        box-shadow: 0 0 15px rgba(255, 255, 0, 0.4);
+        transform: translateY(-2px);
+      }
+      
+      &:active:not(:disabled) {
+        transform: translateY(1px);
+        background: rgba(255, 255, 0, 0.2);
       }
     }
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Play, Pause, RotateCcw, Award } from 'lucide-react';
+import { ArrowLeft, Play, Pause, RotateCcw, Award, Settings } from 'lucide-react';
 import '../Css/Snake.css';
 import Foote from './Foote';
 
@@ -325,6 +325,19 @@ const Snake = () => {
       gameIntervalRef.current = null;
     }
     startGame();
+  };
+
+  const returnToMenu = () => {
+    playSound('click');
+    stopRenderLoop();
+    if (gameIntervalRef.current) {
+      clearInterval(gameIntervalRef.current);
+      gameIntervalRef.current = null;
+    }
+    setHasStarted(false);
+    setIsPaused(false);
+    setIsGameOver(false);
+    setScore(0);
   };
 
   const generateFruit = () => {
@@ -807,10 +820,16 @@ const Snake = () => {
             <div className="screen-overlay pause-overlay">
               <h2 className="overlay-title">Paused</h2>
               <p className="overlay-instructions">Press resume to continue your run.</p>
-              <button onClick={togglePause} className="arcade-btn resume-btn">
-                <Play size={18} fill="currentColor" />
-                Resume Game
-              </button>
+              <div className="overlay-buttons" style={{ display: 'flex', gap: '15px', marginTop: '10px' }}>
+                <button onClick={togglePause} className="arcade-btn resume-btn">
+                  <Play size={18} fill="currentColor" />
+                  Resume
+                </button>
+                <button onClick={returnToMenu} className="arcade-btn menu-btn-overlay">
+                  <Settings size={18} />
+                  Menu
+                </button>
+              </div>
             </div>
           )}
 
@@ -822,10 +841,16 @@ const Snake = () => {
               {score >= highScore && score > 0 && (
                 <div className="new-record-badge">NEW HIGH SCORE!</div>
               )}
-              <button onClick={restartGame} className="arcade-btn restart-btn">
-                <RotateCcw size={18} />
-                Try Again
-              </button>
+              <div className="overlay-buttons" style={{ display: 'flex', gap: '15px', marginTop: '10px' }}>
+                <button onClick={restartGame} className="arcade-btn restart-btn">
+                  <RotateCcw size={18} />
+                  Try Again
+                </button>
+                <button onClick={returnToMenu} className="arcade-btn menu-btn-overlay">
+                  <Settings size={18} />
+                  Menu
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -849,6 +874,15 @@ const Snake = () => {
           >
             <RotateCcw size={18} />
             <span>Reset</span>
+          </button>
+          <button 
+            disabled={!hasStarted}
+            onClick={returnToMenu} 
+            className={`control-btn menu-btn ${!hasStarted ? 'disabled' : ''}`}
+            title="Return to Menu"
+          >
+            <Settings size={18} />
+            <span>Menu</span>
           </button>
         </div>
       </div>
