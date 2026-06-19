@@ -1,7 +1,7 @@
 import { Payment, Revenue, Withdrawal } from "../Models/payment.model.js";
 import User from "../Models/auth.model.js";
 import Game from "../Models/game.model.js";
-import { sendPaymentVerified, sendPaymentRejected, sendWelcomeSupporter } from "../utils/emailService.js";
+import { sendPaymentVerified, sendPaymentRejected, sendWelcomeSupporter, sendPaymentVerificationRequest, sendPaymentConfirmation } from "../utils/emailService.js";
 import { validationResult } from "express-validator";
 import { v4 as uuidv4 } from "uuid";
 
@@ -105,13 +105,22 @@ export const submitGameUploadPayment = async (req, res) => {
 // Verify payment (Admin only)
 export const verifyPayment = async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: errors.array()
+      });
+    }
+
     const { paymentId } = req.params;
     const { verificationNotes } = req.body;
     const adminId = req.user._id;
 
     // Check if admin user
     const admin = await User.findById(adminId);
-    if (admin.role !== 'admin' || admin.username !== 'omshrikhande') {
+    if (admin.role !== 'admin' || admin.username !== (process.env.ADMIN_USERNAME || 'omshrikhande')) {
       return res.status(403).json({
         success: false,
         message: "Access denied. Admin privileges required."
@@ -199,13 +208,22 @@ export const verifyPayment = async (req, res) => {
 // Reject payment (Admin only)
 export const rejectPayment = async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: errors.array()
+      });
+    }
+
     const { paymentId } = req.params;
     const { rejectionReason } = req.body;
     const adminId = req.user._id;
 
     // Check if admin user
     const admin = await User.findById(adminId);
-    if (admin.role !== 'admin' || admin.username !== 'omshrikhande') {
+    if (admin.role !== 'admin' || admin.username !== (process.env.ADMIN_USERNAME || 'omshrikhande')) {
       return res.status(403).json({
         success: false,
         message: "Access denied. Admin privileges required."
