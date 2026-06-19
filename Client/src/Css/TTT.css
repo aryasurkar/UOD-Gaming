@@ -6,7 +6,7 @@
   font-family: var(--font-secondary);
   text-align: center;
   min-height: 100vh;
-  background: var(--bg-primary);
+  background-color: #0a0a0f;
   color: var(--text-primary);
   padding-top: 80px;
   display: flex;
@@ -118,7 +118,7 @@
   }
 
   .setup-icon {
-    animation: rotate-slow 6s linear infinite;
+    /* Keep it stationary as requested */
   }
 
   .setup-title {
@@ -154,17 +154,28 @@
     input {
       flex: 1;
       border: none;
-      background: transparent;
+      background: transparent !important;
       padding: 12px 15px;
-      color: #fff;
+      color: #fff !important;
       font-size: 0.95rem;
 
       &:focus {
         outline: none;
+        background: transparent !important;
       }
 
       &::placeholder {
         color: var(--text-muted);
+      }
+
+      /* Prevent browser autofill from turning background white */
+      &:-webkit-autofill,
+      &:-webkit-autofill:hover, 
+      &:-webkit-autofill:focus, 
+      &:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0 30px #1a1a24 inset !important;
+        -webkit-text-fill-color: #fff !important;
+        transition: background-color 5000s ease-in-out 0s;
       }
     }
   }

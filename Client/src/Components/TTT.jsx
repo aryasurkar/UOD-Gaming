@@ -1,10 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, RotateCcw, Trophy, Users, Play, Cpu } from 'lucide-react';
+import axios from 'axios';
 import "../Css/TTT.css";
 import Foote from './Foote';
 
 const TTT = () => {
+  const location = useLocation();
+  const [gameId, setGameId] = useState(null);
+  
+  useEffect(() => {
+    if (location.state?.gameId) {
+      setGameId(location.state.gameId);
+    } else {
+      // Fallback: fetch game ID by title
+      axios.get('/api/v1/games')
+        .then(res => {
+          const game = res.data.games?.find(g => g.title === "Tic Tac Toe Duo");
+          if (game) setGameId(game._id);
+        })
+        .catch(err => console.error("Failed to load game info:", err));
+    }
+  }, [location.state]);
+
   const [player1Name, setPlayer1Name] = useState('');
   const [player2Name, setPlayer2Name] = useState('');
   const [gameActive, setGameActive] = useState(false);
@@ -19,20 +37,6 @@ const TTT = () => {
   // VS Computer Mode States
   const [gameMode, setGameMode] = useState('duo'); // 'duo' or 'cpu'
   const [isCpuThinking, setIsCpuThinking] = useState(false);
-
-  useEffect(() => {
-    // Send player name to the server to store in the database on game start
-    if (gameActive && player1Name && player2Name) {
-      fetch('../scripts/php/tictacktoe.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `action=insertPlayer&name=${encodeURIComponent(player1Name)}`,
-      })
-      .then(response => response.text())
-      .then(data => console.log('P1 registered:', data))
-      .catch(err => console.warn('P1 DB registration skipped:', err));
-    }
-  }, [gameActive, player1Name]);
 
   const startGame = (e) => {
     e.preventDefault();
@@ -86,14 +90,16 @@ const TTT = () => {
       setScores(prev => ({ ...prev, [currentPlayer]: prev[currentPlayer] + 1 }));
 
       // Record result to database
-      fetch('../scripts/php/tictacktoe.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `action=recordGameResult&playerName=${encodeURIComponent(winnerName)}&result=Win`,
-      })
-      .then(response => response.text())
-      .then(data => console.log('Result saved:', data))
-      .catch(err => console.warn('DB record skipped:', err));
+      const token = localStorage.getItem('token');
+      if (gameId && token) {
+        axios.post(`/api/v1/games/${gameId}/score`, { score: 100 }, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        .then(res => console.log('Win result saved:', res.data))
+        .catch(err => console.error('Failed to save result:', err));
+      } else {
+        console.warn('DB record skipped: Missing gameId or authentication token.');
+      }
 
     } else if (checkDraw(newBoard)) {
       setGameResult("It's a draw!");
@@ -103,13 +109,16 @@ const TTT = () => {
       setScores(prev => ({ ...prev, draws: prev.draws + 1 }));
 
       // Record draw to database
-      fetch('../scripts/php/tictacktoe.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `action=recordGameResult&playerName=${encodeURIComponent(player1Name)}&result=Draw`,
-      })
-      .then(response => response.text())
-      .catch(err => console.warn('DB record skipped:', err));
+      const token = localStorage.getItem('token');
+      if (gameId && token) {
+        axios.post(`/api/v1/games/${gameId}/score`, { score: 50 }, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        .then(res => console.log('Draw result saved:', res.data))
+        .catch(err => console.error('Failed to save result:', err));
+      } else {
+        console.warn('DB record skipped: Missing gameId or authentication token.');
+      }
     } else {
       setCurrentPlayer(currentPlayer === 'X' ? 'O' : 'X');
     }

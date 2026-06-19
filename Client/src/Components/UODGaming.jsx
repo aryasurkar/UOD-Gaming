@@ -19,6 +19,7 @@ import {
   Zap
 } from 'lucide-react';
 import Foote from './Foote';
+import axios from 'axios';
 import '../styles/UODGaming.css';
 
 const UODGaming = () => {
@@ -66,7 +67,7 @@ const UODGaming = () => {
     { id: 'casual', label: 'Casual', icon: Heart },
   ];
 
-  const games = [
+  const [games, setGames] = useState([
     {
       id: 1,
       title: "Snake Arcade",
@@ -193,7 +194,48 @@ const UODGaming = () => {
       path: "/GridRush",
       tags: ["Logic", "Reflex", "Casual"]
     }
-  ];
+  ]);
+
+  useEffect(() => {
+    // Fetch dynamic games list from backend API
+    axios.get('/api/v1/games')
+      .then(res => {
+        if (res.data.games && res.data.games.length > 0) {
+          const routeMap = {
+            "Snake Arcade": "/Snake",
+            "Tic Tac Toe Duo": "/TTT",
+            "Color Guesser RGB": "/ColorG",
+            "Memory Card Match": "/MemoryCard",
+            "Cyber Block Stacker": "/Tetris",
+            "Neon Brick Breaker": "/Breakout",
+            "Cyber Falcon": "/Falcon",
+            "Neon Stack Tower": "/Stack",
+            "Cyber Grid 1-25": "/GridRush"
+          };
+
+          const mappedGames = res.data.games.map(game => ({
+            id: game._id,
+            _id: game._id,
+            title: game.title,
+            category: game.category,
+            rating: game.statistics?.averageRating || 4.5,
+            players: game.statistics?.uniquePlayers ? `${(game.statistics.uniquePlayers / 1000).toFixed(0)}K` : "10K",
+            image: game.screenshots?.[0]?.url || "/snake_icon.png",
+            description: game.description,
+            downloads: game.statistics?.totalDownloads ? `${(game.statistics.totalDownloads / 1000).toFixed(0)}K` : "5K",
+            lastUpdated: game.publishedAt ? new Date(game.publishedAt).toLocaleDateString() : "Just now",
+            featured: game.isFeatured,
+            path: routeMap[game.title] || `/play/${game._id}`,
+            tags: game.tags || [],
+            isComingSoon: game.status === 'pending_review'
+          }));
+          setGames(mappedGames);
+        }
+      })
+      .catch(err => {
+        console.warn("Failed to fetch games from backend, using offline local games catalog:", err);
+      });
+  }, []);
 
   const filteredGames = games.filter(game => {
     const matchesSearch = game.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -248,7 +290,7 @@ const UODGaming = () => {
                 className="play-btn"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                onClick={() => navigate(game.path)}
+                onClick={() => navigate(game.path, { state: { gameId: game._id || game.id } })}
               >
                 <Play size={24} />
               </motion.button>
@@ -308,7 +350,7 @@ const UODGaming = () => {
             whileTap={game.isComingSoon ? {} : { scale: 0.98 }}
             onClick={() => {
               if (game.path) {
-                navigate(game.path);
+                navigate(game.path, { state: { gameId: game._id || game.id } });
               }
             }}
             disabled={game.isComingSoon}

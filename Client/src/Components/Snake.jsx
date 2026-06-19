@@ -1,10 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, Play, Pause, RotateCcw, Award, Settings } from 'lucide-react';
+import axios from 'axios';
 import '../Css/Snake.css';
 import Foote from './Foote';
 
 const Snake = () => {
+  const location = useLocation();
+  const [gameId, setGameId] = useState(null);
+  
+  useEffect(() => {
+    if (location.state?.gameId) {
+      setGameId(location.state.gameId);
+    } else {
+      // Fallback: fetch game ID by title
+      axios.get('/api/v1/games')
+        .then(res => {
+          const game = res.data.games?.find(g => g.title === "Snake Arcade");
+          if (game) setGameId(game._id);
+        })
+        .catch(err => console.error("Failed to load game info:", err));
+    }
+  }, [location.state]);
+
   // Game States
   const [hasStarted, setHasStarted] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -483,11 +501,19 @@ const Snake = () => {
     stopRenderLoop();
     setIsGameOver(true);
     
-    fetch('../scripts/php/snake.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `score=${score}`,
-    }).catch(err => console.warn('Score registration skipped:', err));
+    const token = localStorage.getItem('token');
+    if (gameId && token) {
+      axios.post(`/api/v1/games/${gameId}/score`, {
+        score: score,
+        level: difficulty === 'easy' ? 1 : difficulty === 'medium' ? 2 : 3
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then(res => console.log('Score submitted successfully:', res.data))
+      .catch(err => console.error('Failed to submit score:', err));
+    } else {
+      console.warn('Score registration skipped: Missing gameId or authentication token.');
+    }
   };
 
   const drawGame = (ctx) => {

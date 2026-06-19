@@ -15,6 +15,7 @@ import BrickBreaker from './Components/BrickBreaker'
 import CyberFalcon from './Components/CyberFalcon'
 import TowerStack from './Components/TowerStack'
 import SchulteGrid from './Components/SchulteGrid'
+import ConstellationBackground from './Components/ConstellationBackground';
 
 // Import global styles
 import './styles/globals.css';
@@ -47,6 +48,7 @@ const App = () => {
   return (
     <div>
       <ScrollToTop />
+      <ConstellationBackground />
       <Navbar/>
       <Routes>
         <Route path="/" element={<Home />} />
