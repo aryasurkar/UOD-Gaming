@@ -1,13 +1,13 @@
 import React from 'react';
-import './Foote.css'
+import './Foote.css';
 
 const Foote = () => {
   return (
-    <center>
-    <footer>
-      <p>Copyright &copy; 2024, All Rights Reserved. Managed by aryasurkar</p>
+    <footer className="platform-footer">
+      <p className="copyright-text">
+        © 2024 UOD Gaming. All Rights Reserved. Managed by aryasurkar
+      </p>
     </footer>
-    </center>
   );
 };
 

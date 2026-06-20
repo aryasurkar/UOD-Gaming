@@ -16,10 +16,10 @@
   --accent-orange: #ff6b35;
 
   /* Dark Theme */
-  --bg-primary: #0a0a0f;
-  --bg-secondary: #1a1a24;
-  --bg-card: #252538;
-  --bg-glass: rgba(37, 37, 56, 0.7);
+  --bg-primary: #020205;
+  --bg-secondary: #09090f;
+  --bg-card: rgba(255, 255, 255, 0.015);
+  --bg-glass: rgba(2, 2, 5, 0.7);
   
   /* Surface Colors */
   --surface-1: #2d2d44;
@@ -97,7 +97,7 @@ html {
 
 body {
   font-family: var(--font-secondary);
-  background-color: #030308;
+  background-color: var(--bg-primary);
   color: var(--text-primary);
   line-height: 1.6;
   overflow-x: hidden;

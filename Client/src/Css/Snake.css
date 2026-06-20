@@ -16,7 +16,7 @@
   /* Sleek Navigation Bar */
   .game-nav-bar {
     width: 90%;
-    max-width: 600px;
+    max-width: 950px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -60,7 +60,7 @@
   /* Game Cabinet Card */
   .game-content-card {
     width: 90%;
-    max-width: 600px;
+    max-width: 950px;
     background: rgba(20, 20, 30, 0.5);
     border: 1.5px solid rgba(0, 255, 136, 0.15);
     border-radius: var(--radius-xl);

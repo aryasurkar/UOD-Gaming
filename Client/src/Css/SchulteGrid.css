@@ -13,7 +13,7 @@
 
 /* Two-Column split */
 .schulte-grid-layout {
-  max-width: 950px !important;
+  max-width: 1400px !important;
   display: grid;
   grid-template-columns: 1.4fr 0.6fr;
   gap: 40px;
@@ -28,8 +28,10 @@
 /* Grid Container Wrapper with Relative Overlays */
 .grid-container-wrapper {
   position: relative;
-  width: 500px;
-  height: 500px;
+  width: 100%;
+  max-width: 700px;
+  height: auto;
+  aspect-ratio: 1 / 1;
   background: #030307;
   border-radius: var(--radius-md);
   overflow: hidden;

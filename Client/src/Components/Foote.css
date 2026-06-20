@@ -1,91 +1,31 @@
-@font-face {
-  font-family: Blanka;
-  src: url('/fonts/Blanka.woff'); /* Use absolute public path */
-} 
+/* ========================================
+   LUSION-INSPIRED MINIMALIST FOOTER
+   ======================================== */
 
-footer {
-  background: linear-gradient(to right, #333399, #ff00cc);
-  color: #868c96;
+.platform-footer {
+  padding: 40px 0;
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+  position: relative;
+  z-index: 10;
+}
 
-  img {
-    max-width: 100%;
-    height: auto;
-    width: 44px;
-  }
+.copyright-text {
+  font-family: var(--font-primary);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-align: center;
+  transition: color 0.3s ease;
+}
 
-  .contact-area {
-    padding: 60px 0;
-    border-bottom: 1px solid #000000;
-  }
-
-  ul {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .contact-content {
-    p {
-      font-size: 15px;
-      margin: 30px 0 60px;
-      position: relative;
-
-      &::after {
-        background: #000000;
-        bottom: -30px;
-        content: "";
-        height: 1px;
-        left: 50%;
-        position: absolute;
-        transform: translate(-50%);
-        width: 80%;
-      }
-    }
-
-    h2 {
-      color: #000000;
-      font-family: Blanka;
-      font-size: 30px;
-      font-weight: 400;
-      margin-bottom: 10px;
-    }
-
-    span {
-      color: #353c47;
-      margin: 0 10px;
-    }
-
-    img {
-      max-width: 210px;
-    }
-  }
-
-  .contact-social {
-    margin-top: 30px;
-
-    > ul {
-      display: inline-flex;
-    }
-
-    ul li a {
-      border: 1px solid #000000;
-      color: #000000;
-      display: inline-block;
-      height: 40px;
-      margin: 0 10px;
-      padding-top: 7px;
-      transition: all 0.4s ease 0s;
-      width: 40px;
-
-      &:hover {
-        border: 1px solid #FAB702;
-        color: #FAB702;
-      }
-    }
-  }
-
-  p {
-    padding: 40px 0;
-    text-align: center;
-  }
+.copyright-text:hover {
+  color: var(--primary-neon);
+  text-shadow: 0 0 8px rgba(0, 212, 255, 0.35);
 }

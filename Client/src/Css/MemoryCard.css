@@ -50,7 +50,7 @@
 
 /* Cabinet Container */
 .game-content-card {
-  max-width: 800px;
+  max-width: 1200px;
   margin: 40px auto 80px;
   background: rgba(10, 10, 15, 0.9);
   border: 2px solid rgba(139, 92, 246, 0.2);
@@ -317,19 +317,19 @@
 .memory-board.grid-easy {
   grid-template-columns: repeat(4, 1fr);
   grid-template-rows: repeat(2, 1fr);
-  max-width: 420px;
+  max-width: 650px;
 }
 
 .memory-board.grid-medium {
   grid-template-columns: repeat(4, 1fr);
   grid-template-rows: repeat(4, 1fr);
-  max-width: 420px;
+  max-width: 650px;
 }
 
 .memory-board.grid-hard {
   grid-template-columns: repeat(6, 1fr);
   grid-template-rows: repeat(4, 1fr);
-  max-width: 580px;
+  max-width: 900px;
 }
 
 /* Cards flip */
