@@ -13,7 +13,7 @@
 
 /* Two-Column split */
 .stack-grid {
-  max-width: 950px !important;
+  max-width: 1400px !important;
   display: grid;
   grid-template-columns: 1.4fr 0.6fr;
   gap: 40px;
@@ -28,8 +28,10 @@
 /* Canvas Wrapper with Relative Overlays */
 .canvas-wrapper-stack {
   position: relative;
-  width: 400px;
-  height: 500px;
+  width: 100%;
+  max-width: 500px;
+  height: auto;
+  aspect-ratio: 400 / 500;
   background: #05050a;
   border-radius: var(--radius-md);
   overflow: hidden;

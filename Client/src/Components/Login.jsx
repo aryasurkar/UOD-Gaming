@@ -108,7 +108,7 @@ const Login = () => {
       case 'email':
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
       case 'password':
-        return value.length >= 8 && /(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(value);
+        return value.length >= 1;
       case 'confirmPassword':
         return value === currentPassword && value.length > 0;
       default:
@@ -553,7 +553,7 @@ const Login = () => {
                     whileFocus="focus"
                     type={showPassword ? 'text' : 'password'}
                     name="password"
-                    placeholder="Enter password (min 8 chars, 1 uppercase, 1 digit)"
+                    placeholder="Enter password"
                     value={signupData.password}
                     onChange={handleSignupChange}
                     className={`input ${signupValidations.password ? 'valid' : signupData.password ? 'invalid' : ''}`}
@@ -567,15 +567,6 @@ const Login = () => {
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
-                {signupData.password && !signupValidations.password && (
-                  <motion.p 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="validation-message"
-                  >
-                    Must have 8+ characters, 1 uppercase letter, 1 number
-                  </motion.p>
-                )}
               </div>
 
               {/* Confirm Password Field */}

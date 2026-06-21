@@ -1,10 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, Play, Pause, RotateCcw, Award } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { ArrowLeft, Play, Pause, RotateCcw, Award, Settings } from 'lucide-react';
+import axios from 'axios';
 import '../Css/Snake.css';
 import Foote from './Foote';
 
 const Snake = () => {
+  const location = useLocation();
+  const [gameId, setGameId] = useState(null);
+  
+  useEffect(() => {
+    if (location.state?.gameId) {
+      setGameId(location.state.gameId);
+    } else {
+      // Fallback: fetch game ID by title
+      axios.get('/api/v1/games')
+        .then(res => {
+          const game = res.data.games?.find(g => g.title === "Snake Arcade");
+          if (game) setGameId(game._id);
+        })
+        .catch(err => console.error("Failed to load game info:", err));
+    }
+  }, [location.state]);
+
   // Game States
   const [hasStarted, setHasStarted] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -327,6 +345,19 @@ const Snake = () => {
     startGame();
   };
 
+  const returnToMenu = () => {
+    playSound('click');
+    stopRenderLoop();
+    if (gameIntervalRef.current) {
+      clearInterval(gameIntervalRef.current);
+      gameIntervalRef.current = null;
+    }
+    setHasStarted(false);
+    setIsPaused(false);
+    setIsGameOver(false);
+    setScore(0);
+  };
+
   const generateFruit = () => {
     let newFruit;
     let isOnSnakeOrGold = true;
@@ -470,11 +501,19 @@ const Snake = () => {
     stopRenderLoop();
     setIsGameOver(true);
     
-    fetch('../scripts/php/snake.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `score=${score}`,
-    }).catch(err => console.warn('Score registration skipped:', err));
+    const token = localStorage.getItem('token');
+    if (gameId && token) {
+      axios.post(`/api/v1/games/${gameId}/score`, {
+        score: score,
+        level: difficulty === 'easy' ? 1 : difficulty === 'medium' ? 2 : 3
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then(res => console.log('Score submitted successfully:', res.data))
+      .catch(err => console.error('Failed to submit score:', err));
+    } else {
+      console.warn('Score registration skipped: Missing gameId or authentication token.');
+    }
   };
 
   const drawGame = (ctx) => {
@@ -807,10 +846,16 @@ const Snake = () => {
             <div className="screen-overlay pause-overlay">
               <h2 className="overlay-title">Paused</h2>
               <p className="overlay-instructions">Press resume to continue your run.</p>
-              <button onClick={togglePause} className="arcade-btn resume-btn">
-                <Play size={18} fill="currentColor" />
-                Resume Game
-              </button>
+              <div className="overlay-buttons" style={{ display: 'flex', gap: '15px', marginTop: '10px' }}>
+                <button onClick={togglePause} className="arcade-btn resume-btn">
+                  <Play size={18} fill="currentColor" />
+                  Resume
+                </button>
+                <button onClick={returnToMenu} className="arcade-btn menu-btn-overlay">
+                  <Settings size={18} />
+                  Menu
+                </button>
+              </div>
             </div>
           )}
 
@@ -822,10 +867,16 @@ const Snake = () => {
               {score >= highScore && score > 0 && (
                 <div className="new-record-badge">NEW HIGH SCORE!</div>
               )}
-              <button onClick={restartGame} className="arcade-btn restart-btn">
-                <RotateCcw size={18} />
-                Try Again
-              </button>
+              <div className="overlay-buttons" style={{ display: 'flex', gap: '15px', marginTop: '10px' }}>
+                <button onClick={restartGame} className="arcade-btn restart-btn">
+                  <RotateCcw size={18} />
+                  Try Again
+                </button>
+                <button onClick={returnToMenu} className="arcade-btn menu-btn-overlay">
+                  <Settings size={18} />
+                  Menu
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -849,6 +900,15 @@ const Snake = () => {
           >
             <RotateCcw size={18} />
             <span>Reset</span>
+          </button>
+          <button 
+            disabled={!hasStarted}
+            onClick={returnToMenu} 
+            className={`control-btn menu-btn ${!hasStarted ? 'disabled' : ''}`}
+            title="Return to Menu"
+          >
+            <Settings size={18} />
+            <span>Menu</span>
           </button>
         </div>
       </div>

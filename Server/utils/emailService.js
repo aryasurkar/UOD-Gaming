@@ -1,13 +1,14 @@
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
+import { format } from 'date-fns';
 
 // Create email transporter
 const createTransporter = () => {
-    return nodemailer.createTransporter({
+    return nodemailer.createTransport({
         service: 'gmail',
         auth: {
-            user: process.env.EMAIL_USER || 'omshrikhande73@gmail.com',
-            pass: process.env.EMAIL_PASSWORD || 'Myname@0803'
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASSWORD
         },
         tls: {
             rejectUnauthorized: false
@@ -260,7 +261,7 @@ export const sendPaymentVerificationRequest = async (paymentData) => {
         
         await transporter.sendMail({
             from: `"UOD Gaming" <${process.env.EMAIL_USER}>`,
-            to: 'omshrikhande73@gmail.com',
+            to: process.env.ADMIN_EMAIL || 'omshrikhande73@gmail.com',
             subject: template.subject,
             html: template.html
         });

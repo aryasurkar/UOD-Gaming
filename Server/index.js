@@ -159,6 +159,17 @@ app.use(express.urlencoded({
 // Trust proxy for rate limiting and real IP detection
 app.set('trust proxy', process.env.NODE_ENV === 'production' ? 1 : false);
 
+// Static file serving for games with strict sandbox CSP header to prevent XSS
+app.use('/uploads/games', express.static(path.join(process.cwd(), 'uploads', 'games'), {
+    setHeaders: (res, path, stat) => {
+        res.set('Content-Security-Policy', "sandbox allow-scripts allow-downloads;");
+        res.set('X-Content-Type-Options', 'nosniff');
+    },
+    maxAge: process.env.NODE_ENV === 'production' ? '1d' : 0,
+    etag: true,
+    lastModified: true
+}));
+
 // Static file serving with caching
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
     maxAge: process.env.NODE_ENV === 'production' ? '1d' : 0,

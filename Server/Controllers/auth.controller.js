@@ -19,7 +19,7 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    const { username, email, password, displayName, role = 'user' } = req.body;
+    const { username, email, password, displayName } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({
@@ -41,7 +41,7 @@ export const registerUser = async (req, res) => {
       username,
       email,
       password,
-      role: role === 'supporter' ? 'supporter' : 'user',
+      role: 'user',
       profile: {
         displayName: displayName || username
       },

@@ -26,7 +26,7 @@ router.post('/login', validateUserLogin, loginUser);
 
 // Protected routes
 router.get('/profile', isAuthenticated, isLogin);
-router.get('/profile/:userId', validateObjectId('userId'), getUserProfile);
+router.get('/profile/:userId', isAuthenticated, validateObjectId('userId'), getUserProfile);
 router.put('/profile', isAuthenticated, updateProfile);
 router.get('/stats', isAuthenticated, getUserStats);
 

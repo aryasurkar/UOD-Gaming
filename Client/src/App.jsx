@@ -5,7 +5,6 @@ import Home from '../src/Components/Home';
 import Login from '../src/Components/Login';
 import Foote from '../src/Components/Foote';
 import UODGaming from './Components/UODGaming'
-import Download from './Components/Download'
 import Snake from './Components/Snake'
 import ColorG from './Components/ColorG'
 import TTT from './Components/TTT'
@@ -15,9 +14,11 @@ import BrickBreaker from './Components/BrickBreaker'
 import CyberFalcon from './Components/CyberFalcon'
 import TowerStack from './Components/TowerStack'
 import SchulteGrid from './Components/SchulteGrid'
+import ConstellationBackground from './Components/ConstellationBackground';
 
 // Import global styles
 import './styles/globals.css';
+import CustomCursor from './Components/CustomCursor';
 
 // Scroll to top helper component
 const ScrollToTop = () => {
@@ -47,6 +48,8 @@ const App = () => {
   return (
     <div>
       <ScrollToTop />
+      <ConstellationBackground />
+      <CustomCursor />
       <Navbar/>
       <Routes>
         <Route path="/" element={<Home />} />
@@ -54,7 +57,6 @@ const App = () => {
         <Route path="/sign" element={<Login />} />
         <Route path="/Foote" element={<Foote />} />
         <Route path="/UODGaming" element={<UODGaming />} />
-        <Route path="/Download" element={<Download />} />
         <Route path="/Snake" element={<Snake />} />  
         <Route path="/ColorG" element={<ColorG />} />  
         <Route path="/TTT" element={<TTT />} />  

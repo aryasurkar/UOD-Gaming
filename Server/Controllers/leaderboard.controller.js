@@ -705,16 +705,18 @@ export const updateGlobalRankings = async (req, res) => {
     }
 
     // Update country ranks
-    const countries = await GlobalLeaderboard.distinct('user.profile.country', {
-      'user.profile.country': { $ne: null }
+    const countries = await User.distinct('profile.country', {
+      'profile.country': { $ne: null }
     });
 
     for (const country of countries) {
+      const usersInCountry = await User.find({ 'profile.country': country }).select('_id');
+      const userIds = usersInCountry.map(u => u._id);
+
       const countryRankings = await GlobalLeaderboard.find({
         isActive: true,
-        'user.profile.country': country
+        player: { $in: userIds }
       })
-      .populate('user', 'profile.country')
       .sort({ 'overallStats.totalScore': -1 });
 
       for (let i = 0; i < countryRankings.length; i++) {

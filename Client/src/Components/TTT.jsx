@@ -1,10 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, RotateCcw, Trophy, Users, Play } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { ArrowLeft, RotateCcw, Trophy, Users, Play, Cpu } from 'lucide-react';
+import axios from 'axios';
 import "../Css/TTT.css";
 import Foote from './Foote';
 
 const TTT = () => {
+  const location = useLocation();
+  const [gameId, setGameId] = useState(null);
+  
+  useEffect(() => {
+    if (location.state?.gameId) {
+      setGameId(location.state.gameId);
+    } else {
+      // Fallback: fetch game ID by title
+      axios.get('/api/v1/games')
+        .then(res => {
+          const game = res.data.games?.find(g => g.title === "Tic Tac Toe Duo");
+          if (game) setGameId(game._id);
+        })
+        .catch(err => console.error("Failed to load game info:", err));
+    }
+  }, [location.state]);
+
   const [player1Name, setPlayer1Name] = useState('');
   const [player2Name, setPlayer2Name] = useState('');
   const [gameActive, setGameActive] = useState(false);
@@ -16,30 +34,20 @@ const TTT = () => {
   // Scoreboard
   const [scores, setScores] = useState({ X: 0, O: 0, draws: 0 });
 
-  useEffect(() => {
-    // Send player name to the server to store in the database on game start
-    if (gameActive && player1Name && player2Name) {
-      fetch('../scripts/php/tictacktoe.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `action=insertPlayer&name=${encodeURIComponent(player1Name)}`,
-      })
-      .then(response => response.text())
-      .then(data => console.log('P1 registered:', data))
-      .catch(err => console.warn('P1 DB registration skipped:', err));
-    }
-  }, [gameActive, player1Name]);
+  // VS Computer Mode States
+  const [gameMode, setGameMode] = useState('duo'); // 'duo' or 'cpu'
+  const [isCpuThinking, setIsCpuThinking] = useState(false);
 
   const startGame = (e) => {
     e.preventDefault();
     const p1Input = document.getElementById('player-name').value.trim();
     const p2Input = document.getElementById('player-name2').value.trim();
-    if (p1Input === '' || p2Input === '') {
-      alert('Please enter both player names to start the game.');
+    if (p1Input === '' || (gameMode === 'duo' && p2Input === '')) {
+      alert('Please enter the required player names to start.');
       return;
     }
     setPlayer1Name(p1Input);
-    setPlayer2Name(p2Input);
+    setPlayer2Name(gameMode === 'cpu' ? 'Cyber CPU' : p2Input);
     setGameActive(true);
     setHasStarted(true);
     resetBoard();
@@ -61,10 +69,12 @@ const TTT = () => {
     setScores({ X: 0, O: 0, draws: 0 });
     setBoard(Array(9).fill(''));
     setGameResult('');
+    setIsCpuThinking(false);
   };
 
   const handleClick = (cellIndex) => {
-    if (!gameActive) return;
+    if (!gameActive || isCpuThinking) return;
+    if (gameMode === 'cpu' && currentPlayer !== 'X') return;
     if (board[cellIndex] !== '') return;
     
     const newBoard = [...board];
@@ -80,14 +90,16 @@ const TTT = () => {
       setScores(prev => ({ ...prev, [currentPlayer]: prev[currentPlayer] + 1 }));
 
       // Record result to database
-      fetch('../scripts/php/tictacktoe.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `action=recordGameResult&playerName=${encodeURIComponent(winnerName)}&result=Win`,
-      })
-      .then(response => response.text())
-      .then(data => console.log('Result saved:', data))
-      .catch(err => console.warn('DB record skipped:', err));
+      const token = localStorage.getItem('token');
+      if (gameId && token) {
+        axios.post(`/api/v1/games/${gameId}/score`, { score: 100 }, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        .then(res => console.log('Win result saved:', res.data))
+        .catch(err => console.error('Failed to save result:', err));
+      } else {
+        console.warn('DB record skipped: Missing gameId or authentication token.');
+      }
 
     } else if (checkDraw(newBoard)) {
       setGameResult("It's a draw!");
@@ -97,17 +109,96 @@ const TTT = () => {
       setScores(prev => ({ ...prev, draws: prev.draws + 1 }));
 
       // Record draw to database
-      fetch('../scripts/php/tictacktoe.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `action=recordGameResult&playerName=${encodeURIComponent(player1Name)}&result=Draw`,
-      })
-      .then(response => response.text())
-      .catch(err => console.warn('DB record skipped:', err));
+      const token = localStorage.getItem('token');
+      if (gameId && token) {
+        axios.post(`/api/v1/games/${gameId}/score`, { score: 50 }, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        .then(res => console.log('Draw result saved:', res.data))
+        .catch(err => console.error('Failed to save result:', err));
+      } else {
+        console.warn('DB record skipped: Missing gameId or authentication token.');
+      }
     } else {
       setCurrentPlayer(currentPlayer === 'X' ? 'O' : 'X');
     }
   };
+
+  // CPU Smart AI Logic
+  const getBestMove = (currentBoard) => {
+    const winCombos = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8],
+      [0, 3, 6], [1, 4, 7], [2, 5, 8],
+      [0, 4, 8], [2, 4, 6]
+    ];
+    const findCombosOfTwo = (player) => {
+      for (let combo of winCombos) {
+        const values = combo.map(i => currentBoard[i]);
+        const playerCount = values.filter(v => v === player).length;
+        const emptyCount = values.filter(v => v === '').length;
+        if (playerCount === 2 && emptyCount === 1) {
+          return combo[values.indexOf('')];
+        }
+      }
+      return null;
+    };
+
+    // 1. Can CPU win?
+    const cpuWinMove = findCombosOfTwo('O');
+    if (cpuWinMove !== null) return cpuWinMove;
+
+    // 2. Block Player?
+    const playerWinMove = findCombosOfTwo('X');
+    if (playerWinMove !== null) return playerWinMove;
+
+    // 3. Take Center?
+    if (currentBoard[4] === '') return 4;
+
+    // 4. Take Corners?
+    const corners = [0, 2, 6, 8];
+    const openCorners = corners.filter(i => currentBoard[i] === '');
+    if (openCorners.length > 0) {
+      return openCorners[Math.floor(Math.random() * openCorners.length)];
+    }
+
+    // 5. Take Sides?
+    const sides = [1, 3, 5, 7];
+    const openSides = sides.filter(i => currentBoard[i] === '');
+    if (openSides.length > 0) {
+      return openSides[Math.floor(Math.random() * openSides.length)];
+    }
+    return null;
+  };
+
+  // CPU Turn Handler
+  useEffect(() => {
+    if (gameActive && gameMode === 'cpu' && currentPlayer === 'O' && !gameResult) {
+      setIsCpuThinking(true);
+      const timer = setTimeout(() => {
+        const cpuMove = getBestMove(board);
+        if (cpuMove !== null) {
+          const newBoard = [...board];
+          newBoard[cpuMove] = 'O';
+          setBoard(newBoard);
+          
+          if (checkWin(newBoard, 'O')) {
+            setGameResult(`${player2Name} wins!`);
+            setGameActive(false);
+            setScores(prev => ({ ...prev, O: prev.O + 1 }));
+          } else if (checkDraw(newBoard)) {
+            setGameResult("It's a draw!");
+            setGameActive(false);
+            setScores(prev => ({ ...prev, draws: prev.draws + 1 }));
+          } else {
+            setCurrentPlayer('X');
+          }
+        }
+        setIsCpuThinking(false);
+      }, 750); // Simulated thinking time
+
+      return () => clearTimeout(timer);
+    }
+  }, [currentPlayer, gameActive, gameMode, board, gameResult, player2Name]);
 
   const checkWin = (currentBoard, player) => {
     const winningCombinations = [
@@ -146,17 +237,43 @@ const TTT = () => {
         {!hasStarted ? (
           /* Players Setup Form */
           <form className="players-setup-form" onSubmit={startGame}>
-            <div className="setup-icon-wrapper">
-              <Users size={40} className="setup-icon" />
+            {/* Game Mode Selector */}
+            <div className="mode-selector-tabs">
+              <button 
+                type="button" 
+                className={`mode-tab-btn ${gameMode === 'duo' ? 'active' : ''}`}
+                onClick={() => setGameMode('duo')}
+              >
+                <Users size={14} />
+                <span>Duo Combat</span>
+              </button>
+              <button 
+                type="button" 
+                className={`mode-tab-btn ${gameMode === 'cpu' ? 'active' : ''}`}
+                onClick={() => setGameMode('cpu')}
+              >
+                <Cpu size={14} />
+                <span>VS Computer</span>
+              </button>
             </div>
-            <h3 className="setup-title">Register Players</h3>
+
+            <div className="setup-icon-wrapper">
+              {gameMode === 'cpu' ? (
+                <Cpu size={40} className="setup-icon" />
+              ) : (
+                <Users size={40} className="setup-icon" />
+              )}
+            </div>
+            <h3 className="setup-title">
+              {gameMode === 'cpu' ? 'Prepare Player vs CPU' : 'Register Players'}
+            </h3>
             <div className="setup-input-group">
               <div className="input-field-wrapper">
                 <span className="player-indicator p1-color">X</span>
                 <input 
                   type="text" 
                   id="player-name" 
-                  placeholder="Player 1 Name" 
+                  placeholder="Player Name" 
                   defaultValue={player1Name}
                   required 
                 />
@@ -166,15 +283,17 @@ const TTT = () => {
                 <input 
                   type="text" 
                   id="player-name2" 
-                  placeholder="Player 2 Name" 
-                  defaultValue={player2Name}
+                  placeholder="Opponent Name" 
+                  value={gameMode === 'cpu' ? 'Cyber CPU' : player2Name}
+                  onChange={(e) => gameMode !== 'cpu' && setPlayer2Name(e.target.value)}
+                  disabled={gameMode === 'cpu'}
                   required 
                 />
               </div>
             </div>
             <button type="submit" className="start-game-btn">
               <Play size={18} fill="currentColor" />
-              Start Battle
+               Start Battle
             </button>
           </form>
         ) : (
@@ -199,10 +318,16 @@ const TTT = () => {
             {/* Turn Announcement Banner */}
             {gameActive && (
               <div className="turn-banner">
-                Current Turn:{' '}
-                <span className={currentPlayer === 'X' ? 'p1-text' : 'p2-text'}>
-                  {currentPlayer === 'X' ? player1Name : player2Name} ({currentPlayer})
-                </span>
+                {isCpuThinking ? (
+                  <span className="cpu-thinking-text">CPU is calculating...</span>
+                ) : (
+                  <>
+                    Current Turn:{' '}
+                    <span className={currentPlayer === 'X' ? 'p1-text' : 'p2-text'}>
+                      {currentPlayer === 'X' ? player1Name : player2Name} ({currentPlayer})
+                    </span>
+                  </>
+                )}
               </div>
             )}
 
@@ -221,7 +346,7 @@ const TTT = () => {
                   key={index} 
                   className={`cell ${cell ? 'cell-occupied' : 'cell-empty'}`} 
                   onClick={() => handleClick(index)}
-                  disabled={!gameActive || cell !== ''}
+                  disabled={!gameActive || cell !== '' || isCpuThinking}
                 >
                   <span className={cell === 'X' ? 'p1-text mark' : 'p2-text mark'}>
                     {cell}

@@ -1,10 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, RotateCcw, Trophy, Award, Zap, Save } from 'lucide-react';
+import axios from 'axios';
 import "../Css/ColorG.css";
 import Foote from '../Components/Foote';
 
 const ColorG = () => {
+  const location = useLocation();
+  const [gameId, setGameId] = useState(null);
+  
+  useEffect(() => {
+    if (location.state?.gameId) {
+      setGameId(location.state.gameId);
+    } else {
+      // Fallback: fetch game ID by title
+      axios.get('/api/v1/games')
+        .then(res => {
+          const game = res.data.games?.find(g => g.title === "Color Guesser RGB");
+          if (game) setGameId(game._id);
+        })
+        .catch(err => console.error("Failed to load game info:", err));
+    }
+  }, [location.state]);
+
   const [colors, setColors] = useState([]);
   const [pickedColor, setPickedColor] = useState('');
   const [message, setMessage] = useState('');
@@ -88,26 +106,23 @@ const ColorG = () => {
 
   const handleSaveScore = async (event) => {
     event.preventDefault();
-    if (username.trim() === '') {
-      alert('Please enter a username.');
-      return;
-    }
-    const scoreStatus = message.includes("Correct") ? 'Win' : 'Lose';
     
-    try {
-      const response = await fetch('../scripts/php/color.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `username=${encodeURIComponent(username)}&score=${scoreStatus}`,
-      });
-      if (response.ok) {
-        alert('Score saved successfully!');
-      } else {
-        alert('Error saving score.');
+    const token = localStorage.getItem('token');
+    if (gameId && token) {
+      try {
+        await axios.post(`/api/v1/games/${gameId}/score`, {
+          score: score
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        alert('Score saved successfully to database!');
+      } catch (err) {
+        console.error('Failed to save score:', err);
+        alert('Error saving score to database.');
       }
-    } catch (err) {
-      console.warn('Score registration skipped:', err);
-      alert('Score save simulated successfully!');
+    } else {
+      console.warn('Score registration skipped: Missing gameId or authentication token.');
+      alert('Score save simulated! Please login to save to database.');
     }
   };
 
@@ -196,19 +211,10 @@ const ColorG = () => {
         {/* Save Score Section */}
         <form className="player-save-form" onSubmit={handleSaveScore}>
           <h3 className="save-form-title">Save Your High Score</h3>
-          <div className="save-input-group">
-            <input
-              type="text"
-              id="username"
-              name="username"
-              placeholder="Enter your username"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              required
-            />
+          <div className="save-input-group" style={{ justifyContent: 'center' }}>
             <button type="submit" className="save-submit-btn">
               <Save size={16} />
-              Save
+              Submit Score to Leaderboard
             </button>
           </div>
         </form>

@@ -449,7 +449,7 @@ export const getUserGroups = async (req, res) => {
       });
     }
 
-    const total = user.groups.length;
+    const total = await Group.countDocuments({ 'members.user': userId, isActive: true });
 
     res.status(200).json({
       success: true,

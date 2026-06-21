@@ -55,40 +55,13 @@
     width: 100%;
     max-width: 480px;
     padding: var(--space-3xl);
-    border: 1px solid rgba(0, 212, 255, 0.2);
+    border: none;
+    border-radius: var(--radius-xl);
     position: relative;
     overflow: hidden;
-
-    &::before {
-      content: '';
-      position: absolute;
-      top: -2px;
-      left: -2px;
-      right: -2px;
-      bottom: -2px;
-      background: conic-gradient(
-        var(--primary-neon),
-        var(--secondary-neon),
-        var(--accent-purple),
-        var(--primary-neon)
-      );
-      border-radius: inherit;
-      z-index: -1;
-      animation: rotate-border 3s linear infinite;
-      opacity: 0.3;
-    }
-
-    &::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: var(--bg-card);
-      border-radius: inherit;
-      z-index: -1;
-    }
+    background: rgba(10, 10, 15, 0.45);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
 
   /* Header */
@@ -157,20 +130,22 @@
   .input {
     width: 100%;
     padding: var(--space-md) var(--space-md) var(--space-md) 3rem;
-    background: var(--surface-1);
-    border: 2px solid transparent;
+    background: rgba(45, 45, 68, 0.45);
+    border: 2px solid rgba(255, 255, 255, 0.08);
     border-radius: var(--radius-lg);
     color: var(--text-primary);
     font-family: var(--font-secondary);
     font-size: 1rem;
     transition: all var(--transition-normal);
     position: relative;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
 
     &:focus {
       outline: none;
       border-color: var(--primary-neon);
       box-shadow: var(--shadow-glow-primary);
-      background: var(--surface-2);
+      background: rgba(58, 58, 84, 0.65);
     }
 
     &:focus + .input-icon,
@@ -292,7 +267,7 @@
     text-align: center;
     margin-top: var(--space-xl);
     padding-top: var(--space-xl);
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
 
     p {
       color: var(--text-secondary);

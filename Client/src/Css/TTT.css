@@ -6,7 +6,7 @@
   font-family: var(--font-secondary);
   text-align: center;
   min-height: 100vh;
-  background: var(--bg-primary);
+  background-color: #0a0a0f;
   color: var(--text-primary);
   padding-top: 80px;
   display: flex;
@@ -16,7 +16,7 @@
   /* Sleek Navigation Bar */
   .game-nav-bar {
     width: 90%;
-    max-width: 600px;
+    max-width: 950px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -60,7 +60,7 @@
   /* Game Cabinet Card */
   .game-content-card {
     width: 90%;
-    max-width: 600px;
+    max-width: 950px;
     background: rgba(20, 20, 30, 0.5);
     border: 1.5px solid rgba(0, 212, 255, 0.15);
     border-radius: var(--radius-xl);
@@ -118,7 +118,7 @@
   }
 
   .setup-icon {
-    animation: rotate-slow 6s linear infinite;
+    /* Keep it stationary as requested */
   }
 
   .setup-title {
@@ -154,17 +154,28 @@
     input {
       flex: 1;
       border: none;
-      background: transparent;
+      background: transparent !important;
       padding: 12px 15px;
-      color: #fff;
+      color: #fff !important;
       font-size: 0.95rem;
 
       &:focus {
         outline: none;
+        background: transparent !important;
       }
 
       &::placeholder {
         color: var(--text-muted);
+      }
+
+      /* Prevent browser autofill from turning background white */
+      &:-webkit-autofill,
+      &:-webkit-autofill:hover, 
+      &:-webkit-autofill:focus, 
+      &:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0 30px #1a1a24 inset !important;
+        -webkit-text-fill-color: #fff !important;
+        transition: background-color 5000s ease-in-out 0s;
       }
     }
   }
@@ -342,10 +353,10 @@
   /* Grid Board */
   .game-board {
     display: grid;
-    grid-template-columns: repeat(3, 100px);
-    grid-gap: 12px;
+    grid-template-columns: repeat(3, 160px);
+    grid-gap: 16px;
     background: rgba(0, 0, 0, 0.3);
-    padding: 15px;
+    padding: 20px;
     border-radius: var(--radius-xl);
     border: 1.5px solid rgba(255, 255, 255, 0.05);
     box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.8);
@@ -353,8 +364,8 @@
   }
 
   .cell {
-    width: 100px;
-    height: 100px;
+    width: 160px;
+    height: 160px;
     border: 1.5px solid rgba(255, 255, 255, 0.08);
     background: rgba(37, 37, 56, 0.35);
     border-radius: var(--radius-md);
@@ -388,7 +399,7 @@
 
   .mark {
     font-family: var(--font-primary);
-    font-size: 2.8rem;
+    font-size: 4.5rem;
     font-weight: 900;
     animation: pop-in 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     line-height: 1;
@@ -442,6 +453,56 @@
       text-shadow: 0 0 5px rgba(139, 92, 246, 0.5);
     }
   }
+
+  /* Game Mode Selector Tabs */
+  .mode-selector-tabs {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    margin-bottom: var(--space-md);
+  }
+
+  .mode-tab-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1.5px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    padding: 10px 14px;
+    font-family: var(--font-gaming);
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.2);
+      color: #fff;
+    }
+
+    &.active {
+      background: var(--gradient-primary);
+      color: #fff;
+      border-color: transparent;
+      box-shadow: var(--shadow-glow-primary);
+      text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+    }
+  }
+
+  /* CPU Thinking Text styles */
+  .cpu-thinking-text {
+    font-family: var(--font-gaming);
+    color: var(--secondary-neon);
+    text-shadow: 0 0 10px rgba(255, 0, 110, 0.6);
+    animation: cpu-pulse 1.2s infinite ease-in-out;
+    letter-spacing: 1.5px;
+  }
 }
 
 /* Animations */
@@ -453,4 +514,9 @@
 @keyframes rotate-slow {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+@keyframes cpu-pulse {
+  0%, 100% { opacity: 0.6; filter: brightness(0.8); }
+  50% { opacity: 1; filter: brightness(1.2); }
 }

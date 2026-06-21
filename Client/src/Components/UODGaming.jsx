@@ -3,70 +3,173 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, 
-  Filter, 
   Grid, 
-  List, 
-  Star, 
-  Users, 
-  Clock,
-  Download,
   Play,
-  Heart,
-  Eye,
   Gamepad2,
   Trophy,
-  Flame,
-  Zap
+  Zap,
+  Heart
 } from 'lucide-react';
 import Foote from './Foote';
+import axios from 'axios';
 import '../styles/UODGaming.css';
+
+// GameIcon component renders inline minimalist glowing SVGs for games
+const GameIcon = ({ title }) => {
+  const glowFilter = (
+    <defs>
+      <filter id="icon-glow" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="3" result="blur" />
+        <feMerge>
+          <feMergeNode in="blur" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+    </defs>
+  );
+
+  switch (title) {
+    case "Snake Arcade":
+      return (
+        <svg viewBox="0 0 100 100" className="game-icon-svg">
+          {glowFilter}
+          <path 
+            d="M 20 80 L 20 50 L 50 50 L 50 20 L 80 20" 
+            stroke="#00ff88" 
+            strokeWidth="3.5" 
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+            fill="none" 
+            filter="url(#icon-glow)"
+          />
+          <circle cx="80" cy="20" r="4.5" fill="#00ff88" filter="url(#icon-glow)" />
+          <circle cx="80" cy="50" r="3.5" fill="#ff006e" filter="url(#icon-glow)" />
+        </svg>
+      );
+    case "Tic Tac Toe Duo":
+      return (
+        <svg viewBox="0 0 100 100" className="game-icon-svg">
+          {glowFilter}
+          <line x1="38" y1="15" x2="38" y2="85" stroke="rgba(255,255,255,0.08)" strokeWidth="2.5" />
+          <line x1="62" y1="15" x2="62" y2="85" stroke="rgba(255,255,255,0.08)" strokeWidth="2.5" />
+          <line x1="15" y1="38" x2="85" y2="38" stroke="rgba(255,255,255,0.08)" strokeWidth="2.5" />
+          <line x1="15" y1="62" x2="85" y2="62" stroke="rgba(255,255,255,0.08)" strokeWidth="2.5" />
+          <path d="M 22 22 L 30 30 M 30 22 L 22 30" stroke="#00d4ff" strokeWidth="3.5" strokeLinecap="round" filter="url(#icon-glow)" />
+          <circle cx="50" cy="50" r="6" stroke="#ff006e" strokeWidth="3.5" fill="none" filter="url(#icon-glow)" />
+          <path d="M 70 70 L 78 78 M 78 70 L 70 78" stroke="#00d4ff" strokeWidth="3.5" strokeLinecap="round" filter="url(#icon-glow)" />
+        </svg>
+      );
+    case "Color Guesser RGB":
+      return (
+        <svg viewBox="0 0 100 100" className="game-icon-svg">
+          {glowFilter}
+          <circle cx="42" cy="45" r="16" stroke="#ff006e" strokeWidth="2.5" fill="rgba(255, 0, 110, 0.05)" filter="url(#icon-glow)" />
+          <circle cx="58" cy="45" r="16" stroke="#00ff88" strokeWidth="2.5" fill="rgba(0, 255, 136, 0.05)" filter="url(#icon-glow)" />
+          <circle cx="50" cy="59" r="16" stroke="#00d4ff" strokeWidth="2.5" fill="rgba(0, 212, 255, 0.05)" filter="url(#icon-glow)" />
+        </svg>
+      );
+    case "Memory Card Match":
+      return (
+        <svg viewBox="0 0 100 100" className="game-icon-svg">
+          {glowFilter}
+          <rect x="18" y="22" width="26" height="38" rx="4" stroke="rgba(255, 255, 255, 0.15)" strokeWidth="2.5" fill="rgba(255,255,255,0.01)" />
+          <text x="31" y="47" fill="rgba(255, 255, 255, 0.4)" fontSize="18" fontWeight="bold" textAnchor="middle">?</text>
+          <rect x="52" y="32" width="28" height="42" rx="4" stroke="#00d4ff" strokeWidth="3" fill="rgba(0, 212, 255, 0.03)" filter="url(#icon-glow)" />
+          <path d="M 66 43 L 68 49 L 74 49 L 69 53 L 71 59 L 66 55 L 61 59 L 63 53 L 58 49 L 64 49 Z" fill="#00d4ff" filter="url(#icon-glow)" />
+        </svg>
+      );
+    case "Cyber Block Stacker":
+      return (
+        <svg viewBox="0 0 100 100" className="game-icon-svg">
+          {glowFilter}
+          <path d="M 30 35 L 30 65 L 50 65" stroke="#00d4ff" strokeWidth="4.5" strokeLinecap="square" fill="none" filter="url(#icon-glow)" />
+          <path d="M 45 45 L 75 45 M 60 45 L 60 65" stroke="#8b5cf6" strokeWidth="4.5" strokeLinecap="square" fill="none" filter="url(#icon-glow)" />
+        </svg>
+      );
+    case "Neon Brick Breaker":
+      return (
+        <svg viewBox="0 0 100 100" className="game-icon-svg">
+          {glowFilter}
+          <rect x="15" y="20" width="18" height="7" rx="1.5" stroke="#00d4ff" strokeWidth="2" fill="rgba(0, 212, 255, 0.05)" filter="url(#icon-glow)" />
+          <rect x="37" y="20" width="18" height="7" rx="1.5" stroke="#ff006e" strokeWidth="2" fill="rgba(255, 0, 110, 0.05)" filter="url(#icon-glow)" />
+          <rect x="59" y="20" width="18" height="7" rx="1.5" stroke="#00ff88" strokeWidth="2" fill="rgba(0, 255, 136, 0.05)" filter="url(#icon-glow)" />
+          <rect x="25" y="32" width="18" height="7" rx="1.5" stroke="#ffff00" strokeWidth="2" fill="rgba(255, 255, 0, 0.05)" filter="url(#icon-glow)" />
+          <rect x="47" y="32" width="18" height="7" rx="1.5" stroke="#8b5cf6" strokeWidth="2" fill="rgba(139, 92, 246, 0.05)" filter="url(#icon-glow)" />
+          <line x1="30" y1="75" x2="60" y2="75" stroke="#00ff88" strokeWidth="4" strokeLinecap="round" filter="url(#icon-glow)" />
+          <circle cx="43" cy="58" r="3.5" fill="#ffffff" filter="url(#icon-glow)" />
+          <line x1="43" y1="58" x2="45" y2="73" stroke="rgba(255, 255, 255, 0.2)" strokeWidth="1.5" strokeDasharray="3,3" />
+        </svg>
+      );
+    case "Cyber Falcon":
+      return (
+        <svg viewBox="0 0 100 100" className="game-icon-svg">
+          {glowFilter}
+          <line x1="30" y1="15" x2="30" y2="45" stroke="#ff006e" strokeWidth="3" strokeLinecap="round" filter="url(#icon-glow)" />
+          <line x1="65" y1="55" x2="65" y2="85" stroke="#ff006e" strokeWidth="3" strokeLinecap="round" filter="url(#icon-glow)" />
+          <g transform="translate(42, 45) rotate(-15)">
+            <path d="M 8 0 L 15 15 L 8 11 L 1 15 Z" fill="#00d4ff" filter="url(#icon-glow)" />
+            <path d="M 8 11 L 6 16 L 10 16 Z" fill="#ff6b35" opacity="0.8" />
+          </g>
+        </svg>
+      );
+    case "Neon Stack Tower":
+      return (
+        <svg viewBox="0 0 100 100" className="game-icon-svg">
+          {glowFilter}
+          <rect x="25" y="70" width="50" height="10" rx="1.5" stroke="#8b5cf6" strokeWidth="2.5" fill="rgba(139, 92, 246, 0.05)" filter="url(#icon-glow)" />
+          <rect x="28" y="56" width="44" height="10" rx="1.5" stroke="#00ff88" strokeWidth="2.5" fill="rgba(0, 255, 136, 0.05)" filter="url(#icon-glow)" />
+          <rect x="35" y="42" width="40" height="10" rx="1.5" stroke="#00d4ff" strokeWidth="3" fill="rgba(0, 212, 255, 0.05)" filter="url(#icon-glow)" />
+        </svg>
+      );
+    case "Cyber Grid 1-25":
+      return (
+        <svg viewBox="0 0 100 100" className="game-icon-svg">
+          {glowFilter}
+          <rect x="18" y="18" width="64" height="64" rx="4" stroke="rgba(255,255,255,0.08)" strokeWidth="2.5" fill="none" />
+          <line x1="39.3" y1="18" x2="39.3" y2="82" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
+          <line x1="60.6" y1="18" x2="60.6" y2="82" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
+          <line x1="18" y1="39.3" x2="82" y2="39.3" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
+          <line x1="18" y1="60.6" x2="82" y2="60.6" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
+          <rect x="20" y="20" width="17" height="17" rx="2" fill="rgba(0,255,136,0.05)" stroke="#00ff88" strokeWidth="2.5" filter="url(#icon-glow)" />
+          <text x="28.5" y="32.5" fill="#00ff88" fontSize="12" fontWeight="bold" textAnchor="middle" filter="url(#icon-glow)">1</text>
+          
+          <text x="50" y="32.5" fill="rgba(255,255,255,0.3)" fontSize="11" textAnchor="middle">14</text>
+          <text x="71.5" y="32.5" fill="rgba(255,255,255,0.3)" fontSize="11" textAnchor="middle">9</text>
+          
+          <text x="28.5" y="53.8" fill="rgba(255,255,255,0.3)" fontSize="11" textAnchor="middle">23</text>
+          <text x="50" y="53.8" fill="rgba(255,255,255,0.3)" fontSize="11" textAnchor="middle">2</text>
+          <text x="71.5" y="53.8" fill="rgba(255,255,255,0.3)" fontSize="11" textAnchor="middle">11</text>
+          
+          <text x="28.5" y="75" fill="rgba(255,255,255,0.3)" fontSize="11" textAnchor="middle">6</text>
+          <text x="50" y="75" fill="rgba(255,255,255,0.3)" fontSize="11" textAnchor="middle">18</text>
+          <text x="71.5" y="75" fill="rgba(255,255,255,0.3)" fontSize="11" textAnchor="middle">5</text>
+        </svg>
+      );
+    default:
+      return (
+        <svg viewBox="0 0 100 100" className="game-icon-svg">
+          {glowFilter}
+          <circle cx="50" cy="50" r="20" stroke="#00d4ff" strokeWidth="3" fill="none" filter="url(#icon-glow)" />
+        </svg>
+      );
+  }
+};
 
 const UODGaming = () => {
   const navigate = useNavigate();
-  const [viewMode, setViewMode] = useState('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('popular');
-  const [likedGames, setLikedGames] = useState(new Set());
-  const [installPrompt, setInstallPrompt] = useState(window.deferredPrompt || null);
-
-  useEffect(() => {
-    const handleInstallPromptAvailable = () => {
-      setInstallPrompt(window.deferredPrompt);
-    };
-    const handleAppInstalled = () => {
-      setInstallPrompt(null);
-    };
-    window.addEventListener('pwa-install-available', handleInstallPromptAvailable);
-    window.addEventListener('pwa-installed', handleAppInstalled);
-    return () => {
-      window.removeEventListener('pwa-install-available', handleInstallPromptAvailable);
-      window.removeEventListener('pwa-installed', handleAppInstalled);
-    };
-  }, []);
-
-  const handleInstallClick = async () => {
-    if (!installPrompt) {
-      alert('UOD Gaming is already installed or PWA installation is not supported by your browser.');
-      return;
-    }
-    installPrompt.prompt();
-    const { outcome } = await installPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setInstallPrompt(null);
-    }
-  };
 
   const categories = [
     { id: 'all', label: 'All Games', icon: Gamepad2 },
     { id: 'action', label: 'Action', icon: Zap },
-    { id: 'adventure', label: 'Adventure', icon: Search },
     { id: 'puzzle', label: 'Puzzle', icon: Grid },
     { id: 'strategy', label: 'Strategy', icon: Trophy },
     { id: 'casual', label: 'Casual', icon: Heart },
   ];
 
-  const games = [
+  const [games, setGames] = useState([
     {
       id: 1,
       title: "Snake Arcade",
@@ -193,11 +296,52 @@ const UODGaming = () => {
       path: "/GridRush",
       tags: ["Logic", "Reflex", "Casual"]
     }
-  ];
+  ]);
+
+  useEffect(() => {
+    // Fetch dynamic games list from backend API if available
+    axios.get('/api/v1/games')
+      .then(res => {
+        if (res.data.games && res.data.games.length > 0) {
+          const routeMap = {
+            "Snake Arcade": "/Snake",
+            "Tic Tac Toe Duo": "/TTT",
+            "Color Guesser RGB": "/ColorG",
+            "Memory Card Match": "/MemoryCard",
+            "Cyber Block Stacker": "/Tetris",
+            "Neon Brick Breaker": "/Breakout",
+            "Cyber Falcon": "/Falcon",
+            "Neon Stack Tower": "/Stack",
+            "Cyber Grid 1-25": "/GridRush"
+          };
+
+          const mappedGames = res.data.games.map(game => ({
+            id: game._id,
+            _id: game._id,
+            title: game.title,
+            category: game.category,
+            rating: game.statistics?.averageRating || 4.5,
+            players: game.statistics?.uniquePlayers ? `${(game.statistics.uniquePlayers / 1000).toFixed(0)}K` : "10K",
+            image: game.screenshots?.[0]?.url || "/snake_icon.png",
+            description: game.description,
+            downloads: game.statistics?.totalDownloads ? `${(game.statistics.totalDownloads / 1000).toFixed(0)}K` : "5K",
+            lastUpdated: game.publishedAt ? new Date(game.publishedAt).toLocaleDateString() : "Just now",
+            featured: game.isFeatured,
+            path: routeMap[game.title] || `/play/${game._id}`,
+            tags: game.tags || [],
+            isComingSoon: game.status === 'pending_review'
+          }));
+          setGames(mappedGames);
+        }
+      })
+      .catch(err => {
+        console.warn("Failed to fetch games from backend, using offline local games catalog:", err);
+      });
+  }, []);
 
   const filteredGames = games.filter(game => {
     const matchesSearch = game.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         game.description.toLowerCase().includes(searchTerm.toLowerCase());
+                          game.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || game.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -217,38 +361,35 @@ const UODGaming = () => {
     }
   });
 
-  const toggleLike = (gameId) => {
-    const newLikedGames = new Set(likedGames);
-    if (newLikedGames.has(gameId)) {
-      newLikedGames.delete(gameId);
-    } else {
-      newLikedGames.add(gameId);
-    }
-    setLikedGames(newLikedGames);
-  };
+  const GameCard = ({ game, index }) => {
+    const handlePlayClick = () => {
+      if (game.isComingSoon) return;
+      window.dispatchEvent(new CustomEvent('trigger-warp', { detail: { duration: 950 } }));
+      setTimeout(() => {
+        navigate(game.path, { state: { gameId: game._id || game.id } });
+      }, 250);
+    };
 
-  const GameCard = ({ game, index }) => (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 50 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.8 }}
-      transition={{ delay: index * 0.1 }}
-      className={`game-card ${viewMode} ${game.isComingSoon ? 'coming-soon-card' : ''}`}
-      whileHover={game.isComingSoon ? {} : { y: -5, transition: { duration: 0.2 } }}
-    >
-      <div className="game-image-container">
-        <div 
-          className="game-image" 
-          style={game.image.startsWith('linear') ? { background: game.image } : { backgroundImage: `url(${game.image})` }}
-        >
+    return (
+      <motion.div
+        layout
+        initial={{ opacity: 0, y: 50 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.8 }}
+        transition={{ delay: index * 0.05, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        className={`game-card ${game.isComingSoon ? 'coming-soon-card' : ''}`}
+      >
+        <div className="game-image-container">
+          <div className="game-image-svg-wrapper">
+            <GameIcon title={game.title} />
+          </div>
           {!game.isComingSoon && (
             <div className="game-overlay">
               <motion.button
                 className="play-btn"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                onClick={() => navigate(game.path)}
+                onClick={handlePlayClick}
               >
                 <Play size={24} />
               </motion.button>
@@ -256,109 +397,36 @@ const UODGaming = () => {
           )}
 
           {game.isComingSoon && (
-            <div className="coming-soon-badge" style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(255, 0, 110, 0.85)', padding: '4px 10px', borderRadius: 4, fontFamily: 'var(--font-primary)', fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#fff' }}>
+            <div className="coming-soon-badge">
               Coming Soon
             </div>
           )}
-          <button
-            className={`like-btn ${likedGames.has(game.id) ? 'liked' : ''}`}
-            onClick={() => toggleLike(game.id)}
-          >
-            <Heart size={20} fill={likedGames.has(game.id) ? 'currentColor' : 'none'} />
-          </button>
         </div>
-      </div>
-      
-      <div className="game-content">
-        <div className="game-header">
+        
+        <div className="game-content">
           <h3 className="game-title">{game.title}</h3>
-          <div className="game-rating">
-            <Star size={16} fill="currentColor" />
-            {game.rating}
-          </div>
-        </div>
-        
-        <p className="game-description">{game.description}</p>
-        
-        <div className="game-tags">
-          {game.tags.map(tag => (
-            <span key={tag} className="game-tag">{tag}</span>
-          ))}
-        </div>
-        
-        <div className="game-stats">
-          <div className="stat">
-            <Users size={16} />
-            {game.players}
-          </div>
-          <div className="stat">
-            <Download size={16} />
-            {game.downloads}
-          </div>
-          <div className="stat">
-            <Clock size={16} />
-            {game.lastUpdated}
-          </div>
-        </div>
-        
-        <div className="game-actions">
-          <motion.button
-            className={`btn btn-primary play-game-btn ${game.isComingSoon ? 'disabled' : ''}`}
-            whileHover={game.isComingSoon ? {} : { scale: 1.02 }}
-            whileTap={game.isComingSoon ? {} : { scale: 0.98 }}
-            onClick={() => {
-              if (game.path) {
-                navigate(game.path);
-              }
-            }}
-            disabled={game.isComingSoon}
-          >
-            <Play size={18} />
-            {game.isComingSoon ? 'Coming Soon' : 'Play Now'}
-          </motion.button>
           
-          <motion.button
-            className="btn btn-ghost download-btn"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleInstallClick}
-            title="Download/Install App Locally"
-          >
-            <Download size={18} />
-          </motion.button>
+          <div className="game-actions">
+            <motion.button
+              className={`btn btn-primary play-game-btn ${game.isComingSoon ? 'disabled' : ''}`}
+              whileHover={game.isComingSoon ? {} : { scale: 1.02 }}
+              whileTap={game.isComingSoon ? {} : { scale: 0.98 }}
+              onClick={handlePlayClick}
+              disabled={game.isComingSoon}
+            >
+              <Play size={18} />
+              <span>{game.isComingSoon ? 'Coming Soon' : 'Play Now'}</span>
+            </motion.button>
+          </div>
         </div>
-      </div>
-    </motion.div>
-  );
-
+      </motion.div>
+    );
+  };
 
   return (
     <div className="uod-gaming-wrapper">
       {/* Hero Section */}
       <section className="games-hero">
-        <div className="hero-bg-animation">
-          {[...Array(30)].map((_, i) => (
-            <motion.div
-              key={i}
-              className="bg-particle"
-              animate={{
-                y: [0, -50, 0],
-                x: [0, Math.random() * 30 - 15, 0],
-                opacity: [0.3, 0.8, 0.3],
-              }}
-              transition={{
-                duration: 3 + Math.random() * 2,
-                repeat: Infinity,
-                delay: Math.random() * 2,
-              }}
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-              }}
-            />
-          ))}
-        </div>
-        
         <div className="container">
           <motion.div
             className="hero-content"
@@ -366,12 +434,12 @@ const UODGaming = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <h1 className="hero-title text-gaming">
-              <Gamepad2 className="title-icon" />
-              Epic Gaming Universe
+            <span className="hero-meta-label">[ ARCHIVE REPOSITORY ]</span>
+            <h1 className="hero-title">
+              THE RETRO CABINETS
             </h1>
             <p className="hero-subtitle">
-              Discover thousands of games, from indie masterpieces to AAA blockbusters
+              Interactive 60fps singleplayer simulators engineered with Web Audio synthesizer feedback
             </p>
           </motion.div>
         </div>
@@ -386,7 +454,7 @@ const UODGaming = () => {
                 <Search className="search-icon" />
                 <input
                   type="text"
-                  placeholder="Search games..."
+                  placeholder="Search retro archive..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="search-input"
@@ -406,8 +474,8 @@ const UODGaming = () => {
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                     >
-                      <Icon size={18} />
-                      {category.label}
+                      <Icon size={16} />
+                      <span>{category.label}</span>
                     </motion.button>
                   );
                 })}
@@ -425,21 +493,6 @@ const UODGaming = () => {
                   <option value="downloads">Most Downloaded</option>
                   <option value="newest">Recently Updated</option>
                 </select>
-
-                <div className="view-toggle">
-                  <button
-                    className={viewMode === 'grid' ? 'active' : ''}
-                    onClick={() => setViewMode('grid')}
-                  >
-                    <Grid size={20} />
-                  </button>
-                  <button
-                    className={viewMode === 'list' ? 'active' : ''}
-                    onClick={() => setViewMode('list')}
-                  >
-                    <List size={20} />
-                  </button>
-                </div>
               </div>
             </div>
           </div>
@@ -449,20 +502,23 @@ const UODGaming = () => {
       {/* Games Grid */}
       <section className="games-section">
         <div className="container">
-          <div className="games-header">
+          <div className="games-header-row">
             <h2 className="section-title">
-              {selectedCategory === 'all' ? 'All Games' : 
+              {selectedCategory === 'all' ? 'All Cabinets' : 
                categories.find(c => c.id === selectedCategory)?.label} 
               <span className="games-count">({sortedGames.length})</span>
             </h2>
           </div>
 
-          <AnimatePresence>
-            <div className={`games-grid ${viewMode}`}>
+          <AnimatePresence mode="popLayout">
+            <motion.div 
+              layout
+              className="games-grid"
+            >
               {sortedGames.map((game, index) => (
                 <GameCard key={game.id} game={game} index={index} />
               ))}
-            </div>
+            </motion.div>
           </AnimatePresence>
 
           {sortedGames.length === 0 && (
@@ -471,9 +527,9 @@ const UODGaming = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
-              <Gamepad2 size={64} />
-              <h3>No games found</h3>
-              <p>Try adjusting your search or filter criteria</p>
+              <Gamepad2 size={64} className="text-muted" />
+              <h3>No Cabinets Found</h3>
+              <p>Try resetting the category filter or search input query.</p>
             </motion.div>
           )}
         </div>
