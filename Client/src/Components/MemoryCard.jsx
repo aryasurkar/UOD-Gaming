@@ -22,6 +22,7 @@ import {
   VolumeX,
   Play
 } from 'lucide-react';
+import axios from 'axios';
 import '../Css/MemoryCard.css';
 import Foote from './Foote';
 
@@ -123,6 +124,18 @@ const MemoryCard = () => {
   const [timer, setTimer] = useState(0); // counts up or down
   const [isWon, setIsWon] = useState(false);
   const [isGameOver, setIsGameOver] = useState(false);
+  const [gameId, setGameId] = useState(null);
+  const [rewards, setRewards] = useState(null);
+  const [submitStatus, setSubmitStatus] = useState(''); // 'submitting', 'submitted', 'failed', 'offline'
+
+  useEffect(() => {
+    axios.get('/api/v1/games')
+      .then(res => {
+        const game = res.data.games?.find(g => g.title === "Memory Card Match");
+        if (game) setGameId(game._id);
+      })
+      .catch(err => console.error("Failed to load game info:", err));
+  }, []);
 
   const [bestMoves, setBestMoves] = useState('-');
   const timerRef = useRef(null);
@@ -200,6 +213,8 @@ const MemoryCard = () => {
     setMatches(0);
     setIsWon(false);
     setIsGameOver(false);
+    setRewards(null);
+    setSubmitStatus('');
     setGameStarted(true);
   };
 
@@ -242,6 +257,50 @@ const MemoryCard = () => {
                 localStorage.setItem(key, finalMoves.toString());
                 setBestMoves(finalMoves);
               }
+
+              // Online score submission
+              const calculatedScore = Math.max(50, (difficulty === 'easy' ? 500 : difficulty === 'medium' ? 1000 : 2000) - finalMoves * 10 - timer * 2);
+              const token = localStorage.getItem('token');
+              if (gameId && token) {
+                setSubmitStatus('submitting');
+                axios.post(`/api/v1/games/${gameId}/score`, {
+                  score: calculatedScore,
+                  level: difficulty === 'easy' ? 1 : difficulty === 'medium' ? 2 : 3
+                }, {
+                  headers: { Authorization: `Bearer ${token}` }
+                })
+                .then(res => {
+                  console.log('Score submitted successfully:', res.data);
+                  setRewards({
+                    coinsEarned: res.data.coinsEarned,
+                    expGained: res.data.expGained,
+                    level: res.data.level,
+                    leveledUp: res.data.leveledUp
+                  });
+                  setSubmitStatus('submitted');
+                  
+                  // Sync local storage user
+                  const storedUser = localStorage.getItem('user');
+                  if (storedUser) {
+                    try {
+                      const userObj = JSON.parse(storedUser);
+                      userObj.coins = res.data.totalCoins;
+                      if (!userObj.gameStats) userObj.gameStats = {};
+                      userObj.gameStats.level = res.data.level;
+                      localStorage.setItem('user', JSON.stringify(userObj));
+                      window.dispatchEvent(new Event('user-stats-changed'));
+                    } catch (e) {
+                      console.error('Failed to update local storage user info:', e);
+                    }
+                  }
+                })
+                .catch(err => {
+                  console.error('Failed to submit score:', err);
+                  setSubmitStatus('failed');
+                });
+              } else {
+                setSubmitStatus('offline');
+              }
             }
             return nextMatches;
           });
@@ -260,6 +319,8 @@ const MemoryCard = () => {
   const exitToConfig = () => {
     playSound('click', soundEnabled);
     if (timerRef.current) clearInterval(timerRef.current);
+    setRewards(null);
+    setSubmitStatus('');
     setGameStarted(false);
   };
 
@@ -392,70 +453,151 @@ const MemoryCard = () => {
         {/* ACTIVE GAME PLAYBOARD */}
         {gameStarted && (
           <div className="active-gameboard">
-            <div className="game-header">
-              <h1 className="game-title small">Memory Card Match</h1>
-              <p className="game-subtitle">Difficulty: <span className="uppercase font-bold" style={{ color: difficulty === 'easy' ? '#00ff88' : difficulty === 'medium' ? '#00d4ff' : '#ff007f' }}>{difficulty}</span> | Deck: <span className="uppercase font-bold text-white">{deckType}</span></p>
-            </div>
+            {/* Arcade Cabinet Frame */}
+            <div className="cabinet-screen crt-screen">
+              {/* CRT scanlines, reflection and flicker overlay */}
+              <div className="crt-scanlines"></div>
+              <div className="crt-reflection"></div>
+              <div className="crt-flicker"></div>
 
-            {/* Stats Dashboard */}
-            <div className="stats-dashboard">
-              <div className="stat-card">
-                <Clock className="stat-icon neon-blue" size={20} />
-                <div className="stat-info">
-                  <span className="stat-label">{timeTrial ? 'Time Remaining' : 'Time Elapsed'}</span>
-                  <span className="stat-value" style={timeTrial && timer <= 10 ? { color: '#ff007f', textShadow: '0 0 10px #ff007f' } : {}}>{formatTime(timer)}</span>
+              {/* Floating HUD Overlays */}
+              <div className="game-hud-container">
+                <div className="game-hud-item">
+                  <span className="game-hud-label">{timeTrial ? 'Remaining' : 'Time'}</span>
+                  <span className="game-hud-value" style={timeTrial && timer <= 10 ? { color: '#ff007f', textShadow: '0 0 10px #ff007f' } : {}}>{formatTime(timer)}</span>
+                </div>
+
+                <div className="game-hud-item">
+                  <span className="game-hud-label">Moves</span>
+                  <span className="game-hud-value">{moves}</span>
+                </div>
+
+                <div className="game-hud-item">
+                  <span className="game-hud-label">Best Record</span>
+                  <span className="game-hud-value" style={{ color: 'var(--accent-yellow)', textShadow: '0 0 8px rgba(255,255,0,0.4)' }}>{bestMoves}</span>
                 </div>
               </div>
 
-              <div className="stat-card">
-                <Gamepad2 className="stat-icon neon-pink" size={20} />
-                <div className="stat-info">
-                  <span className="stat-label">Moves</span>
-                  <span className="stat-value">{moves}</span>
+              <div className="game-play-area">
+                {/* Board */}
+                <div className={`memory-board grid-${difficulty}`}>
+                  {cards.map((card, idx) => {
+                    const isFlipped = flippedIndices.includes(idx) || card.isMatched;
+                    const IconComponent = ICON_MAP[card.icon];
+                    
+                    return (
+                      <motion.div
+                        key={card.id}
+                        className={`memory-tile-container ${card.isMatched ? 'tile-matched' : ''}`}
+                        onClick={() => handleCardClick(idx)}
+                        whileHover={isFlipped ? {} : { scale: 1.05 }}
+                        whileTap={isFlipped ? {} : { scale: 0.95 }}
+                      >
+                        <div className={`memory-tile-inner ${isFlipped ? 'flipped' : ''}`}>
+                          {/* Front Side */}
+                          <div className={`tile-front ${card.isMatched ? 'glow-matched' : ''}`}>
+                            {deckType === 'neon' ? (
+                              IconComponent && <IconComponent className="tile-icon" size={difficulty === 'hard' ? 24 : 32} />
+                            ) : (
+                              <span className="tile-emoji" style={difficulty === 'hard' ? { fontSize: '1.6rem' } : { fontSize: '2rem' }}>{card.icon}</span>
+                            )}
+                          </div>
+
+                          {/* Back Side */}
+                          <div className="tile-back">
+                            <HelpCircle className="question-icon" size={difficulty === 'hard' ? 20 : 30} />
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               </div>
 
-              <div className="stat-card">
-                <Trophy className="stat-icon neon-green" size={20} />
-                <div className="stat-info">
-                  <span className="stat-label">Best Record (Moves)</span>
-                  <span className="stat-value">{bestMoves}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Board */}
-            <div className={`memory-board grid-${difficulty}`}>
-              {cards.map((card, idx) => {
-                const isFlipped = flippedIndices.includes(idx) || card.isMatched;
-                const IconComponent = ICON_MAP[card.icon];
-                
-                return (
-                  <motion.div
-                    key={card.id}
-                    className={`memory-tile-container ${card.isMatched ? 'tile-matched' : ''}`}
-                    onClick={() => handleCardClick(idx)}
-                    whileHover={isFlipped ? {} : { scale: 1.05 }}
-                    whileTap={isFlipped ? {} : { scale: 0.95 }}
+              {/* Win Overlay */}
+              <AnimatePresence>
+                {isWon && (
+                  <motion.div 
+                    className="win-overlay"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    style={{ position: 'absolute', zIndex: 20 }}
                   >
-                    <div className={`memory-tile-inner ${isFlipped ? 'flipped' : ''}`}>
-                      {/* Front Side */}
-                      <div className={`tile-front ${card.isMatched ? 'glow-matched' : ''}`}>
-                        {deckType === 'neon' ? (
-                          IconComponent && <IconComponent className="tile-icon" size={difficulty === 'hard' ? 24 : 32} />
-                        ) : (
-                          <span className="tile-emoji" style={difficulty === 'hard' ? { fontSize: '1.6rem' } : { fontSize: '2rem' }}>{card.icon}</span>
-                        )}
+                    <motion.div 
+                      className="win-modal"
+                      initial={{ scale: 0.8, y: 50 }}
+                      animate={{ scale: 1, y: 0 }}
+                      exit={{ scale: 0.8, y: 50 }}
+                      transition={{ type: "spring", damping: 15 }}
+                    >
+                      <Trophy size={60} className="win-trophy animate-bounce" />
+                      <h2>Simulation Complete!</h2>
+                      <p>Excellent memory! You cleared the {difficulty} deck in <strong>{moves}</strong> moves.</p>
+                      
+                      {submitStatus === 'submitting' && (
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '8px 0' }}>Saving score online...</p>
+                      )}
+                      {submitStatus === 'submitted' && rewards && (
+                        <div className="game-over-rewards" style={{ margin: '12px auto', padding: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', fontSize: '0.9rem' }}>
+                          <div style={{ color: '#ffd700', marginBottom: '4px' }}>🪙 +{rewards.coinsEarned} Coins</div>
+                          <div style={{ color: 'var(--primary-neon)', marginBottom: '4px' }}>⚡ +{rewards.expGained} XP</div>
+                          {rewards.leveledUp && (
+                            <div style={{ color: '#00ff88', fontWeight: 'bold', textShadow: '0 0 5px rgba(0,255,136,0.5)', marginTop: '4px' }}>LEVEL UP! (Lv {rewards.level})</div>
+                          )}
+                        </div>
+                      )}
+                      {submitStatus === 'failed' && (
+                        <p style={{ fontSize: '0.85rem', color: 'var(--secondary-neon)', margin: '8px 0' }}>Failed to save score online.</p>
+                      )}
+                      {submitStatus === 'offline' && (
+                        <p style={{ fontSize: '0.85rem', color: 'var(--accent-orange)', margin: '8px 0' }}>Log in to save stats & earn coins!</p>
+                      )}
+                      <div className="modal-buttons">
+                        <button className="btn btn-primary" onClick={startGame}>
+                          Play Again
+                        </button>
+                        <button className="btn btn-ghost" onClick={exitToConfig}>
+                          Settings
+                        </button>
                       </div>
-
-                      {/* Back Side */}
-                      <div className="tile-back">
-                        <HelpCircle className="question-icon" size={difficulty === 'hard' ? 20 : 30} />
-                      </div>
-                    </div>
+                    </motion.div>
                   </motion.div>
-                );
-              })}
+                )}
+              </AnimatePresence>
+
+              {/* Game Over Overlay */}
+              <AnimatePresence>
+                {isGameOver && (
+                  <motion.div 
+                    className="win-overlay"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    style={{ background: 'rgba(20, 5, 10, 0.96)', position: 'absolute', zIndex: 20 }}
+                  >
+                    <motion.div 
+                      className="win-modal"
+                      initial={{ scale: 0.8, y: 50 }}
+                      animate={{ scale: 1, y: 0 }}
+                      exit={{ scale: 0.8, y: 50 }}
+                      transition={{ type: "spring", damping: 15 }}
+                    >
+                      <Bomb size={60} className="win-trophy animate-pulse" style={{ color: '#ff007f', filter: 'drop-shadow(0 0 15px currentColor)' }} />
+                      <h2 style={{ color: '#ff007f', textShadow: '0 0 10px rgba(255, 0, 127, 0.4)' }}>Simulation Aborted!</h2>
+                      <p>Time has run out! The CPU overloaded the system core memory. Train your reflexes and try again.</p>
+                      <div className="modal-buttons">
+                        <button className="btn btn-primary" style={{ background: '#ff007f', boxShadow: '0 0 15px rgba(255,0,127,0.4)' }} onClick={startGame}>
+                          Re-Launch
+                        </button>
+                        <button className="btn btn-ghost" onClick={exitToConfig}>
+                          Settings
+                        </button>
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             <div className="control-actions gap-4">
@@ -467,71 +609,6 @@ const MemoryCard = () => {
                 <span>Change Config</span>
               </button>
             </div>
-
-            {/* Win Overlay */}
-            <AnimatePresence>
-              {isWon && (
-                <motion.div 
-                  className="win-overlay"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                >
-                  <motion.div 
-                    className="win-modal"
-                    initial={{ scale: 0.8, y: 50 }}
-                    animate={{ scale: 1, y: 0 }}
-                    exit={{ scale: 0.8, y: 50 }}
-                    transition={{ type: "spring", damping: 15 }}
-                  >
-                    <Trophy size={60} className="win-trophy animate-bounce" />
-                    <h2>Simulation Complete!</h2>
-                    <p>Excellent memory! You cleared the {difficulty} deck in <strong>{moves}</strong> moves.</p>
-                    <div className="modal-buttons">
-                      <button className="btn btn-primary" onClick={startGame}>
-                        Play Again
-                      </button>
-                      <button className="btn btn-ghost" onClick={exitToConfig}>
-                        Settings
-                      </button>
-                    </div>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Game Over Overlay */}
-            <AnimatePresence>
-              {isGameOver && (
-                <motion.div 
-                  className="win-overlay"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  style={{ background: 'rgba(20, 5, 10, 0.96)' }}
-                >
-                  <motion.div 
-                    className="win-modal"
-                    initial={{ scale: 0.8, y: 50 }}
-                    animate={{ scale: 1, y: 0 }}
-                    exit={{ scale: 0.8, y: 50 }}
-                    transition={{ type: "spring", damping: 15 }}
-                  >
-                    <Bomb size={60} className="win-trophy animate-pulse" style={{ color: '#ff007f', filter: 'drop-shadow(0 0 15px currentColor)' }} />
-                    <h2 style={{ color: '#ff007f', textShadow: '0 0 10px rgba(255, 0, 127, 0.4)' }}>Simulation Aborted!</h2>
-                    <p>Time has run out! The CPU overloaded the system core memory. Train your reflexes and try again.</p>
-                    <div className="modal-buttons">
-                      <button className="btn btn-primary" style={{ background: '#ff007f', boxShadow: '0 0 15px rgba(255,0,127,0.4)' }} onClick={startGame}>
-                        Re-Launch
-                      </button>
-                      <button className="btn btn-ghost" onClick={exitToConfig}>
-                        Settings
-                      </button>
-                    </div>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
         )}
       </div>

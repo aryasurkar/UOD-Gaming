@@ -11,80 +11,80 @@
   overflow-x: hidden;
 }
 
-/* Three-Column Cabinet Layout */
-.tetris-grid {
-  max-width: 1400px !important;
-  display: grid;
-  grid-template-columns: 0.8fr 1.4fr 0.8fr;
-  gap: 30px;
-  padding: 30px !important;
-  align-items: start;
-}
-
-/* Left Stats Panel */
-.tetris-stats-panel {
+/* Game Cabinet Card */
+.tetris-page-wrapper .game-content-card {
+  width: 95%;
+  max-width: 1200px;
+  margin: 20px auto var(--space-xl);
+  background: rgba(20, 20, 30, 0.5);
+  border: 1.5px solid rgba(139, 92, 246, 0.15);
+  border-radius: var(--radius-xl);
+  padding: var(--space-md) var(--space-lg);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
-}
-
-.stats-dashboard.vertical {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  margin-bottom: 25px;
-}
-
-.controls-help-box {
-  background: rgba(255, 255, 255, 0.01);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: var(--radius-md);
-  padding: 15px;
-}
-
-.controls-help-box h3 {
-  display: flex;
   align-items: center;
-  gap: 6px;
-  font-family: var(--font-gaming);
-  font-size: 0.85rem;
-  color: #fff;
-  text-transform: uppercase;
-  margin-bottom: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  padding-bottom: 5px;
 }
 
-.controls-help-box ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.controls-help-box li {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
+/* CRT Screen Wrapper */
+.cabinet-screen.crt-screen {
+  position: relative;
+  width: 100%;
+  max-width: calc(45vh); /* 1:2 aspect ratio playfield container width */
+  aspect-ratio: 0.5; /* 1:2 aspect ratio */
+  background: #050508;
+  border: 4px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 
+    0 0 20px rgba(139, 92, 246, 0.15),
+    inset 0 0 35px rgba(0, 0, 0, 0.95);
+  margin: 0 auto var(--space-md) auto;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding-top: 60px; /* space for absolute HUD overlays */
 }
 
-.controls-help-box li strong {
-  color: var(--primary-neon);
-}
-
-/* Center Column: Matrix Board */
-.tetris-board-container {
+.game-play-area {
+  width: 100%;
+  height: 100%;
+  padding: var(--space-sm);
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
 }
 
-.tetris-matrix {
-  width: 380px;
-  height: 760px;
-  background: rgba(5, 5, 10, 0.95);
-  border: 4px solid rgba(139, 92, 246, 0.2);
-  box-shadow: 0 0 30px rgba(139, 92, 246, 0.1), inset 0 0 20px rgba(0, 0, 0, 0.6);
+/* Floating Next Piece Panel */
+.floating-next-piece-panel {
+  position: absolute;
+  right: 12px;
+  top: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
+  background: rgba(10, 10, 15, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-md);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  z-index: 8;
+}
+
+/* Center Column: Matrix Board */
+.tetris-matrix {
+  width: 100%;
+  height: 100%;
+  background: rgba(5, 5, 10, 0.95);
+  border: 1px solid rgba(139, 92, 246, 0.1);
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+  border-radius: var(--radius-sm);
   display: flex;
   flex-direction: column;
   position: relative;
@@ -99,7 +99,7 @@
 .matrix-cell {
   flex: 1;
   aspect-ratio: 1 / 1;
-  border: 1px solid rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.015);
   box-sizing: border-box;
   transition: background-color 0.1s ease, border-color 0.1s ease;
 }
@@ -301,4 +301,47 @@
   color: #00f0f0;
   text-shadow: 0 0 8px rgba(0, 240, 240, 0.6);
   box-shadow: 0 0 15px rgba(0, 240, 240, 0.4);
+}
+
+/* Scanlines Overlay */
+.crt-scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.25) 50%
+  );
+  background-size: 100% 4px;
+}
+
+/* Curved CRT Glass Reflection */
+.crt-reflection {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  background: radial-gradient(
+    circle at 50% 0%, 
+    rgba(255, 255, 255, 0.06) 0%, 
+    transparent 70%
+  );
+}
+
+/* Subtle CRT Screen Flicker */
+.crt-flicker {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  background: rgba(18, 16, 16, 0.02);
+  opacity: 0.15;
+  animation: crt-flicker-anim 0.15s infinite;
+}
+
+@keyframes crt-flicker-anim {
+  0% { opacity: 0.13; }
+  50% { opacity: 0.17; }
+  100% { opacity: 0.13; }
 }

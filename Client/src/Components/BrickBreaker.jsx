@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
 import { 
   ArrowLeft, 
   RotateCcw, 
@@ -91,6 +92,64 @@ const BrickBreaker = () => {
     localStorage.getItem('breakout_high_score') ? parseInt(localStorage.getItem('breakout_high_score')) : 0
   );
   const [isRunning, setIsRunning] = useState(false);
+  const [gameId, setGameId] = useState(null);
+  const [rewards, setRewards] = useState(null);
+  const [submitStatus, setSubmitStatus] = useState(''); // 'submitting', 'submitted', 'failed', 'offline'
+
+  useEffect(() => {
+    axios.get('/api/v1/games')
+      .then(res => {
+        const game = res.data.games?.find(g => g.title === "Neon Brick Breaker");
+        if (game) setGameId(game._id);
+      })
+      .catch(err => console.error("Failed to load game info:", err));
+  }, []);
+
+  useEffect(() => {
+    if (gameOver) {
+      const token = localStorage.getItem('token');
+      if (gameId && token && score > 0) {
+        setSubmitStatus('submitting');
+        axios.post(`/api/v1/games/${gameId}/score`, {
+          score: score,
+          level: level
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        .then(res => {
+          console.log('Score submitted successfully:', res.data);
+          setRewards({
+            coinsEarned: res.data.coinsEarned,
+            expGained: res.data.expGained,
+            level: res.data.level,
+            leveledUp: res.data.leveledUp
+          });
+          setSubmitStatus('submitted');
+          
+          // Sync local storage user
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            try {
+              const userObj = JSON.parse(storedUser);
+              userObj.coins = res.data.totalCoins;
+              if (!userObj.gameStats) userObj.gameStats = {};
+              userObj.gameStats.level = res.data.level;
+              localStorage.setItem('user', JSON.stringify(userObj));
+              window.dispatchEvent(new Event('user-stats-changed'));
+            } catch (e) {
+              console.error('Failed to sync user stats:', e);
+            }
+          }
+        })
+        .catch(err => {
+          console.error('Failed to submit score:', err);
+          setSubmitStatus('failed');
+        });
+      } else {
+        setSubmitStatus('offline');
+      }
+    }
+  }, [gameOver, gameId, score, level]);
 
   // Mutable game physics references to avoid stale closures in requestAnimationFrame
   const gameState = useRef({
@@ -139,6 +198,8 @@ const BrickBreaker = () => {
   };
 
   const initGame = () => {
+    setRewards(null);
+    setSubmitStatus('');
     setScore(0);
     setLives(3);
     setLevel(1);
@@ -412,111 +473,120 @@ const BrickBreaker = () => {
         <span className="game-status-title">Arcade Room: Brick Breaker</span>
       </div>
 
-      <div className="game-content-card bb-grid">
-        {/* Playfield Canvas */}
-        <div className="bb-canvas-panel">
-          <div className="game-header text-left">
-            <h1 className="game-title">Brick Breaker</h1>
-            <p className="game-subtitle">Retro Breakout. Deflect the energy ball to clear the neon grid.</p>
+      <div className="game-content-card">
+        {/* Arcade Cabinet Frame */}
+        <div className="cabinet-screen crt-screen">
+          {/* CRT scanlines, reflection and flicker overlay */}
+          <div className="crt-scanlines"></div>
+          <div className="crt-reflection"></div>
+          <div className="crt-flicker"></div>
+
+          {/* Floating HUD Overlays */}
+          <div className="game-hud-container">
+            <div className="game-hud-item">
+              <span className="game-hud-label">Score</span>
+              <span className="game-hud-value">{score.toLocaleString()}</span>
+            </div>
+
+            <div className="game-hud-item" style={{ flexDirection: 'row', gap: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span className="game-hud-label">Level</span>
+                <span className="game-hud-value" style={{ color: 'var(--primary-neon)' }}>{level}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span className="game-hud-label">Shields</span>
+                <div style={{ display: 'flex', gap: '3px', marginTop: '2px' }}>
+                  {[...Array(3)].map((_, i) => (
+                    <Heart 
+                      key={i} 
+                      size={14} 
+                      fill={i < lives ? '#ff007f' : 'none'} 
+                      color={i < lives ? '#ff007f' : 'rgba(255, 255, 255, 0.2)'} 
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="game-hud-item">
+              <span className="game-hud-label">Best</span>
+              <span className="game-hud-value" style={{ color: 'var(--accent-yellow)', textShadow: '0 0 8px rgba(255,255,0,0.4)' }}>{highScore.toLocaleString()}</span>
+            </div>
           </div>
 
-          <div className="canvas-wrapper">
-            <canvas 
-              ref={canvasRef} 
-              width={600} 
-              height={400} 
-              onMouseMove={handleMouseMove}
-              onClick={handleCanvasClick}
-              className="breakout-canvas"
-            />
+          <div className="game-play-area">
+            <div className="canvas-wrapper">
+              <canvas 
+                ref={canvasRef} 
+                width={600} 
+                height={400} 
+                onMouseMove={handleMouseMove}
+                onClick={handleCanvasClick}
+                className="breakout-canvas"
+              />
 
-            {!isRunning && !gameOver && !paused && (
-              <div className="start-prompt-overlay" onClick={handleCanvasClick}>
-                <p>Press <strong>SPACEBAR</strong> or <strong>CLICK SCREEN</strong> to Launch Ball</p>
-                <span>Move your cursor or use Left/Right arrows to navigate the paddle.</span>
-              </div>
-            )}
-
-            {/* Overlays */}
-            <AnimatePresence>
-              {gameOver && (
-                <div className="start-prompt-overlay gameover">
-                  <h2>Arcade Over</h2>
-                  <p>All lives lost. final score: <strong>{score.toLocaleString()}</strong></p>
-                  <button className="btn btn-primary mt-4" onClick={initGame}>Insert Coin (Play)</button>
+              {!isRunning && !gameOver && !paused && (
+                <div className="start-prompt-overlay" onClick={handleCanvasClick}>
+                  <p>Press <strong>SPACEBAR</strong> or <strong>CLICK SCREEN</strong> to Launch Ball</p>
+                  <span>Move your cursor or use Left/Right arrows to navigate the paddle.</span>
                 </div>
               )}
 
-              {paused && (
-                <div className="start-prompt-overlay paused">
-                  <h2>Paused</h2>
-                  <button className="btn btn-primary mt-4" onClick={() => setPaused(false)}>Resume Game</button>
-                </div>
-              )}
-            </AnimatePresence>
+              {/* Overlays */}
+              <AnimatePresence>
+                {gameOver && (
+                  <div className="start-prompt-overlay gameover">
+                    <h2>Arcade Over</h2>
+                    <p>All lives lost. Final score: <strong>{score.toLocaleString()}</strong></p>
+                    
+                    {submitStatus === 'submitting' && (
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '8px 0' }}>Saving score online...</p>
+                    )}
+                    {submitStatus === 'submitted' && rewards && (
+                      <div className="game-over-rewards" style={{ margin: '12px auto', padding: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', fontSize: '0.9rem' }}>
+                        <div style={{ color: '#ffd700', marginBottom: '4px' }}>🪙 +{rewards.coinsEarned} Coins</div>
+                        <div style={{ color: 'var(--primary-neon)', marginBottom: '4px' }}>⚡ +{rewards.expGained} XP</div>
+                        {rewards.leveledUp && (
+                          <div style={{ color: '#00ff88', fontWeight: 'bold', textShadow: '0 0 5px rgba(0,255,136,0.5)', marginTop: '4px' }}>LEVEL UP! (Lv {rewards.level})</div>
+                        )}
+                      </div>
+                    )}
+                    {submitStatus === 'failed' && (
+                      <p style={{ fontSize: '0.85rem', color: 'var(--secondary-neon)', margin: '8px 0' }}>Failed to save score online.</p>
+                    )}
+                    {submitStatus === 'offline' && (
+                      <p style={{ fontSize: '0.85rem', color: 'var(--accent-orange)', margin: '8px 0' }}>Log in to save stats & earn coins!</p>
+                    )}
+
+                    <button className="btn btn-primary mt-4" onClick={initGame}>Insert Coin (Play)</button>
+                  </div>
+                )}
+
+                {paused && (
+                  <div className="start-prompt-overlay paused">
+                    <h2>Paused</h2>
+                    <button className="btn btn-primary mt-4" onClick={() => setPaused(false)}>Resume Game</button>
+                  </div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
 
-        {/* Info panel */}
-        <div className="bb-sidebar-panel">
-          <div className="stats-dashboard vertical">
-            <div className="stat-card">
-              <Trophy className="stat-icon neon-gold" size={18} />
-              <div className="stat-info">
-                <span className="stat-label">High Score</span>
-                <span className="stat-value">{highScore.toLocaleString()}</span>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <Zap className="stat-icon neon-blue" size={18} />
-              <div className="stat-info">
-                <span className="stat-label">Score</span>
-                <span className="stat-value">{score.toLocaleString()}</span>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <Gamepad2 className="stat-icon neon-green" size={18} />
-              <div className="stat-info">
-                <span className="stat-label">Level</span>
-                <span className="stat-value">{level}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Lives indicators */}
-          <div className="lives-panel mb-6">
-            <h3>Health Status</h3>
-            <div className="lives-hearts">
-              {[...Array(3)].map((_, i) => (
-                <Heart 
-                  key={i} 
-                  size={24} 
-                  fill={i < lives ? '#ff007f' : 'none'} 
-                  color={i < lives ? '#ff007f' : 'rgba(255, 255, 255, 0.1)'} 
-                  className={i < lives ? 'active-heart animate-pulse' : ''}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="action-buttons-column mt-4">
-            <button className="btn btn-reset mb-4" onClick={() => setSoundEnabled(!soundEnabled)}>
-              {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-              <span>Sound: {soundEnabled ? 'ON' : 'OFF'}</span>
-            </button>
-            
-            <button className="btn btn-primary mb-4" onClick={() => setPaused(!paused)} disabled={gameOver}>
-              {paused ? <Play size={16} /> : <Pause size={16} />}
-              <span>{paused ? 'Resume' : 'Pause'}</span>
-            </button>
-
-            <button className="btn btn-reset" onClick={initGame}>
-              <RotateCcw size={16} />
-              <span>Restart</span>
-            </button>
-          </div>
+        {/* Action Controls */}
+        <div className="bb-controls" style={{ display: 'flex', gap: '15px', marginTop: '10px', justifyContent: 'center' }}>
+          <button className="btn btn-primary" onClick={() => setPaused(!paused)} disabled={gameOver}>
+            {paused ? <Play size={16} /> : <Pause size={16} />}
+            <span>{paused ? 'Resume' : 'Pause'}</span>
+          </button>
+          <button className="btn btn-reset" onClick={initGame}>
+            <RotateCcw size={16} />
+            <span>Restart</span>
+          </button>
+          <button className="btn btn-reset" onClick={() => setSoundEnabled(!soundEnabled)}>
+            {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            <span>Sound: {soundEnabled ? 'ON' : 'OFF'}</span>
+          </button>
         </div>
       </div>
 

@@ -11,151 +11,108 @@
   overflow-x: hidden;
 }
 
-/* Two-Column split */
-.stack-grid {
-  max-width: 1400px !important;
-  display: grid;
-  grid-template-columns: 1.4fr 0.6fr;
-  gap: 40px;
-  padding: 30px !important;
-}
-
-.stack-canvas-panel {
+/* Game Cabinet Card */
+.stack-page-wrapper .game-content-card {
+  width: 95%;
+  max-width: 1200px;
+  margin: 20px auto var(--space-xl);
+  background: rgba(20, 20, 30, 0.5);
+  border: 1.5px solid rgba(168, 85, 247, 0.15);
+  border-radius: var(--radius-xl);
+  padding: var(--space-md) var(--space-lg);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  box-shadow: 0 0 30px rgba(168, 85, 247, 0.08), var(--shadow-card);
   display: flex;
   flex-direction: column;
+  align-items: center;
+}
+
+/* CRT Screen Wrapper */
+.cabinet-screen.crt-screen {
+  position: relative;
+  width: 100%;
+  max-width: calc((80vh - 120px) * 0.8);
+  aspect-ratio: 0.8;
+  background: #050508;
+  border: 4px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 
+    0 0 20px rgba(168, 85, 247, 0.15),
+    inset 0 0 35px rgba(0, 0, 0, 0.95);
+  margin: 0 auto var(--space-md) auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding-top: 60px; /* space for absolute HUD overlays */
+}
+
+.game-play-area {
+  width: 100%;
+  height: 100%;
+  padding: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Canvas Wrapper with Relative Overlays */
 .canvas-wrapper-stack {
   position: relative;
   width: 100%;
-  max-width: 500px;
-  height: auto;
-  aspect-ratio: 400 / 500;
-  background: #05050a;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  box-shadow: inset 0 0 25px rgba(0,0,0,0.9);
-  align-self: center;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  height: 100%;
 }
 
 .stack-canvas {
   width: 100%;
   height: 100%;
-  border: 2px solid rgba(168, 85, 247, 0.25);
-  box-shadow: 0 0 30px rgba(168, 85, 247, 0.1);
-  box-sizing: border-box;
-  border-radius: var(--radius-md);
+  border: none;
   display: block;
-  cursor: pointer;
 }
 
-/* Combo alert banner */
-.combo-alert-panel {
-  background: rgba(168, 85, 247, 0.05);
-  border: 1px solid rgba(168, 85, 247, 0.2);
-  border-radius: var(--radius-md);
-  padding: 15px;
-  margin-bottom: 20px;
-  text-align: center;
-  box-shadow: 0 0 15px rgba(168, 85, 247, 0.05);
-  animation: glow-pulse 2s infinite alternate;
+/* Scanlines Overlay */
+.crt-scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.25) 50%
+  );
+  background-size: 100% 4px;
 }
 
-.combo-alert-panel h3 {
-  font-family: var(--font-gaming);
-  font-size: 0.8rem;
-  color: #a855f7;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  margin: 0 0 5px;
+/* Curved CRT Glass Reflection */
+.crt-reflection {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  background: radial-gradient(
+    circle at 50% 0%, 
+    rgba(255, 255, 255, 0.06) 0%, 
+    transparent 70%
+  );
 }
 
-.combo-alert-panel p {
-  font-family: var(--font-gaming);
-  font-size: 1.3rem;
-  color: #fff;
-  font-weight: 700;
-  text-shadow: 0 0 8px rgba(168, 85, 247, 0.5);
-  margin: 0;
+/* Subtle CRT Screen Flicker */
+.crt-flicker {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  background: rgba(18, 16, 16, 0.02);
+  opacity: 0.15;
+  animation: crt-flicker-anim 0.15s infinite;
 }
 
-.combo-alert-panel .bonus-note {
-  display: block;
-  font-size: 0.75rem;
-  color: #00ff88;
-  margin-top: 6px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+@keyframes crt-flicker-anim {
+  0% { opacity: 0.13; }
+  50% { opacity: 0.17; }
+  100% { opacity: 0.13; }
 }
 
-/* Sidebar */
-.stack-sidebar-panel {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-}
-
-/* Animation */
-@keyframes glow-pulse {
-  from {
-    box-shadow: 0 0 10px rgba(168, 85, 247, 0.05);
-    border-color: rgba(168, 85, 247, 0.15);
-  }
-  to {
-    box-shadow: 0 0 20px rgba(168, 85, 247, 0.15);
-    border-color: rgba(168, 85, 247, 0.35);
-  }
-}
-
-/* Responsive */
-@media (max-width: 992px) {
-  .stack-grid {
-    grid-template-columns: 1fr;
-    gap: 40px;
-  }
-
-  .stack-canvas-panel {
-    align-items: center;
-  }
-
-  .stack-sidebar-panel {
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
-    padding-top: 25px;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .combo-alert-panel {
-    margin-bottom: 0 !important;
-    min-width: 200px;
-  }
-
-  .action-buttons-column {
-    flex-direction: row;
-    margin-top: 0 !important;
-    gap: 15px;
-  }
-}
-
-@media (max-width: 650px) {
-  .canvas-wrapper-stack {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 0.8 / 1;
-  }
-
-  .stack-sidebar-panel {
-    flex-direction: column;
-    gap: 20px;
-    align-items: stretch;
-  }
-
-  .action-buttons-column {
-    flex-direction: column;
-    gap: 10px;
-  }
-}

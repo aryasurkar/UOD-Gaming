@@ -11,33 +11,59 @@
   overflow-x: hidden;
 }
 
-/* Two-Column split */
-.schulte-grid-layout {
-  max-width: 1400px !important;
-  display: grid;
-  grid-template-columns: 1.4fr 0.6fr;
-  gap: 40px;
-  padding: 30px !important;
-}
-
-.schulte-play-panel {
+/* Game Cabinet Card */
+.schulte-page-wrapper .game-content-card {
+  width: 95%;
+  max-width: 1200px;
+  margin: 20px auto var(--space-xl);
+  background: rgba(20, 20, 30, 0.5);
+  border: 1.5px solid rgba(0, 212, 255, 0.15);
+  border-radius: var(--radius-xl);
+  padding: var(--space-md) var(--space-lg);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  box-shadow: 0 0 30px rgba(0, 212, 255, 0.08), var(--shadow-card);
   display: flex;
   flex-direction: column;
+  align-items: center;
+}
+
+/* CRT Screen Wrapper */
+.cabinet-screen.crt-screen {
+  position: relative;
+  width: 100%;
+  max-width: calc(80vh - 120px);
+  aspect-ratio: 1;
+  background: #050508;
+  border: 4px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 
+    0 0 20px rgba(0, 212, 255, 0.15),
+    inset 0 0 35px rgba(0, 0, 0, 0.95);
+  margin: 0 auto var(--space-md) auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding-top: 60px; /* space for absolute HUD overlays */
+}
+
+.game-play-area {
+  width: 100%;
+  height: 100%;
+  padding: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Grid Container Wrapper with Relative Overlays */
 .grid-container-wrapper {
   position: relative;
   width: 100%;
-  max-width: 700px;
-  height: auto;
-  aspect-ratio: 1 / 1;
-  background: #030307;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  box-shadow: inset 0 0 25px rgba(0,0,0,0.9);
-  align-self: center;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  height: 100%;
 }
 
 .schulte-5x5-grid {
@@ -67,36 +93,36 @@
   cursor: pointer;
   outline: none;
   transition: all var(--transition-fast) ease;
+}
 
-  &:hover {
-    background: rgba(0, 212, 255, 0.1);
-    border-color: #00d4ff;
-    box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
-    transform: scale(1.03);
-  }
+.schulte-cell:hover {
+  background: rgba(0, 212, 255, 0.1);
+  border-color: #00d4ff;
+  box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+  transform: scale(1.03);
+}
 
-  &:active {
-    transform: scale(0.97);
-  }
+.schulte-cell:active {
+  transform: scale(0.97);
+}
 
-  &.correct {
-    background: rgba(0, 255, 136, 0.15);
-    border-color: #00ff88;
-    color: #00ff88;
-    box-shadow: inset 0 0 15px rgba(0, 255, 136, 0.2), 0 0 15px rgba(0, 255, 136, 0.15);
-    text-shadow: 0 0 5px #00ff88;
-    cursor: default;
-    transform: none;
-  }
+.schulte-cell.correct {
+  background: rgba(0, 255, 136, 0.15);
+  border-color: #00ff88;
+  color: #00ff88;
+  box-shadow: inset 0 0 15px rgba(0, 255, 136, 0.2), 0 0 15px rgba(0, 255, 136, 0.15);
+  text-shadow: 0 0 5px #00ff88;
+  cursor: default;
+  transform: none;
+}
 
-  &.wrong {
-    background: rgba(255, 0, 127, 0.25);
-    border-color: #ff007f;
-    color: #fff;
-    box-shadow: 0 0 20px #ff007f;
-    text-shadow: 0 0 8px #ff007f;
-    transform: none;
-  }
+.schulte-cell.wrong {
+  background: rgba(255, 0, 127, 0.25);
+  border-color: #ff007f;
+  color: #fff;
+  box-shadow: 0 0 20px #ff007f;
+  text-shadow: 0 0 8px #ff007f;
+  transform: none;
 }
 
 /* Overlay prompts */
@@ -106,7 +132,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(10, 10, 15, 0.9);
+  background: rgba(10, 10, 15, 0.95);
   backdrop-filter: blur(5px);
   display: flex;
   flex-direction: column;
@@ -146,101 +172,48 @@
   line-height: 1.4;
 }
 
-/* Progress HUD */
-.progress-hud-panel {
-  background: rgba(255, 255, 255, 0.01);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: var(--radius-md);
-  padding: 15px 20px;
+
+/* Scanlines Overlay */
+.crt-scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.25) 50%
+  );
+  background-size: 100% 4px;
 }
 
-.progress-hud-panel h3 {
-  font-family: var(--font-gaming);
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 12px;
+/* Curved CRT Glass Reflection */
+.crt-reflection {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  background: radial-gradient(
+    circle at 50% 0%, 
+    rgba(255, 255, 255, 0.06) 0%, 
+    transparent 70%
+  );
 }
 
-.progress-bar-container {
-  width: 100%;
-  height: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 4px;
-  overflow: hidden;
-  margin-bottom: 8px;
+/* Subtle CRT Screen Flicker */
+.crt-flicker {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  background: rgba(18, 16, 16, 0.02);
+  opacity: 0.15;
+  animation: crt-flicker-anim 0.15s infinite;
 }
 
-.progress-bar-fill {
-  height: 100%;
-  background: var(--gradient-primary);
-  border-radius: 4px;
-  box-shadow: var(--shadow-glow-primary);
-  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.progress-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-}
-
-/* Sidebar styling */
-.schulte-sidebar-panel {
-  display: flex;
-  flex-direction: column;
-}
-
-/* Responsive */
-@media (max-width: 992px) {
-  .schulte-grid-layout {
-    grid-template-columns: 1fr;
-    gap: 40px;
-  }
-
-  .schulte-play-panel {
-    align-items: center;
-  }
-
-  .schulte-sidebar-panel {
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
-    padding-top: 25px;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .progress-hud-panel {
-    margin-bottom: 0 !important;
-    min-width: 200px;
-  }
-
-  .action-buttons-column {
-    flex-direction: row;
-    margin-top: 0 !important;
-    gap: 15px;
-  }
-}
-
-@media (max-width: 650px) {
-  .grid-container-wrapper {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 1 / 1;
-  }
-
-  .schulte-sidebar-panel {
-    flex-direction: column;
-    gap: 20px;
-    align-items: stretch;
-  }
-
-  .action-buttons-column {
-    flex-direction: column;
-    gap: 10px;
-  }
+@keyframes crt-flicker-anim {
+  0% { opacity: 0.13; }
+  50% { opacity: 0.17; }
+  100% { opacity: 0.13; }
 }
 
 /* Grid Size Selector Styles */

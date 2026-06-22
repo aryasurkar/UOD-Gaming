@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
 import { 
   ArrowLeft, 
   RotateCcw, 
@@ -156,6 +157,64 @@ const Tetris = () => {
   const [highScore, setHighScore] = useState(
     localStorage.getItem('tetris_high_score') ? parseInt(localStorage.getItem('tetris_high_score')) : 0
   );
+  const [gameId, setGameId] = useState(null);
+  const [rewards, setRewards] = useState(null);
+  const [submitStatus, setSubmitStatus] = useState(''); // 'submitting', 'submitted', 'failed', 'offline'
+
+  useEffect(() => {
+    axios.get('/api/v1/games')
+      .then(res => {
+        const game = res.data.games?.find(g => g.title === "Cyber Block Stacker");
+        if (game) setGameId(game._id);
+      })
+      .catch(err => console.error("Failed to load game info:", err));
+  }, []);
+
+  useEffect(() => {
+    if (gameOver) {
+      const token = localStorage.getItem('token');
+      if (gameId && token && score > 0) {
+        setSubmitStatus('submitting');
+        axios.post(`/api/v1/games/${gameId}/score`, {
+          score: score,
+          level: level
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        .then(res => {
+          console.log('Score submitted successfully:', res.data);
+          setRewards({
+            coinsEarned: res.data.coinsEarned,
+            expGained: res.data.expGained,
+            level: res.data.level,
+            leveledUp: res.data.leveledUp
+          });
+          setSubmitStatus('submitted');
+          
+          // Sync local storage user
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            try {
+              const userObj = JSON.parse(storedUser);
+              userObj.coins = res.data.totalCoins;
+              if (!userObj.gameStats) userObj.gameStats = {};
+              userObj.gameStats.level = res.data.level;
+              localStorage.setItem('user', JSON.stringify(userObj));
+              window.dispatchEvent(new Event('user-stats-changed'));
+            } catch (e) {
+              console.error('Failed to sync user stats:', e);
+            }
+          }
+        })
+        .catch(err => {
+          console.error('Failed to submit score:', err);
+          setSubmitStatus('failed');
+        });
+      } else {
+        setSubmitStatus('offline');
+      }
+    }
+  }, [gameOver, gameId, score, level]);
 
   const gameLoopRef = useRef(null);
 
@@ -430,6 +489,8 @@ const Tetris = () => {
   }, [moveHorizontal, moveDown, rotatePiece, hardDrop, gameOver, paused, hasStarted]);
 
   const initGame = () => {
+    setRewards(null);
+    setSubmitStatus('');
     setGrid(createGrid());
     setScore(0);
     setLines(0);
@@ -464,231 +525,223 @@ const Tetris = () => {
         <span className="game-status-title">Arcade Room: Block Stacker</span>
       </div>
 
-      <div className="game-content-card tetris-grid">
-        {/* Left Side Panel: Stats */}
-        <div className="tetris-stats-panel">
-          <div className="game-header text-left">
-            <h1 className="game-title">Block Stacker</h1>
-            <p className="game-subtitle">Neon Tetris. Complete horizontal lines of blocks.</p>
-          </div>
+      <div className="game-content-card">
+        {/* Arcade Cabinet Frame */}
+        <div className="cabinet-screen crt-screen">
+          {/* CRT scanlines, reflection and flicker overlay */}
+          <div className="crt-scanlines"></div>
+          <div className="crt-reflection"></div>
+          <div className="crt-flicker"></div>
 
-          <div className="stats-dashboard vertical">
-            <div className="stat-card">
-              <Trophy className="stat-icon neon-gold" size={18} />
-              <div className="stat-info">
-                <span className="stat-label">High Score</span>
-                <span className="stat-value">{highScore.toLocaleString()}</span>
+          {/* Floating HUD Overlays */}
+          <div className="game-hud-container">
+            <div className="game-hud-item">
+              <span className="game-hud-label">Score</span>
+              <span className="game-hud-value">{score.toLocaleString()}</span>
+            </div>
+
+            <div className="game-hud-item" style={{ flexDirection: 'row', gap: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span className="game-hud-label">Level</span>
+                <span className="game-hud-value" style={{ color: 'var(--primary-neon)' }}>{level}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span className="game-hud-label">Lines</span>
+                <span className="game-hud-value" style={{ color: 'var(--accent-green)' }}>{lines}</span>
               </div>
             </div>
 
-            <div className="stat-card">
-              <Zap className="stat-icon neon-blue" size={18} />
-              <div className="stat-info">
-                <span className="stat-label">Current Score</span>
-                <span className="stat-value">{score.toLocaleString()}</span>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <TrendingUp className="stat-icon neon-green" size={18} />
-              <div className="stat-info">
-                <span className="stat-label">Level</span>
-                <span className="stat-value">{level}</span>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <Award className="stat-icon neon-pink" size={18} />
-              <div className="stat-info">
-                <span className="stat-label">Lines Cleared</span>
-                <span className="stat-value">{lines}</span>
-              </div>
+            <div className="game-hud-item">
+              <span className="game-hud-label">Best</span>
+              <span className="game-hud-value" style={{ color: 'var(--accent-yellow)', textShadow: '0 0 8px rgba(255,255,0,0.4)' }}>{highScore.toLocaleString()}</span>
             </div>
           </div>
 
-          {/* Sound Synth Option */}
-          <button 
-            className="btn btn-reset w-full justify-center mb-4" 
-            onClick={() => setSoundEnabled(!soundEnabled)}
-          >
-            {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-            <span>Sound: {soundEnabled ? 'ON' : 'OFF'}</span>
-          </button>
+          {/* Floating Next Piece Panel (Absolute Positioned on the Side) */}
+          {hasStarted && !gameOver && (
+            <div className="floating-next-piece-panel">
+              <span className="game-hud-label">Next</span>
+              <div className="preview-grid" style={{ marginTop: '5px' }}>
+                {nextPiece ? (
+                  Array.from({ length: 4 }).map((_, rIdx) => (
+                    <div key={rIdx} className="preview-row">
+                      {Array.from({ length: 4 }).map((_, cIdx) => {
+                        let active = false;
+                        if (
+                          rIdx < nextPiece.shape.length &&
+                          cIdx < nextPiece.shape[rIdx].length &&
+                          nextPiece.shape[rIdx][cIdx]
+                        ) {
+                          active = true;
+                        }
 
-          {/* How to controls */}
-          <div className="controls-help-box">
-            <h3><HelpCircle size={14} /> Controls</h3>
-            <ul>
-              <li><strong>← / →</strong>: Move Block</li>
-              <li><strong>↑ Arrow</strong>: Rotate Piece</li>
-              <li><strong>↓ Arrow</strong>: Soft Drop</li>
-              <li><strong>Spacebar</strong>: Hard Drop</li>
-            </ul>
-          </div>
-        </div>
-
-        {/* Center Grid: Playing Matrix */}
-        <div className="tetris-board-container">
-          <div className="tetris-matrix">
-            {grid.map((row, rIdx) => (
-              <div key={rIdx} className="matrix-row">
-                {row.map((cell, cIdx) => {
-                  // Check if cell contains the active moving piece
-                  let isPieceCell = false;
-                  let cellColor = cell.color;
-
-                  if (currentPiece && !gameOver && !paused) {
-                    const localY = rIdx - currentPiece.y;
-                    const localX = cIdx - currentPiece.x;
-                    if (
-                      localY >= 0 && localY < currentPiece.shape.length &&
-                      localX >= 0 && localX < currentPiece.shape[localY].length &&
-                      currentPiece.shape[localY][localX]
-                    ) {
-                      isPieceCell = true;
-                      cellColor = currentPiece.color;
-                    }
-                  }
-
-                  const active = cell.value !== 0 || isPieceCell;
-                  return (
-                    <div 
-                      key={cIdx} 
-                      className={`matrix-cell ${active ? 'active-block' : ''}`}
-                      style={active ? { 
-                        backgroundColor: cellColor + '1a', 
-                        borderColor: cellColor, 
-                        boxShadow: `0 0 8px ${cellColor}4d` 
-                      } : {}}
-                    />
-                  );
-                })}
-              </div>
-            ))}
-
-            {/* Overlays (Pause/Gameover) */}
-            <AnimatePresence>
-              {!hasStarted && (
-                <motion.div 
-                  className="matrix-overlay"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                >
-                  <div className="overlay-modal start-modal">
-                    <h2>Block Stacker</h2>
-                    <p className="start-subtitle">Select Starting Level</p>
-                    
-                    <div className="level-select-grid">
-                      {Array.from({ length: 5 }).map((_, idx) => {
-                        const lvl = idx + 1;
                         return (
-                          <button
-                            key={lvl}
-                            className={`level-btn ${startLevel === lvl ? 'active' : ''}`}
-                            onClick={() => setStartLevel(lvl)}
-                          >
-                            {lvl}
-                          </button>
+                          <div 
+                            key={cIdx} 
+                            className={`preview-cell ${active ? 'active-preview' : ''}`}
+                            style={active ? { 
+                              backgroundColor: nextPiece.color + '1a', 
+                              borderColor: nextPiece.color, 
+                              boxShadow: `0 0 6px ${nextPiece.color}66` 
+                            } : {}}
+                          />
                         );
                       })}
                     </div>
-                    
-                    <button 
-                      className="btn btn-primary mt-4 w-full justify-center" 
-                      onClick={startGame}
-                    >
-                      <Play size={16} />
-                      <span>Start Game</span>
-                    </button>
-                  </div>
-                </motion.div>
-              )}
+                  ))
+                ) : (
+                  <HelpCircle className="preview-empty-icon" size={20} />
+                )}
+              </div>
+            </div>
+          )}
 
-              {gameOver && (
-                <motion.div 
-                  className="matrix-overlay"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                >
-                  <div className="overlay-modal">
-                    <h2>Game Over</h2>
-                    <p>The matrix collapsed. final Score: <strong>{score.toLocaleString()}</strong></p>
-                    <button className="btn btn-primary mt-4" onClick={initGame}>Play Again</button>
-                  </div>
-                </motion.div>
-              )}
+          <div className="game-play-area">
+            <div className="tetris-matrix">
+              {grid.map((row, rIdx) => (
+                <div key={rIdx} className="matrix-row">
+                  {row.map((cell, cIdx) => {
+                    let isPieceCell = false;
+                    let cellColor = cell.color;
 
-              {paused && (
-                <motion.div 
-                  className="matrix-overlay"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                >
-                  <div className="overlay-modal">
-                    <h2>Game Paused</h2>
-                    <button className="btn btn-primary mt-4" onClick={() => setPaused(false)}>Resume</button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                    if (currentPiece && !gameOver && !paused) {
+                      const localY = rIdx - currentPiece.y;
+                      const localX = cIdx - currentPiece.x;
+                      if (
+                        localY >= 0 && localY < currentPiece.shape.length &&
+                        localX >= 0 && localX < currentPiece.shape[localY].length &&
+                        currentPiece.shape[localY][localX]
+                      ) {
+                        isPieceCell = true;
+                        cellColor = currentPiece.color;
+                      }
+                    }
+
+                    const active = cell.value !== 0 || isPieceCell;
+                    return (
+                      <div 
+                        key={cIdx} 
+                        className={`matrix-cell ${active ? 'active-block' : ''}`}
+                        style={active ? { 
+                          backgroundColor: cellColor + '1a', 
+                          borderColor: cellColor, 
+                          boxShadow: `0 0 8px ${cellColor}4d` 
+                        } : {}}
+                      />
+                    );
+                  })}
+                </div>
+              ))}
+
+              {/* Overlays (Pause/Gameover) */}
+              <AnimatePresence>
+                {!hasStarted && (
+                  <motion.div 
+                    className="matrix-overlay"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    style={{ position: 'absolute', zIndex: 12 }}
+                  >
+                    <div className="overlay-modal start-modal">
+                      <h2>Block Stacker</h2>
+                      <p className="start-subtitle">Select Starting Level</p>
+                      
+                      <div className="level-select-grid">
+                        {Array.from({ length: 5 }).map((_, idx) => {
+                          const lvl = idx + 1;
+                          return (
+                            <button
+                              key={lvl}
+                              className={`level-btn ${startLevel === lvl ? 'active' : ''}`}
+                              onClick={() => setStartLevel(lvl)}
+                            >
+                              {lvl}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      
+                      <button 
+                        className="btn btn-primary mt-4 w-full justify-center" 
+                        onClick={startGame}
+                      >
+                        <Play size={16} />
+                        <span>Start Game</span>
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {gameOver && (
+                  <motion.div 
+                    className="matrix-overlay"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    style={{ position: 'absolute', zIndex: 12 }}
+                  >
+                    <div className="overlay-modal">
+                      <h2>Game Over</h2>
+                      <p>The matrix collapsed. Final Score: <strong>{score.toLocaleString()}</strong></p>
+                      
+                      {submitStatus === 'submitting' && (
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '8px 0' }}>Saving score online...</p>
+                      )}
+                      {submitStatus === 'submitted' && rewards && (
+                        <div className="game-over-rewards" style={{ margin: '12px auto', padding: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', fontSize: '0.9rem' }}>
+                          <div style={{ color: '#ffd700', marginBottom: '4px' }}>🪙 +{rewards.coinsEarned} Coins</div>
+                          <div style={{ color: 'var(--primary-neon)', marginBottom: '4px' }}>⚡ +{rewards.expGained} XP</div>
+                          {rewards.leveledUp && (
+                            <div style={{ color: '#00ff88', fontWeight: 'bold', textShadow: '0 0 5px rgba(0,255,136,0.5)', marginTop: '4px' }}>LEVEL UP! (Lv {rewards.level})</div>
+                          )}
+                        </div>
+                      )}
+                      {submitStatus === 'failed' && (
+                        <p style={{ fontSize: '0.85rem', color: 'var(--secondary-neon)', margin: '8px 0' }}>Failed to save score online.</p>
+                      )}
+                      {submitStatus === 'offline' && (
+                        <p style={{ fontSize: '0.85rem', color: 'var(--accent-orange)', margin: '8px 0' }}>Log in to save stats & earn coins!</p>
+                      )}
+                      
+                      <button className="btn btn-primary mt-4" onClick={initGame}>Play Again</button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {paused && (
+                  <motion.div 
+                    className="matrix-overlay"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    style={{ position: 'absolute', zIndex: 12 }}
+                  >
+                    <div className="overlay-modal">
+                      <h2>Game Paused</h2>
+                      <button className="btn btn-primary mt-4" onClick={() => setPaused(false)}>Resume</button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
 
-        {/* Right Side Panel: Next Block Preview */}
-        <div className="tetris-next-panel">
-          <div className="next-preview-box">
-            <h3>Next Piece</h3>
-            <div className="preview-grid">
-              {nextPiece ? (
-                // Draw next piece in a 4x4 matrix
-                Array.from({ length: 4 }).map((_, rIdx) => (
-                  <div key={rIdx} className="preview-row">
-                    {Array.from({ length: 4 }).map((_, cIdx) => {
-                      let active = false;
-                      const shapeR = rIdx;
-                      const shapeC = cIdx;
-                      
-                      if (
-                        shapeR < nextPiece.shape.length &&
-                        shapeC < nextPiece.shape[shapeR].length &&
-                        nextPiece.shape[shapeR][shapeC]
-                      ) {
-                        active = true;
-                      }
-
-                      return (
-                        <div 
-                          key={cIdx} 
-                          className={`preview-cell ${active ? 'active-preview' : ''}`}
-                          style={active ? { 
-                            backgroundColor: nextPiece.color + '1a', 
-                            borderColor: nextPiece.color, 
-                            boxShadow: `0 0 6px ${nextPiece.color}66` 
-                          } : {}}
-                        />
-                      );
-                    })}
-                  </div>
-                ))
-              ) : (
-                <HelpCircle className="preview-empty-icon" size={24} />
-              )}
-            </div>
-          </div>
-
-          <div className="action-buttons-column mt-8">
-            <button className="btn btn-primary" onClick={() => setPaused(!paused)} disabled={gameOver || !hasStarted}>
-              {paused ? <Play size={16} /> : <Pause size={16} />}
-              <span>{paused ? 'Resume' : 'Pause'}</span>
-            </button>
-            <button className="btn btn-reset" onClick={initGame}>
-              <RotateCcw size={16} />
-              <span>Restart</span>
-            </button>
-          </div>
+        {/* Action Controls Panel */}
+        <div className="tetris-controls" style={{ display: 'flex', gap: '15px', marginTop: '10px', justifyContent: 'center' }}>
+          <button className="btn btn-primary" onClick={() => setPaused(!paused)} disabled={gameOver || !hasStarted}>
+            {paused ? <Play size={16} /> : <Pause size={16} />}
+            <span>{paused ? 'Resume' : 'Pause'}</span>
+          </button>
+          <button className="btn btn-reset" onClick={initGame}>
+            <RotateCcw size={16} />
+            <span>Restart</span>
+          </button>
+          <button className="btn btn-reset" onClick={() => setSoundEnabled(!soundEnabled)}>
+            {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            <span>Sound: {soundEnabled ? 'ON' : 'OFF'}</span>
+          </button>
         </div>
       </div>
 

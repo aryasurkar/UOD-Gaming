@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
 import { 
   ArrowLeft, 
   RotateCcw, 
@@ -70,6 +71,63 @@ const CyberFalcon = () => {
   const [highScore, setHighScore] = useState(
     localStorage.getItem('falcon_high_score') ? parseInt(localStorage.getItem('falcon_high_score')) : 0
   );
+  const [gameId, setGameId] = useState(null);
+  const [rewards, setRewards] = useState(null);
+  const [submitStatus, setSubmitStatus] = useState(''); // 'submitting', 'submitted', 'failed', 'offline'
+
+  useEffect(() => {
+    axios.get('/api/v1/games')
+      .then(res => {
+        const game = res.data.games?.find(g => g.title === "Cyber Falcon");
+        if (game) setGameId(game._id);
+      })
+      .catch(err => console.error("Failed to load game info:", err));
+  }, []);
+
+  useEffect(() => {
+    if (gameOver) {
+      const token = localStorage.getItem('token');
+      if (gameId && token && score > 0) {
+        setSubmitStatus('submitting');
+        axios.post(`/api/v1/games/${gameId}/score`, {
+          score: score
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        .then(res => {
+          console.log('Score submitted successfully:', res.data);
+          setRewards({
+            coinsEarned: res.data.coinsEarned,
+            expGained: res.data.expGained,
+            level: res.data.level,
+            leveledUp: res.data.leveledUp
+          });
+          setSubmitStatus('submitted');
+          
+          // Sync local storage user
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            try {
+              const userObj = JSON.parse(storedUser);
+              userObj.coins = res.data.totalCoins;
+              if (!userObj.gameStats) userObj.gameStats = {};
+              userObj.gameStats.level = res.data.level;
+              localStorage.setItem('user', JSON.stringify(userObj));
+              window.dispatchEvent(new Event('user-stats-changed'));
+            } catch (e) {
+              console.error('Failed to sync user stats:', e);
+            }
+          }
+        })
+        .catch(err => {
+          console.error('Failed to submit score:', err);
+          setSubmitStatus('failed');
+        });
+      } else {
+        setSubmitStatus('offline');
+      }
+    }
+  }, [gameOver, gameId, score]);
 
   // Physics Ref
   const physicsState = useRef({
@@ -83,6 +141,8 @@ const CyberFalcon = () => {
   });
 
   const resetGame = () => {
+    setRewards(null);
+    setSubmitStatus('');
     setScore(0);
     setGameOver(false);
     setPaused(false);
@@ -333,86 +393,99 @@ const CyberFalcon = () => {
         <span className="game-status-title">Arcade Room: Cyber Falcon</span>
       </div>
 
-      <div className="game-content-card falcon-grid">
-        {/* Playfield Canvas */}
-        <div className="falcon-canvas-panel">
-          <div className="game-header text-left">
-            <h1 className="game-title">Cyber Falcon</h1>
-            <p className="game-subtitle">Jetpack Avoider. Defy gravity, dodge laser walls, and survive the digital tunnel.</p>
+      <div className="game-content-card">
+        {/* Arcade Cabinet Frame */}
+        <div className="cabinet-screen crt-screen">
+          {/* CRT scanlines, reflection and flicker overlay */}
+          <div className="crt-scanlines"></div>
+          <div className="crt-reflection"></div>
+          <div className="crt-flicker"></div>
+
+          {/* Floating HUD Overlays */}
+          <div className="game-hud-container">
+            <div className="game-hud-item">
+              <span className="game-hud-label">Distance</span>
+              <span className="game-hud-value">{score} nodes</span>
+            </div>
+
+            <div className="game-hud-item">
+              <span className="game-hud-label">Best Record</span>
+              <span className="game-hud-value" style={{ color: 'var(--accent-yellow)', textShadow: '0 0 8px rgba(255,255,0,0.4)' }}>{highScore} nodes</span>
+            </div>
           </div>
 
-          <div className="canvas-wrapper">
-            <canvas 
-              ref={canvasRef} 
-              width={600} 
-              height={400} 
-              onClick={triggerThrust}
-              className="falcon-canvas"
-            />
+          <div className="game-play-area">
+            <div className="canvas-wrapper">
+              <canvas 
+                ref={canvasRef} 
+                width={600} 
+                height={400} 
+                onClick={triggerThrust}
+                className="falcon-canvas"
+              />
 
-            {!hasStarted && !gameOver && !paused && (
-              <div className="start-prompt-overlay" onClick={triggerThrust}>
-                <p>Press <strong>SPACEBAR</strong> or <strong>CLICK SCREEN</strong> to Engage Thrusters</p>
-                <span>Tap repeatedly to hover the Falcon through the gap of neon pillars.</span>
-              </div>
-            )}
-
-            {/* Overlays */}
-            <AnimatePresence>
-              {gameOver && (
-                <div className="start-prompt-overlay gameover">
-                  <h2>System Crash</h2>
-                  <p>Collision detected. distance traveled: <strong>{score} nodes</strong></p>
-                  <button className="btn btn-primary mt-4" onClick={resetGame}>Re-Launch Simulation</button>
+              {!hasStarted && !gameOver && !paused && (
+                <div className="start-prompt-overlay" onClick={triggerThrust}>
+                  <p>Press <strong>SPACEBAR</strong> or <strong>CLICK SCREEN</strong> to Engage Thrusters</p>
+                  <span>Tap repeatedly to hover the Falcon through the gap of neon pillars.</span>
                 </div>
               )}
 
-              {paused && (
-                <div className="start-prompt-overlay paused">
-                  <h2>Simulation Paused</h2>
-                  <button className="btn btn-primary mt-4" onClick={() => setPaused(false)}>Resume</button>
-                </div>
-              )}
-            </AnimatePresence>
+              {/* Overlays */}
+              <AnimatePresence>
+                {gameOver && (
+                  <div className="start-prompt-overlay gameover">
+                    <h2>System Crash</h2>
+                    <p>Collision detected. distance traveled: <strong>{score} nodes</strong></p>
+                    
+                    {submitStatus === 'submitting' && (
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '8px 0' }}>Saving score online...</p>
+                    )}
+                    {submitStatus === 'submitted' && rewards && (
+                      <div className="game-over-rewards" style={{ margin: '12px auto', padding: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', fontSize: '0.9rem' }}>
+                        <div style={{ color: '#ffd700', marginBottom: '4px' }}>🪙 +{rewards.coinsEarned} Coins</div>
+                        <div style={{ color: 'var(--primary-neon)', marginBottom: '4px' }}>⚡ +{rewards.expGained} XP</div>
+                        {rewards.leveledUp && (
+                          <div style={{ color: '#00ff88', fontWeight: 'bold', textShadow: '0 0 5px rgba(0,255,136,0.5)', marginTop: '4px' }}>LEVEL UP! (Lv {rewards.level})</div>
+                        )}
+                      </div>
+                    )}
+                    {submitStatus === 'failed' && (
+                      <p style={{ fontSize: '0.85rem', color: 'var(--secondary-neon)', margin: '8px 0' }}>Failed to save score online.</p>
+                    )}
+                    {submitStatus === 'offline' && (
+                      <p style={{ fontSize: '0.85rem', color: 'var(--accent-orange)', margin: '8px 0' }}>Log in to save stats & earn coins!</p>
+                    )}
+
+                    <button className="btn btn-primary mt-4" onClick={resetGame}>Re-Launch Simulation</button>
+                  </div>
+                )}
+
+                {paused && (
+                  <div className="start-prompt-overlay paused">
+                    <h2>Simulation Paused</h2>
+                    <button className="btn btn-primary mt-4" onClick={() => setPaused(false)}>Resume</button>
+                  </div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
 
-        {/* Sidebar Info */}
-        <div className="falcon-sidebar-panel">
-          <div className="stats-dashboard vertical">
-            <div className="stat-card">
-              <Trophy className="stat-icon neon-gold" size={18} />
-              <div className="stat-info">
-                <span className="stat-label">High Record</span>
-                <span className="stat-value">{highScore} nodes</span>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <Zap className="stat-icon neon-blue" size={18} />
-              <div className="stat-info">
-                <span className="stat-label">Distance</span>
-                <span className="stat-value">{score} nodes</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="action-buttons-column mt-8">
-            <button className="btn btn-reset mb-4" onClick={() => setSoundEnabled(!soundEnabled)}>
-              {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-              <span>Sound: {soundEnabled ? 'ON' : 'OFF'}</span>
-            </button>
-            
-            <button className="btn btn-primary mb-4" onClick={() => setPaused(!paused)} disabled={gameOver}>
-              {paused ? <Play size={16} /> : <Pause size={16} />}
-              <span>{paused ? 'Resume' : 'Pause'}</span>
-            </button>
-
-            <button className="btn btn-reset" onClick={resetGame}>
-              <RotateCcw size={16} />
-              <span>Restart</span>
-            </button>
-          </div>
+        {/* Action Controls */}
+        <div className="falcon-controls" style={{ display: 'flex', gap: '15px', marginTop: '10px', justifyContent: 'center' }}>
+          <button className="btn btn-primary" onClick={() => setPaused(!paused)} disabled={gameOver}>
+            {paused ? <Play size={16} /> : <Pause size={16} />}
+            <span>{paused ? 'Resume' : 'Pause'}</span>
+          </button>
+          <button className="btn btn-reset" onClick={resetGame}>
+            <RotateCcw size={16} />
+            <span>Restart</span>
+          </button>
+          <button className="btn btn-reset" onClick={() => setSoundEnabled(!soundEnabled)}>
+            {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            <span>Sound: {soundEnabled ? 'ON' : 'OFF'}</span>
+          </button>
         </div>
       </div>
 

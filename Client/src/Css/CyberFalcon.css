@@ -11,73 +11,107 @@
   overflow-x: hidden;
 }
 
-/* Two-Column split */
-.falcon-grid {
-  max-width: 1400px !important;
-  display: grid;
-  grid-template-columns: 1.4fr 0.6fr;
-  gap: 40px;
-  padding: 30px !important;
-}
-
-.falcon-canvas-panel {
+/* Game Cabinet Card */
+.falcon-page-wrapper .game-content-card {
+  width: 95%;
+  max-width: 1200px;
+  margin: 20px auto var(--space-xl);
+  background: rgba(20, 20, 30, 0.5);
+  border: 1.5px solid rgba(255, 0, 127, 0.15);
+  border-radius: var(--radius-xl);
+  padding: var(--space-md) var(--space-lg);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  box-shadow: 0 0 30px rgba(255, 0, 127, 0.08), var(--shadow-card);
   display: flex;
   flex-direction: column;
+  align-items: center;
 }
 
+/* CRT Screen Wrapper */
+.cabinet-screen.crt-screen {
+  position: relative;
+  width: 100%;
+  max-width: calc((80vh - 120px) * 1.5);
+  aspect-ratio: 1.5 / 1;
+  background: #050508;
+  border: 4px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 
+    0 0 20px rgba(255, 0, 127, 0.15),
+    inset 0 0 35px rgba(0, 0, 0, 0.95);
+  margin: 0 auto var(--space-md) auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding-top: 60px; /* space for absolute HUD overlays */
+}
+
+.game-play-area {
+  width: 100%;
+  height: 100%;
+  padding: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Canvas Wrapper with Relative Overlays */
 .canvas-wrapper {
   position: relative;
   width: 100%;
-  max-width: 900px;
-  height: auto;
-  aspect-ratio: 1.5 / 1;
-  background: #040408;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
-  align-self: center;
+  height: 100%;
 }
 
 .falcon-canvas {
   width: 100%;
   height: 100%;
-  border: 2px solid rgba(255, 0, 127, 0.2);
-  box-shadow: 0 0 30px rgba(255, 0, 127, 0.1);
-  box-sizing: border-box;
-  border-radius: var(--radius-md);
+  border: none;
   display: block;
 }
 
-/* Sidebar */
-.falcon-sidebar-panel {
-  display: flex;
-  flex-direction: column;
+/* Scanlines Overlay */
+.crt-scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.25) 50%
+  );
+  background-size: 100% 4px;
 }
 
-/* Responsive */
-@media (max-width: 992px) {
-  .falcon-grid {
-    grid-template-columns: 1fr;
-    gap: 40px;
-  }
-
-  .falcon-canvas-panel {
-    align-items: center;
-  }
-
-  .falcon-sidebar-panel {
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
-    padding-top: 25px;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
+/* Curved CRT Glass Reflection */
+.crt-reflection {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  background: radial-gradient(
+    circle at 50% 0%, 
+    rgba(255, 255, 255, 0.06) 0%, 
+    transparent 70%
+  );
 }
 
-@media (max-width: 650px) {
-  .falcon-sidebar-panel {
-    flex-direction: column;
-    gap: 20px;
-    align-items: stretch;
-  }
+/* Subtle CRT Screen Flicker */
+.crt-flicker {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  background: rgba(18, 16, 16, 0.02);
+  opacity: 0.15;
+  animation: crt-flicker-anim 0.15s infinite;
+}
+
+@keyframes crt-flicker-anim {
+  0% { opacity: 0.13; }
+  50% { opacity: 0.17; }
+  100% { opacity: 0.13; }
 }

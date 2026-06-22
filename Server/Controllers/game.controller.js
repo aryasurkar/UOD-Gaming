@@ -471,7 +471,7 @@ export const downloadGame = async (req, res) => {
 export const submitScore = async (req, res) => {
   try {
     const { gameId } = req.params;
-    const { score, level, completionTime, metadata } = req.body;
+    const { score, level, difficulty, completionTime, metadata } = req.body;
     const userId = req.user._id;
 
     if (!score || score < 0) {
@@ -489,10 +489,15 @@ export const submitScore = async (req, res) => {
       });
     }
 
-    // Check if this is a new personal best
+    const levelVal = level || 1;
+    const difficultyMap = { 1: 'easy', 2: 'medium', 3: 'hard' };
+    const difficultyVal = difficulty || difficultyMap[levelVal] || 'medium';
+
+    // Check if this is a new personal best for this specific level
     const existingBest = await LeaderboardEntry.findOne({
       player: userId,
-      game: gameId
+      game: gameId,
+      level: levelVal
     }).sort({ score: -1 });
 
     let isNewBest = !existingBest || score > existingBest.score;
@@ -503,7 +508,8 @@ export const submitScore = async (req, res) => {
         player: userId,
         game: gameId,
         score,
-        level: level || 1,
+        level: levelVal,
+        difficulty: difficultyVal,
         completionTime,
         metadata
       });
@@ -514,7 +520,7 @@ export const submitScore = async (req, res) => {
       game.leaderboard.push({
         player: userId,
         score,
-        level: level || 1,
+        level: levelVal,
         completionTime,
         achievedAt: new Date(),
         metadata
@@ -527,50 +533,81 @@ export const submitScore = async (req, res) => {
       }
 
       await game.save();
-
-      // Update user stats
-      const user = await User.findById(userId);
-      user.gameStats.totalScore += score;
-      if (score > user.gameStats.bestScore) {
-        user.gameStats.bestScore = score;
-      }
-      
-      // Calculate wins/losses based on game performance
-      const averageScore = game.statistics.totalPlays > 0 
-        ? game.statistics.totalPlays / game.statistics.uniquePlayers 
-        : 0;
-      
-      if (score > averageScore) {
-        user.gameStats.totalWins += 1;
-      } else {
-        user.gameStats.totalLosses += 1;
-      }
-
-      await user.save();
-
-      // Update global leaderboard
-      let globalStats = await GlobalLeaderboard.findOne({ player: userId });
-      if (!globalStats) {
-        globalStats = new GlobalLeaderboard({ player: userId });
-      }
-      
-      globalStats.overallStats.totalScore += score;
-      globalStats.overallStats.totalGames += 1;
-      globalStats.overallStats.averageScore = globalStats.overallStats.totalScore / globalStats.overallStats.totalGames;
-      
-      if (score > globalStats.overallStats.bestScore) {
-        globalStats.overallStats.bestScore = score;
-      }
-      
-      await globalStats.save();
     }
+
+    // Retrieve user and perform coin earning & progression calculations
+    const user = await User.findById(userId);
+    
+    // Coin calculation: min 5, max 100 based on score
+    const baseCoins = Math.max(5, Math.min(100, Math.floor(score / 10)));
+    const pbBonus = isNewBest ? 50 : 0;
+    const totalCoinsEarned = baseCoins + pbBonus;
+    user.coins = (user.coins || 0) + totalCoinsEarned;
+
+    // Experience calculation: min 10, max 200 based on score
+    const expGained = Math.max(10, Math.min(200, Math.floor(score / 5)));
+    user.gameStats.experience = (user.gameStats.experience || 0) + expGained;
+    user.gameStats.totalScore += score;
+    user.gameStats.totalGamesPlayed += 1;
+    
+    if (score > (user.gameStats.bestScore || 0)) {
+      user.gameStats.bestScore = score;
+    }
+
+    // Level-up logic
+    let leveledUp = false;
+    let expNeeded = user.gameStats.level * 100;
+    while (user.gameStats.experience >= expNeeded) {
+      user.gameStats.experience -= expNeeded;
+      user.gameStats.level = (user.gameStats.level || 1) + 1;
+      expNeeded = user.gameStats.level * 100;
+      leveledUp = true;
+    }
+
+    // Calculate wins/losses based on game performance
+    const averageScore = game.statistics.totalPlays > 0 
+      ? game.statistics.totalPlays / game.statistics.uniquePlayers 
+      : 0;
+    
+    if (score > averageScore) {
+      user.gameStats.totalWins += 1;
+    } else {
+      user.gameStats.totalLosses += 1;
+    }
+
+    await user.save();
+
+    // Update global leaderboard
+    let globalStats = await GlobalLeaderboard.findOne({ player: userId });
+    if (!globalStats) {
+      globalStats = new GlobalLeaderboard({ player: userId });
+    }
+    
+    globalStats.overallStats.totalScore += score;
+    globalStats.overallStats.totalGames += 1;
+    globalStats.overallStats.averageScore = globalStats.overallStats.totalScore / globalStats.overallStats.totalGames;
+    
+    if (score > globalStats.overallStats.bestScore) {
+      globalStats.overallStats.bestScore = score;
+    }
+
+    globalStats.level.current = user.gameStats.level;
+    globalStats.level.experience = user.gameStats.experience;
+    globalStats.level.experienceToNext = expNeeded;
+    
+    await globalStats.save();
 
     res.status(200).json({
       success: true,
       message: isNewBest ? "New personal best!" : "Score submitted",
       isNewBest,
       score,
-      previousBest: existingBest?.score || null
+      previousBest: existingBest?.score || null,
+      coinsEarned: totalCoinsEarned,
+      totalCoins: user.coins,
+      expGained,
+      level: user.gameStats.level,
+      leveledUp
     });
 
   } catch (error) {

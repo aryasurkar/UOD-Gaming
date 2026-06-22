@@ -28,6 +28,8 @@ const Snake = () => {
   const [isPaused, setIsPaused] = useState(false);
   const [isGameOver, setIsGameOver] = useState(false);
   const [score, setScore] = useState(0);
+  const [rewards, setRewards] = useState(null);
+  const [submitStatus, setSubmitStatus] = useState(''); // 'submitting', 'submitted', 'failed', 'offline'
   const [highScore, setHighScore] = useState(() => {
     return parseInt(localStorage.getItem('snake_highscore') || '0', 10);
   });
@@ -337,6 +339,8 @@ const Snake = () => {
   };
 
   const restartGame = () => {
+    setRewards(null);
+    setSubmitStatus('');
     stopRenderLoop();
     if (gameIntervalRef.current) {
       clearInterval(gameIntervalRef.current);
@@ -347,6 +351,8 @@ const Snake = () => {
 
   const returnToMenu = () => {
     playSound('click');
+    setRewards(null);
+    setSubmitStatus('');
     stopRenderLoop();
     if (gameIntervalRef.current) {
       clearInterval(gameIntervalRef.current);
@@ -503,16 +509,45 @@ const Snake = () => {
     
     const token = localStorage.getItem('token');
     if (gameId && token) {
+      setSubmitStatus('submitting');
       axios.post(`/api/v1/games/${gameId}/score`, {
         score: score,
         level: difficulty === 'easy' ? 1 : difficulty === 'medium' ? 2 : 3
       }, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      .then(res => console.log('Score submitted successfully:', res.data))
-      .catch(err => console.error('Failed to submit score:', err));
+      .then(res => {
+        console.log('Score submitted successfully:', res.data);
+        setRewards({
+          coinsEarned: res.data.coinsEarned,
+          expGained: res.data.expGained,
+          level: res.data.level,
+          leveledUp: res.data.leveledUp
+        });
+        setSubmitStatus('submitted');
+        
+        // Sync local storage user
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          try {
+            const userObj = JSON.parse(storedUser);
+            userObj.coins = res.data.totalCoins;
+            if (!userObj.gameStats) userObj.gameStats = {};
+            userObj.gameStats.level = res.data.level;
+            localStorage.setItem('user', JSON.stringify(userObj));
+            window.dispatchEvent(new Event('user-stats-changed'));
+          } catch (e) {
+            console.error('Failed to update local storage user info:', e);
+          }
+        }
+      })
+      .catch(err => {
+        console.error('Failed to submit score:', err);
+        setSubmitStatus('failed');
+      });
     } else {
       console.warn('Score registration skipped: Missing gameId or authentication token.');
+      setSubmitStatus('offline');
     }
   };
 
@@ -700,46 +735,46 @@ const Snake = () => {
       </div>
 
       <div className="game-content-card">
-        {/* LED Digital Scoreboard */}
-        <div className="snake-scoreboard">
-          <div className="score-panel current-score">
-            <span className="panel-label">Score</span>
-            <span className="panel-value digital-text">{String(score).padStart(3, '0')}</span>
-          </div>
-
-          <div className="score-panel game-specs">
-            <div className="spec-item">
-              <span className="spec-label">DIFF</span>
-              <span className={`spec-value val-${difficulty}`}>{difficulty.toUpperCase()}</span>
-            </div>
-            <div className="spec-item">
-              <span className="spec-label">WALLS</span>
-              <span className="spec-value">{difficulty === 'hard' ? 'SOLID' : wallMode.toUpperCase()}</span>
-            </div>
-            <button 
-              onClick={() => setIsMuted(prev => !prev)} 
-              className={`spec-mute-btn ${isMuted ? 'is-muted' : ''}`}
-              title={isMuted ? "Unmute" : "Mute"}
-            >
-              {isMuted ? '🔇' : '🔊'}
-            </button>
-          </div>
-
-          <div className="score-panel high-score">
-            <span className="panel-label">Best</span>
-            <span className="panel-value digital-text">
-              <Award size={18} className="high-score-icon" />
-              {String(highScore).padStart(3, '0')}
-            </span>
-          </div>
-        </div>
-
         {/* Arcade Cabinet Frame */}
         <div className="cabinet-screen crt-screen">
           {/* CRT scanlines, reflection and flicker overlay */}
           <div className="crt-scanlines"></div>
           <div className="crt-reflection"></div>
           <div className="crt-flicker"></div>
+
+          {/* Floating HUD Overlays */}
+          <div className="game-hud-container">
+            <div className="game-hud-item">
+              <span className="game-hud-label">Score</span>
+              <span className="game-hud-value">{String(score).padStart(3, '0')}</span>
+            </div>
+
+            <div className="game-hud-item" style={{ flexDirection: 'row', gap: '8px', pointerEvents: 'auto' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span className="game-hud-label">Diff</span>
+                <span className="game-hud-value" style={{ fontSize: '0.85rem' }}>{difficulty.toUpperCase()}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span className="game-hud-label">Walls</span>
+                <span className="game-hud-value" style={{ fontSize: '0.85rem' }}>{difficulty === 'hard' ? 'SOLID' : wallMode.toUpperCase()}</span>
+              </div>
+              <button 
+                onClick={() => setIsMuted(prev => !prev)} 
+                className={`spec-mute-btn ${isMuted ? 'is-muted' : ''}`}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', fontSize: '1rem' }}
+                title={isMuted ? "Unmute" : "Mute"}
+              >
+                {isMuted ? '🔇' : '🔊'}
+              </button>
+            </div>
+
+            <div className="game-hud-item">
+              <span className="game-hud-label">Best</span>
+              <span className="game-hud-value" style={{ color: 'var(--accent-yellow)', textShadow: '0 0 8px rgba(255, 255, 0, 0.4)' }}>
+                {String(highScore).padStart(3, '0')}
+              </span>
+            </div>
+          </div>
 
           <canvas 
             ref={canvasRef} 
@@ -867,6 +902,26 @@ const Snake = () => {
               {score >= highScore && score > 0 && (
                 <div className="new-record-badge">NEW HIGH SCORE!</div>
               )}
+              
+              {submitStatus === 'submitting' && (
+                <p className="rewards-status-text" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Saving score online...</p>
+              )}
+              {submitStatus === 'submitted' && rewards && (
+                <div className="game-over-rewards" style={{ margin: '12px 0', padding: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', fontSize: '0.9rem' }}>
+                  <div style={{ color: '#ffd700', marginBottom: '4px' }}>🪙 +{rewards.coinsEarned} Coins</div>
+                  <div style={{ color: 'var(--primary-neon)', marginBottom: '4px' }}>⚡ +{rewards.expGained} XP</div>
+                  {rewards.leveledUp && (
+                    <div style={{ color: '#00ff88', fontWeight: 'bold', textShadow: '0 0 5px rgba(0,255,136,0.5)', marginTop: '4px' }}>LEVEL UP! (Lv {rewards.level})</div>
+                  )}
+                </div>
+              )}
+              {submitStatus === 'failed' && (
+                <p className="rewards-status-text" style={{ fontSize: '0.85rem', color: 'var(--secondary-neon)' }}>Failed to save score online.</p>
+              )}
+              {submitStatus === 'offline' && (
+                <p className="rewards-status-text" style={{ fontSize: '0.85rem', color: 'var(--accent-orange)' }}>Log in to save stats & earn coins!</p>
+              )}
+              
               <div className="overlay-buttons" style={{ display: 'flex', gap: '15px', marginTop: '10px' }}>
                 <button onClick={restartGame} className="arcade-btn restart-btn">
                   <RotateCcw size={18} />
