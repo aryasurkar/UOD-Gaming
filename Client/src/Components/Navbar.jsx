@@ -22,10 +22,51 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const [user, setUser] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  const loadUser = () => {
+    const token = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    setIsLoggedIn(!!token);
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        setUser(null);
+      }
+    } else {
+      setUser(null);
+    }
+  };
+
+  useEffect(() => {
+    loadUser();
+    window.addEventListener('user-stats-changed', loadUser);
+    window.addEventListener('storage', loadUser);
+    return () => {
+      window.removeEventListener('user-stats-changed', loadUser);
+      window.removeEventListener('storage', loadUser);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.dispatchEvent(new Event('user-stats-changed'));
+    setIsOpen(false);
+  };
+
   const navItems = [
     { path: '/', indexLabel: '01', label: 'Home' },
     { path: '/UODGaming', indexLabel: '02', label: 'Games' },
-    { path: '/login', indexLabel: '03', label: 'Login' }
+    ...(isLoggedIn 
+      ? [
+          { path: '/Leaderboard', indexLabel: '03', label: 'Leaderboard' },
+          { path: '/logout', indexLabel: '04', label: 'Logout' }
+        ] 
+      : [{ path: '/login', indexLabel: '03', label: 'Login' }]
+    )
   ];
 
   const toggleMenu = () => {
@@ -122,13 +163,23 @@ const Navbar = () => {
                         className="link-row-masked"
                       >
                         <span className="link-index">{item.indexLabel}</span>
-                        <Link 
-                          to={item.path} 
-                          className={`overlay-link ${isActive ? 'active' : ''}`}
-                          onClick={toggleMenu}
-                        >
-                          {item.label}
-                        </Link>
+                        {item.path === '/logout' ? (
+                          <Link 
+                            to="/" 
+                            className="overlay-link"
+                            onClick={handleLogout}
+                          >
+                            {item.label}
+                          </Link>
+                        ) : (
+                          <Link 
+                            to={item.path} 
+                            className={`overlay-link ${isActive ? 'active' : ''}`}
+                            onClick={toggleMenu}
+                          >
+                            {item.label}
+                          </Link>
+                        )}
                       </motion.div>
                     </div>
                   );
@@ -143,6 +194,21 @@ const Navbar = () => {
                 exit={{ opacity: 0, x: 50 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
               >
+                {isLoggedIn && user && (
+                  <div className="meta-block">
+                    <h4 className="meta-title">Player Info</h4>
+                    <p className="meta-text text-highlight font-orbitron" style={{ color: 'var(--primary-neon)' }}>
+                      @{user.username}
+                    </p>
+                    <p className="meta-text">
+                      Level: <span className="font-orbitron" style={{ color: 'var(--accent-green)' }}>{user.gameStats?.level || 1}</span>
+                    </p>
+                    <p className="meta-text">
+                      Coins: <span className="font-orbitron text-gold">🪙 {user.coins || 0}</span>
+                    </p>
+                  </div>
+                )}
+
                 <div className="meta-block">
                   <h4 className="meta-title">Navigation Info</h4>
                   <p className="meta-text">UOD Gaming Platform — Explore 9 neon interactive Web Audio arcade cabinets.</p>

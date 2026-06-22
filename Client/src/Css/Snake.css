@@ -59,16 +59,19 @@
 
   /* Game Cabinet Card */
   .game-content-card {
-    width: 90%;
-    max-width: 950px;
+    width: 95%;
+    max-width: 1200px;
     background: rgba(20, 20, 30, 0.5);
     border: 1.5px solid rgba(0, 255, 136, 0.15);
     border-radius: var(--radius-xl);
-    padding: var(--space-xl);
+    padding: var(--space-md) var(--space-lg);
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);
     box-shadow: 0 0 30px rgba(0, 255, 136, 0.08), var(--shadow-card);
-    margin-bottom: var(--space-3xl);
+    margin-bottom: var(--space-xl);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
   /* Scoreboard panel */
@@ -194,6 +197,7 @@
   .cabinet-screen.crt-screen {
     position: relative;
     width: 100%;
+    max-width: calc(80vh - 120px);
     aspect-ratio: 1;
     background: #050508;
     border: 4px solid rgba(255, 255, 255, 0.05);
@@ -202,6 +206,7 @@
     box-shadow: 
       0 0 20px rgba(0, 255, 136, 0.12),
       inset 0 0 35px rgba(0, 0, 0, 0.95);
+    margin: 0 auto var(--space-md) auto;
   }
 
   /* Scanlines Overlay */

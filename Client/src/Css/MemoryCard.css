@@ -50,14 +50,92 @@
 
 /* Cabinet Container */
 .game-content-card {
+  width: 95%;
   max-width: 1200px;
-  margin: 40px auto 80px;
+  margin: 20px auto var(--space-xl);
   background: rgba(10, 10, 15, 0.9);
   border: 2px solid rgba(139, 92, 246, 0.2);
   box-shadow: 0 0 30px rgba(139, 92, 246, 0.1), inset 0 0 20px rgba(139, 92, 246, 0.05);
   border-radius: var(--radius-lg, 12px);
-  padding: 40px;
+  padding: var(--space-md) var(--space-lg);
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* CRT Screen Wrapper */
+.cabinet-screen.crt-screen {
+  position: relative;
+  width: 100%;
+  max-width: calc(85vh - 120px);
+  aspect-ratio: 1.15; /* slightly wider grid aspect ratio */
+  background: #050508;
+  border: 4px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 
+    0 0 20px rgba(139, 92, 246, 0.15),
+    inset 0 0 35px rgba(0, 0, 0, 0.95);
+  margin: 0 auto var(--space-md) auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding-top: 60px; /* space for absolute HUD overlays */
+}
+
+.game-play-area {
+  width: 100%;
+  height: 100%;
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Scanlines Overlay */
+.crt-scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.25) 50%
+  );
+  background-size: 100% 4px;
+}
+
+/* Curved CRT Glass Reflection */
+.crt-reflection {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  background: radial-gradient(
+    circle at 50% 0%, 
+    rgba(255, 255, 255, 0.06) 0%, 
+    transparent 70%
+  );
+}
+
+/* Subtle CRT Screen Flicker */
+.crt-flicker {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  background: rgba(18, 16, 16, 0.02);
+  opacity: 0.15;
+  animation: crt-flicker-anim 0.15s infinite;
+}
+
+@keyframes crt-flicker-anim {
+  0% { opacity: 0.13; }
+  50% { opacity: 0.17; }
+  100% { opacity: 0.13; }
 }
 
 .game-header {
@@ -240,96 +318,32 @@
   transition: all 0.3s ease;
 }
 
-/* Stats Panel */
-.stats-dashboard {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-md);
-  margin-bottom: 35px;
-}
-
-.stat-card {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: var(--radius-md);
-  padding: 12px 15px;
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
-}
-
-.stat-icon {
-  width: 38px;
-  height: 38px;
-  padding: 9px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.neon-blue {
-  color: #00d4ff;
-  box-shadow: 0 0 10px rgba(0, 212, 255, 0.2);
-  border: 1px solid rgba(0, 212, 255, 0.2);
-}
-
-.neon-pink {
-  color: #ff007f;
-  box-shadow: 0 0 10px rgba(255, 0, 127, 0.2);
-  border: 1px solid rgba(255, 0, 127, 0.2);
-}
-
-.neon-green {
-  color: #00ff88;
-  box-shadow: 0 0 10px rgba(0, 255, 136, 0.2);
-  border: 1px solid rgba(0, 255, 136, 0.2);
-}
-
-.stat-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.stat-label {
-  font-size: 0.72rem;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 2px;
-}
-
-.stat-value {
-  font-family: var(--font-gaming);
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #fff;
-}
-
 /* Dynamic Board Grid Configurations */
 .memory-board {
   display: grid;
-  gap: 16px;
-  margin: 0 auto 35px;
+  gap: 12px;
+  margin: 0 auto;
   perspective: 1000px;
+  width: 100%;
+  height: 100%;
 }
 
 .memory-board.grid-easy {
   grid-template-columns: repeat(4, 1fr);
   grid-template-rows: repeat(2, 1fr);
-  max-width: 650px;
+  max-width: calc(85vh - 220px);
 }
 
 .memory-board.grid-medium {
   grid-template-columns: repeat(4, 1fr);
   grid-template-rows: repeat(4, 1fr);
-  max-width: 650px;
+  max-width: calc(85vh - 220px);
 }
 
 .memory-board.grid-hard {
   grid-template-columns: repeat(6, 1fr);
   grid-template-rows: repeat(4, 1fr);
-  max-width: 900px;
+  max-width: calc(85vh - 180px);
 }
 
 /* Cards flip */

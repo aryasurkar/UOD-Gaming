@@ -30,6 +30,8 @@ const TTT = () => {
   const [currentPlayer, setCurrentPlayer] = useState('X'); // 'X' or 'O'
   const [gameResult, setGameResult] = useState('');
   const [board, setBoard] = useState(Array(9).fill(''));
+  const [rewards, setRewards] = useState(null);
+  const [submitStatus, setSubmitStatus] = useState(''); // 'submitting', 'submitted', 'failed', 'offline'
   
   // Scoreboard
   const [scores, setScores] = useState({ X: 0, O: 0, draws: 0 });
@@ -58,6 +60,8 @@ const TTT = () => {
     setBoard(Array(9).fill(''));
     setCurrentPlayer('X');
     setGameResult('');
+    setRewards(null);
+    setSubmitStatus('');
     setGameActive(true);
   };
 
@@ -69,7 +73,52 @@ const TTT = () => {
     setScores({ X: 0, O: 0, draws: 0 });
     setBoard(Array(9).fill(''));
     setGameResult('');
+    setRewards(null);
+    setSubmitStatus('');
     setIsCpuThinking(false);
+  };
+
+  const submitTttResult = (scoreToSubmit) => {
+    const token = localStorage.getItem('token');
+    if (gameId && token) {
+      setSubmitStatus('submitting');
+      setRewards(null);
+      axios.post(`/api/v1/games/${gameId}/score`, { score: scoreToSubmit }, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then(res => {
+        console.log('Result saved:', res.data);
+        setRewards({
+          coinsEarned: res.data.coinsEarned,
+          expGained: res.data.expGained,
+          level: res.data.level,
+          leveledUp: res.data.leveledUp
+        });
+        setSubmitStatus('submitted');
+        
+        // Sync local storage user
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          try {
+            const userObj = JSON.parse(storedUser);
+            userObj.coins = res.data.totalCoins;
+            if (!userObj.gameStats) userObj.gameStats = {};
+            userObj.gameStats.level = res.data.level;
+            localStorage.setItem('user', JSON.stringify(userObj));
+            window.dispatchEvent(new Event('user-stats-changed'));
+          } catch (e) {
+            console.error('Failed to update local storage user info:', e);
+          }
+        }
+      })
+      .catch(err => {
+        console.error('Failed to save result:', err);
+        setSubmitStatus('failed');
+      });
+    } else {
+      console.warn('DB record skipped: Missing gameId or authentication token.');
+      setSubmitStatus('offline');
+    }
   };
 
   const handleClick = (cellIndex) => {
@@ -90,16 +139,7 @@ const TTT = () => {
       setScores(prev => ({ ...prev, [currentPlayer]: prev[currentPlayer] + 1 }));
 
       // Record result to database
-      const token = localStorage.getItem('token');
-      if (gameId && token) {
-        axios.post(`/api/v1/games/${gameId}/score`, { score: 100 }, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        .then(res => console.log('Win result saved:', res.data))
-        .catch(err => console.error('Failed to save result:', err));
-      } else {
-        console.warn('DB record skipped: Missing gameId or authentication token.');
-      }
+      submitTttResult(100);
 
     } else if (checkDraw(newBoard)) {
       setGameResult("It's a draw!");
@@ -109,16 +149,7 @@ const TTT = () => {
       setScores(prev => ({ ...prev, draws: prev.draws + 1 }));
 
       // Record draw to database
-      const token = localStorage.getItem('token');
-      if (gameId && token) {
-        axios.post(`/api/v1/games/${gameId}/score`, { score: 50 }, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        .then(res => console.log('Draw result saved:', res.data))
-        .catch(err => console.error('Failed to save result:', err));
-      } else {
-        console.warn('DB record skipped: Missing gameId or authentication token.');
-      }
+      submitTttResult(50);
     } else {
       setCurrentPlayer(currentPlayer === 'X' ? 'O' : 'X');
     }
@@ -299,60 +330,93 @@ const TTT = () => {
         ) : (
           /* Active Gameplay View */
           <div className="active-game-view">
-            {/* Scoreboard */}
-            <div className="ttt-scoreboard">
-              <div className={`score-card p1-card ${currentPlayer === 'X' && gameActive ? 'active-turn' : ''}`}>
-                <span className="score-label">{player1Name} (X)</span>
-                <span className="score-value">{scores.X}</span>
-              </div>
-              <div className="score-card draws-card">
-                <span className="score-label">Draws</span>
-                <span className="score-value">{scores.draws}</span>
-              </div>
-              <div className={`score-card p2-card ${currentPlayer === 'O' && gameActive ? 'active-turn' : ''}`}>
-                <span className="score-label">{player2Name} (O)</span>
-                <span className="score-value">{scores.O}</span>
-              </div>
-            </div>
+            {/* Arcade Cabinet Frame */}
+            <div className="cabinet-screen crt-screen">
+              {/* CRT scanlines, reflection and flicker overlay */}
+              <div className="crt-scanlines"></div>
+              <div className="crt-reflection"></div>
+              <div className="crt-flicker"></div>
 
-            {/* Turn Announcement Banner */}
-            {gameActive && (
-              <div className="turn-banner">
-                {isCpuThinking ? (
-                  <span className="cpu-thinking-text">CPU is calculating...</span>
-                ) : (
+              {/* Floating HUD Overlays */}
+              <div className="game-hud-container">
+                <div className={`game-hud-item ${currentPlayer === 'X' && gameActive ? 'active-turn-hud' : ''}`}>
+                  <span className="game-hud-label">{player1Name} (X)</span>
+                  <span className="game-hud-value" style={{ color: 'var(--primary-neon)' }}>{scores.X}</span>
+                </div>
+
+                <div className="game-hud-item">
+                  <span className="game-hud-label">Draws</span>
+                  <span className="game-hud-value" style={{ color: 'var(--text-muted)' }}>{scores.draws}</span>
+                </div>
+
+                <div className={`game-hud-item ${currentPlayer === 'O' && gameActive ? 'active-turn-hud' : ''}`}>
+                  <span className="game-hud-label">{player2Name} (O)</span>
+                  <span className="game-hud-value" style={{ color: 'var(--secondary-neon)' }}>{scores.O}</span>
+                </div>
+              </div>
+
+              <div className="game-play-area">
+                {/* Turn Announcement Banner */}
+                {gameActive && (
+                  <div className="turn-banner">
+                    {isCpuThinking ? (
+                      <span className="cpu-thinking-text">CPU is calculating...</span>
+                    ) : (
+                      <>
+                        Turn:{' '}
+                        <span className={currentPlayer === 'X' ? 'p1-text' : 'p2-text'}>
+                          {currentPlayer === 'X' ? player1Name : player2Name} ({currentPlayer})
+                        </span>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* Game Result Banner */}
+                {gameResult && (
                   <>
-                    Current Turn:{' '}
-                    <span className={currentPlayer === 'X' ? 'p1-text' : 'p2-text'}>
-                      {currentPlayer === 'X' ? player1Name : player2Name} ({currentPlayer})
-                    </span>
+                    <div className={`result-banner ${gameResult.includes('wins') ? 'winner-glow' : 'draw-glow'}`}>
+                      <Trophy size={20} className="trophy-icon" />
+                      <span>{gameResult}</span>
+                    </div>
+                    
+                    {submitStatus === 'submitting' && (
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'center', margin: '8px 0' }}>Saving result online...</p>
+                    )}
+                    {submitStatus === 'submitted' && rewards && (
+                      <div className="game-over-rewards" style={{ margin: '10px auto', padding: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', fontSize: '0.9rem', textAlign: 'center', maxWidth: '250px' }}>
+                        <div style={{ color: '#ffd700', marginBottom: '4px' }}>🪙 +{rewards.coinsEarned} Coins</div>
+                        <div style={{ color: 'var(--primary-neon)', marginBottom: '4px' }}>⚡ +{rewards.expGained} XP</div>
+                        {rewards.leveledUp && (
+                          <div style={{ color: '#00ff88', fontWeight: 'bold', textShadow: '0 0 5px rgba(0,255,136,0.5)', marginTop: '4px' }}>LEVEL UP! (Lv {rewards.level})</div>
+                        )}
+                      </div>
+                    )}
+                    {submitStatus === 'failed' && (
+                      <p style={{ color: 'var(--secondary-neon)', fontSize: '0.85rem', textAlign: 'center', margin: '8px 0' }}>Failed to save online.</p>
+                    )}
+                    {submitStatus === 'offline' && (
+                      <p style={{ color: 'var(--accent-orange)', fontSize: '0.85rem', textAlign: 'center', margin: '8px 0' }}>Log in to save stats & earn coins!</p>
+                    )}
                   </>
                 )}
-              </div>
-            )}
 
-            {/* Game Result Banner */}
-            {gameResult && (
-              <div className={`result-banner ${gameResult.includes('wins') ? 'winner-glow' : 'draw-glow'}`}>
-                <Trophy size={20} className="trophy-icon" />
-                <span>{gameResult}</span>
+                {/* Tic Tac Toe Grid */}
+                <div className="game-board">
+                  {board.map((cell, index) => (
+                    <button 
+                      key={index} 
+                      className={`cell ${cell ? 'cell-occupied' : 'cell-empty'}`} 
+                      onClick={() => handleClick(index)}
+                      disabled={!gameActive || cell !== '' || isCpuThinking}
+                    >
+                      <span className={cell === 'X' ? 'p1-text mark' : 'p2-text mark'}>
+                        {cell}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
-            )}
-
-            {/* Tic Tac Toe Grid */}
-            <div className="game-board">
-              {board.map((cell, index) => (
-                <button 
-                  key={index} 
-                  className={`cell ${cell ? 'cell-occupied' : 'cell-empty'}`} 
-                  onClick={() => handleClick(index)}
-                  disabled={!gameActive || cell !== '' || isCpuThinking}
-                >
-                  <span className={cell === 'X' ? 'p1-text mark' : 'p2-text mark'}>
-                    {cell}
-                  </span>
-                </button>
-              ))}
             </div>
 
             {/* Control Panel */}

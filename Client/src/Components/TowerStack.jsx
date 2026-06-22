@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
 import { 
   ArrowLeft, 
   RotateCcw, 
@@ -90,6 +91,63 @@ const TowerStack = () => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [combo, setCombo] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
+  const [gameId, setGameId] = useState(null);
+  const [rewards, setRewards] = useState(null);
+  const [submitStatus, setSubmitStatus] = useState(''); // 'submitting', 'submitted', 'failed', 'offline'
+
+  useEffect(() => {
+    axios.get('/api/v1/games')
+      .then(res => {
+        const game = res.data.games?.find(g => g.title === "Neon Stack Tower");
+        if (game) setGameId(game._id);
+      })
+      .catch(err => console.error("Failed to load game info:", err));
+  }, []);
+
+  useEffect(() => {
+    if (gameOver) {
+      const token = localStorage.getItem('token');
+      if (gameId && token && score > 0) {
+        setSubmitStatus('submitting');
+        axios.post(`/api/v1/games/${gameId}/score`, {
+          score: score
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        .then(res => {
+          console.log('Score submitted successfully:', res.data);
+          setRewards({
+            coinsEarned: res.data.coinsEarned,
+            expGained: res.data.expGained,
+            level: res.data.level,
+            leveledUp: res.data.leveledUp
+          });
+          setSubmitStatus('submitted');
+          
+          // Sync local storage user
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            try {
+              const userObj = JSON.parse(storedUser);
+              userObj.coins = res.data.totalCoins;
+              if (!userObj.gameStats) userObj.gameStats = {};
+              userObj.gameStats.level = res.data.level;
+              localStorage.setItem('user', JSON.stringify(userObj));
+              window.dispatchEvent(new Event('user-stats-changed'));
+            } catch (e) {
+              console.error('Failed to sync user stats:', e);
+            }
+          }
+        })
+        .catch(err => {
+          console.error('Failed to submit score:', err);
+          setSubmitStatus('failed');
+        });
+      } else {
+        setSubmitStatus('offline');
+      }
+    }
+  }, [gameOver, gameId, score]);
 
   // Mutable Game Physics (to avoid closures inside requestAnimationFrame)
   const gameState = useRef({
@@ -107,6 +165,8 @@ const TowerStack = () => {
   const blockHeight = 24;
 
   const initGame = () => {
+    setRewards(null);
+    setSubmitStatus('');
     playSound('restart', soundEnabled);
     setScore(0);
     setCombo(0);
@@ -469,109 +529,108 @@ const TowerStack = () => {
         <span className="game-status-title">Arcade Room: Tower Stack</span>
       </div>
 
-      <div className="game-content-card stack-grid">
-        {/* Playfield Canvas */}
-        <div className="stack-canvas-panel">
-          <div className="game-header text-left">
-            <h1 className="game-title">Neon Stack Tower</h1>
-            <p className="game-subtitle">Tap Space or click the canvas to drop sliding blocks. Align carefully to stack them high.</p>
-          </div>
+      <div className="game-content-card">
+        {/* Arcade Cabinet Frame */}
+        <div className="cabinet-screen crt-screen">
+          {/* CRT scanlines, reflection and flicker overlay */}
+          <div className="crt-scanlines"></div>
+          <div className="crt-reflection"></div>
+          <div className="crt-flicker"></div>
 
-          <div className="canvas-wrapper-stack">
-            <canvas 
-              ref={canvasRef} 
-              width={400} 
-              height={500} 
-              onClick={dropBlock}
-              className="stack-canvas"
-            />
+          {/* Floating HUD Overlays */}
+          <div className="game-hud-container">
+            <div className="game-hud-item">
+              <span className="game-hud-label">Stacked</span>
+              <span className="game-hud-value">{score}</span>
+            </div>
 
-            {!gameStarted && (
-              <div className="start-prompt-overlay" onClick={initGame}>
-                <Gamepad2 className="mb-4 text-purple-400" size={48} />
-                <p>Press <strong>SPACEBAR</strong> or <strong>CLICK HERE</strong> to Play</p>
-                <span>Perfect drops lock size and build combos. Every 5 combos expands the block width!</span>
+            {combo > 0 && (
+              <div className="game-hud-item" style={{ borderColor: 'rgba(0, 255, 136, 0.3)', background: 'rgba(0, 255, 136, 0.08)' }}>
+                <span className="game-hud-label" style={{ color: 'var(--accent-green)' }}>Combo</span>
+                <span className="game-hud-value" style={{ color: 'var(--accent-green)' }}>{combo}x</span>
               </div>
             )}
 
-            {/* Overlays */}
-            <AnimatePresence>
-              {gameOver && (
-                <div className="start-prompt-overlay gameover">
-                  <h2>Tower Collapsed</h2>
-                  <p>Final blocks stacked: <strong>{score}</strong></p>
-                  {combo > 0 && <span className="mb-4">Streak combos: {combo}</span>}
-                  <button className="btn btn-primary mt-4" onClick={initGame}>Insert Coin (Play)</button>
+            <div className="game-hud-item">
+              <span className="game-hud-label">Best</span>
+              <span className="game-hud-value" style={{ color: 'var(--accent-yellow)', textShadow: '0 0 8px rgba(255,255,0,0.4)' }}>{highScore}</span>
+            </div>
+          </div>
+
+          <div className="game-play-area">
+            <div className="canvas-wrapper-stack">
+              <canvas 
+                ref={canvasRef} 
+                width={400} 
+                height={500} 
+                onClick={dropBlock}
+                className="stack-canvas"
+              />
+
+              {!gameStarted && (
+                <div className="start-prompt-overlay" onClick={initGame}>
+                  <Gamepad2 className="mb-4 text-purple-400" size={48} />
+                  <p>Press <strong>SPACEBAR</strong> or <strong>CLICK HERE</strong> to Play</p>
+                  <span>Perfect drops lock size and build combos. Every 5 combos expands the block width!</span>
                 </div>
               )}
 
-              {paused && (
-                <div className="start-prompt-overlay paused">
-                  <h2>Paused</h2>
-                  <button className="btn btn-primary mt-4" onClick={() => setPaused(false)}>Resume Game</button>
-                </div>
-              )}
-            </AnimatePresence>
+              {/* Overlays */}
+              <AnimatePresence>
+                {gameOver && (
+                  <div className="start-prompt-overlay gameover">
+                    <h2>Tower Collapsed</h2>
+                    <p>Final blocks stacked: <strong>{score}</strong></p>
+                    {combo > 0 && <span className="mb-4">Streak combos: {combo}</span>}
+                    
+                    {submitStatus === 'submitting' && (
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '8px 0' }}>Saving score online...</p>
+                    )}
+                    {submitStatus === 'submitted' && rewards && (
+                      <div className="game-over-rewards" style={{ margin: '12px auto', padding: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', fontSize: '0.9rem' }}>
+                        <div style={{ color: '#ffd700', marginBottom: '4px' }}>🪙 +{rewards.coinsEarned} Coins</div>
+                        <div style={{ color: 'var(--primary-neon)', marginBottom: '4px' }}>⚡ +{rewards.expGained} XP</div>
+                        {rewards.leveledUp && (
+                          <div style={{ color: '#00ff88', fontWeight: 'bold', textShadow: '0 0 5px rgba(0,255,136,0.5)', marginTop: '4px' }}>LEVEL UP! (Lv {rewards.level})</div>
+                        )}
+                      </div>
+                    )}
+                    {submitStatus === 'failed' && (
+                      <p style={{ fontSize: '0.85rem', color: 'var(--secondary-neon)', margin: '8px 0' }}>Failed to save score online.</p>
+                    )}
+                    {submitStatus === 'offline' && (
+                      <p style={{ fontSize: '0.85rem', color: 'var(--accent-orange)', margin: '8px 0' }}>Log in to save stats & earn coins!</p>
+                    )}
+
+                    <button className="btn btn-primary mt-4" onClick={initGame}>Insert Coin (Play)</button>
+                  </div>
+                )}
+
+                {paused && (
+                  <div className="start-prompt-overlay paused">
+                    <h2>Paused</h2>
+                    <button className="btn btn-primary mt-4" onClick={() => setPaused(false)}>Resume Game</button>
+                  </div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
 
-        {/* Info panel */}
-        <div className="stack-sidebar-panel">
-          <div className="stats-dashboard vertical">
-            <div className="stat-card">
-              <Trophy className="stat-icon neon-gold" size={18} />
-              <div className="stat-info">
-                <span className="stat-label">High Score</span>
-                <span className="stat-value">{highScore}</span>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <Zap className="stat-icon neon-blue" size={18} />
-              <div className="stat-info">
-                <span className="stat-label">Tower Score</span>
-                <span className="stat-value">{score}</span>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <Gamepad2 className="stat-icon neon-green" size={18} />
-              <div className="stat-info">
-                <span className="stat-label">Combos</span>
-                <span className="stat-value">{combo}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Combos Indicator Banner */}
-          {combo > 0 && (
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="combo-alert-panel"
-            >
-              <h3>Combo Multiplier</h3>
-              <p>{combo}x Perfect Fits</p>
-              {combo >= 5 && <span className="bonus-note">Bonus: Block Width Expanded!</span>}
-            </motion.div>
-          )}
-
-          <div className="action-buttons-column mt-4">
-            <button className="btn btn-reset mb-4" onClick={() => setSoundEnabled(!soundEnabled)}>
-              {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-              <span>Sound: {soundEnabled ? 'ON' : 'OFF'}</span>
-            </button>
-            
-            <button className="btn btn-primary mb-4" onClick={() => setPaused(!paused)} disabled={gameOver || !gameStarted}>
-              {paused ? <Play size={16} /> : <Pause size={16} />}
-              <span>{paused ? 'Resume' : 'Pause'}</span>
-            </button>
-
-            <button className="btn btn-reset" onClick={initGame}>
-              <RotateCcw size={16} />
-              <span>Restart</span>
-            </button>
-          </div>
+        {/* Action Controls */}
+        <div className="stack-controls" style={{ display: 'flex', gap: '15px', marginTop: '10px', justifyContent: 'center' }}>
+          <button className="btn btn-primary" onClick={() => setPaused(!paused)} disabled={gameOver || !gameStarted}>
+            {paused ? <Play size={16} /> : <Pause size={16} />}
+            <span>{paused ? 'Resume' : 'Pause'}</span>
+          </button>
+          <button className="btn btn-reset" onClick={initGame}>
+            <RotateCcw size={16} />
+            <span>Restart</span>
+          </button>
+          <button className="btn btn-reset" onClick={() => setSoundEnabled(!soundEnabled)}>
+            {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            <span>Sound: {soundEnabled ? 'ON' : 'OFF'}</span>
+          </button>
         </div>
       </div>
 

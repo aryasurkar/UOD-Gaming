@@ -111,6 +111,10 @@ const userSchema = new mongoose.Schema({
         emailVerified: { type: Boolean, default: false },
         emailVerificationToken: String
     },
+    coins: {
+        type: Number,
+        default: 0
+    },
     isActive: { type: Boolean, default: true },
     isBanned: { type: Boolean, default: false },
     banReason: String,

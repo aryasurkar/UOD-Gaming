@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
 import { 
   ArrowLeft, 
   RotateCcw, 
@@ -77,6 +78,18 @@ const SchulteGrid = () => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [wrongCellId, setWrongCellId] = useState(null); // index of wrong cell
+  const [gameId, setGameId] = useState(null);
+  const [rewards, setRewards] = useState(null);
+  const [submitStatus, setSubmitStatus] = useState(''); // 'submitting', 'submitted', 'failed', 'offline'
+
+  useEffect(() => {
+    axios.get('/api/v1/games')
+      .then(res => {
+        const game = res.data.games?.find(g => g.title === "Cyber Grid 1-25");
+        if (game) setGameId(game._id);
+      })
+      .catch(err => console.error("Failed to load game info:", err));
+  }, []);
 
   // Timer references
   const timerRef = useRef(null);
@@ -113,6 +126,8 @@ const SchulteGrid = () => {
   }, [gridSize]);
 
   const initGame = () => {
+    setRewards(null);
+    setSubmitStatus('');
     playSound('start', soundEnabled);
     setTarget(1);
     setScore(0);
@@ -181,6 +196,49 @@ const SchulteGrid = () => {
         localStorage.setItem(key, finalScore.toString());
         setHighScore(finalScore);
       }
+
+      // Online score submission
+      const token = localStorage.getItem('token');
+      if (gameId && token && finalScore > 0) {
+        setSubmitStatus('submitting');
+        axios.post(`/api/v1/games/${gameId}/score`, {
+          score: finalScore,
+          level: gridSize === 3 ? 1 : gridSize === 5 ? 2 : 3
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        .then(res => {
+          console.log('Score submitted successfully:', res.data);
+          setRewards({
+            coinsEarned: res.data.coinsEarned,
+            expGained: res.data.expGained,
+            level: res.data.level,
+            leveledUp: res.data.leveledUp
+          });
+          setSubmitStatus('submitted');
+          
+          // Sync local storage user
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            try {
+              const userObj = JSON.parse(storedUser);
+              userObj.coins = res.data.totalCoins;
+              if (!userObj.gameStats) userObj.gameStats = {};
+              userObj.gameStats.level = res.data.level;
+              localStorage.setItem('user', JSON.stringify(userObj));
+              window.dispatchEvent(new Event('user-stats-changed'));
+            } catch (e) {
+              console.error('Failed to sync user stats:', e);
+            }
+          }
+        })
+        .catch(err => {
+          console.error('Failed to submit score:', err);
+          setSubmitStatus('failed');
+        });
+      } else {
+        setSubmitStatus('offline');
+      }
     } else {
       setTarget(prev => prev + 1);
     }
@@ -196,6 +254,8 @@ const SchulteGrid = () => {
   };
 
   const resetGame = () => {
+    setRewards(null);
+    setSubmitStatus('');
     clearInterval(timerRef.current);
     setGameState('idle');
     setTarget(1);
@@ -214,142 +274,146 @@ const SchulteGrid = () => {
         <span className="game-status-title">Arcade Room: Grid Finder</span>
       </div>
 
-      <div className="game-content-card schulte-grid-layout">
-        {/* Playfield panel */}
-        <div className="schulte-play-panel">
-          <div className="game-header text-left">
-            <h1 className="game-title">Cyber Grid {gridSize}x{gridSize}</h1>
-            <p className="game-subtitle">Reflex Schulte Table. Locate and click numbers from 1 to {gridSize * gridSize} in ascending sequence as fast as you can.</p>
-          </div>
+      <div className="game-content-card">
+        {/* Arcade Cabinet Frame */}
+        <div className="cabinet-screen crt-screen">
+          {/* CRT scanlines, reflection and flicker overlay */}
+          <div className="crt-scanlines"></div>
+          <div className="crt-reflection"></div>
+          <div className="crt-flicker"></div>
 
-          <div className="grid-container-wrapper">
-            <div 
-              className={`schulte-5x5-grid size-${gridSize}`}
-              style={{
-                gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
-                gridTemplateRows: `repeat(${gridSize}, 1fr)`
-              }}
-            >
-              {grid.map((cell, index) => {
-                const isCorrect = cell.status === 'correct';
-                const isWrong = wrongCellId === index;
-
-                return (
-                  <motion.button
-                    key={cell.id}
-                    onClick={() => handleCellClick(cell, index)}
-                    className={`schulte-cell ${isCorrect ? 'correct' : ''} ${isWrong ? 'wrong' : ''}`}
-                    animate={isWrong ? { x: [-6, 6, -6, 6, 0] } : {}}
-                    transition={{ duration: 0.3 }}
-                    disabled={isCorrect || gameState === 'completed'}
-                  >
-                    {cell.value}
-                  </motion.button>
-                );
-              })}
+          {/* Floating HUD Overlays */}
+          <div className="game-hud-container">
+            <div className="game-hud-item">
+              <span className="game-hud-label">Best</span>
+              <span className="game-hud-value" style={{ color: 'var(--accent-yellow)', textShadow: '0 0 8px rgba(255,255,0,0.4)' }}>{highScore.toLocaleString()}</span>
             </div>
 
-            {gameState === 'idle' && (
+            <div className="game-hud-item" style={{ flexDirection: 'row', gap: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span className="game-hud-label">Find</span>
+                <span className="game-hud-value" style={{ color: 'var(--primary-neon)' }}>{gameState === 'completed' ? 'Done' : target}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span className="game-hud-label">Progress</span>
+                <span className="game-hud-value" style={{ color: 'var(--accent-green)' }}>
+                  {gameState === 'completed' ? '100%' : `${Math.round(((target - 1) / (gridSize * gridSize)) * 100)}%`}
+                </span>
+              </div>
+            </div>
+
+            <div className="game-hud-item">
+              <span className="game-hud-label">Timer</span>
+              <span className="game-hud-value">{elapsedTime.toFixed(2)}s</span>
+            </div>
+          </div>
+
+          <div className="game-play-area">
+            <div className="grid-container-wrapper">
               <div 
-                className="schulte-start-overlay" 
-                onClick={(e) => {
-                  if (e.target.closest('.size-btn')) return;
-                  initGame();
+                className={`schulte-5x5-grid size-${gridSize}`}
+                style={{
+                  gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
+                  gridTemplateRows: `repeat(${gridSize}, 1fr)`
                 }}
               >
-                <Gamepad2 className="mb-4 text-cyan-400 animate-pulse" size={48} />
-                <p>Press <strong>START GAME</strong> or <strong>CLICK A CELL</strong> to Begin</p>
-                
-                {/* Grid Size selector row */}
-                <div className="grid-size-selector mb-6">
-                  <span className="selector-label">Choose Grid Size:</span>
-                  <div className="size-buttons-row">
-                    {[3, 5, 7].map(size => (
-                      <button
-                        key={size}
-                        className={`size-btn ${gridSize === size ? 'active' : ''}`}
-                        onClick={() => setGridSize(size)}
-                      >
-                        {size}x{size}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                {grid.map((cell, index) => {
+                  const isCorrect = cell.status === 'correct';
+                  const isWrong = wrongCellId === index;
 
-                <span>Find and click numbers 1 through {gridSize * gridSize} sequentially. Faster times score higher!</span>
-                <button className="btn btn-primary mt-4" onClick={initGame}>Start Game</button>
+                  return (
+                    <motion.button
+                      key={cell.id}
+                      onClick={() => handleCellClick(cell, index)}
+                      className={`schulte-cell ${isCorrect ? 'correct' : ''} ${isWrong ? 'wrong' : ''}`}
+                      animate={isWrong ? { x: [-6, 6, -6, 6, 0] } : {}}
+                      transition={{ duration: 0.3 }}
+                      disabled={isCorrect || gameState === 'completed'}
+                    >
+                      {cell.value}
+                    </motion.button>
+                  );
+                })}
               </div>
-            )}
 
-            {/* Overlays */}
-            <AnimatePresence>
-              {gameState === 'completed' && (
-                <div className="schulte-start-overlay completed">
-                  <h2>Sequence Complete!</h2>
-                  <p>Elapsed Time: <strong>{elapsedTime.toFixed(2)}s</strong></p>
-                  <p className="text-emerald-400">Score Achieved: <strong>{score.toLocaleString()}</strong></p>
-                  <button className="btn btn-primary mt-4" onClick={initGame}>Insert Coin (Play Again)</button>
+              {gameState === 'idle' && (
+                <div 
+                  className="schulte-start-overlay" 
+                  onClick={(e) => {
+                    if (e.target.closest('.size-btn')) return;
+                    initGame();
+                  }}
+                  style={{ position: 'absolute', zIndex: 12 }}
+                >
+                  <Gamepad2 className="mb-4 text-cyan-400 animate-pulse" size={48} />
+                  <p>Press <strong>START GAME</strong> or <strong>CLICK A CELL</strong> to Begin</p>
+                  
+                  {/* Grid Size selector row */}
+                  <div className="grid-size-selector mb-6">
+                    <span className="selector-label">Choose Grid Size:</span>
+                    <div className="size-buttons-row">
+                      {[3, 5, 7].map(size => (
+                        <button
+                          key={size}
+                          className={`size-btn ${gridSize === size ? 'active' : ''}`}
+                          onClick={() => setGridSize(size)}
+                        >
+                          {size}x{size}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <span>Find and click numbers 1 through {gridSize * gridSize} sequentially. Faster times score higher!</span>
+                  <button className="btn btn-primary mt-4" onClick={initGame}>Start Game</button>
                 </div>
               )}
-            </AnimatePresence>
+
+              {/* Overlays */}
+              <AnimatePresence>
+                {gameState === 'completed' && (
+                  <div className="schulte-start-overlay completed" style={{ position: 'absolute', zIndex: 12 }}>
+                    <h2>Sequence Complete!</h2>
+                    <p>Elapsed Time: <strong>{elapsedTime.toFixed(2)}s</strong></p>
+                    <p className="text-emerald-400" style={{ marginBottom: '8px' }}>Score Achieved: <strong>{score.toLocaleString()}</strong></p>
+                    
+                    {submitStatus === 'submitting' && (
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '8px 0' }}>Saving score online...</p>
+                    )}
+                    {submitStatus === 'submitted' && rewards && (
+                      <div className="game-over-rewards" style={{ margin: '12px auto', padding: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', fontSize: '0.9rem' }}>
+                        <div style={{ color: '#ffd700', marginBottom: '4px' }}>🪙 +{rewards.coinsEarned} Coins</div>
+                        <div style={{ color: 'var(--primary-neon)', marginBottom: '4px' }}>⚡ +{rewards.expGained} XP</div>
+                        {rewards.leveledUp && (
+                          <div style={{ color: '#00ff88', fontWeight: 'bold', textShadow: '0 0 5px rgba(0,255,136,0.5)', marginTop: '4px' }}>LEVEL UP! (Lv {rewards.level})</div>
+                        )}
+                      </div>
+                    )}
+                    {submitStatus === 'failed' && (
+                      <p style={{ fontSize: '0.85rem', color: 'var(--secondary-neon)', margin: '8px 0' }}>Failed to save score online.</p>
+                    )}
+                    {submitStatus === 'offline' && (
+                      <p style={{ fontSize: '0.85rem', color: 'var(--accent-orange)', margin: '8px 0' }}>Log in to save stats & earn coins!</p>
+                    )}
+
+                    <button className="btn btn-primary mt-4" onClick={initGame}>Insert Coin (Play Again)</button>
+                  </div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
 
-        {/* Sidebar Info Panel */}
-        <div className="schulte-sidebar-panel">
-          <div className="stats-dashboard vertical">
-            <div className="stat-card">
-              <Trophy className="stat-icon neon-gold" size={18} />
-              <div className="stat-info">
-                <span className="stat-label">High Score ({gridSize}x{gridSize})</span>
-                <span className="stat-value">{highScore.toLocaleString()}</span>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <Zap className="stat-icon neon-blue" size={18} />
-              <div className="stat-info">
-                <span className="stat-label">Next Target</span>
-                <span className="stat-value">{gameState === 'completed' ? 'Done' : `Find: ${target}`}</span>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <Gamepad2 className="stat-icon neon-green" size={18} />
-              <div className="stat-info">
-                <span className="stat-label">Timer</span>
-                <span className="stat-value">{elapsedTime.toFixed(2)}s</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick HUD Progress bar */}
-          <div className="progress-hud-panel mb-6">
-            <h3>Reflex Progress</h3>
-            <div className="progress-bar-container">
-              <div 
-                className="progress-bar-fill"
-                style={{ width: `${gameState === 'completed' ? 100 : ((target - 1) / (gridSize * gridSize)) * 100}%` }}
-              />
-            </div>
-            <div className="progress-labels">
-              <span>0%</span>
-              <span>{Math.round(((target - 1) / (gridSize * gridSize)) * 100)}%</span>
-              <span>100%</span>
-            </div>
-          </div>
-
-          <div className="action-buttons-column mt-4">
-            <button className="btn btn-reset mb-4" onClick={() => setSoundEnabled(!soundEnabled)}>
-              {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-              <span>Sound: {soundEnabled ? 'ON' : 'OFF'}</span>
-            </button>
-
-            <button className="btn btn-reset" onClick={resetGame}>
-              <RotateCcw size={16} />
-              <span>Reset Grid</span>
-            </button>
-          </div>
+        {/* Action Controls */}
+        <div className="schulte-controls" style={{ display: 'flex', gap: '15px', marginTop: '10px', justifyContent: 'center' }}>
+          <button className="btn btn-reset" onClick={resetGame}>
+            <RotateCcw size={16} />
+            <span>Reset Grid</span>
+          </button>
+          <button className="btn btn-reset" onClick={() => setSoundEnabled(!soundEnabled)}>
+            {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            <span>Sound: {soundEnabled ? 'ON' : 'OFF'}</span>
+          </button>
         </div>
       </div>
 

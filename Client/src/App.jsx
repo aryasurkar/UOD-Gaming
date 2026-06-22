@@ -4,7 +4,8 @@ import Navbar from "./Components/Navbar"
 import Home from '../src/Components/Home';
 import Login from '../src/Components/Login';
 import Foote from '../src/Components/Foote';
-import UODGaming from './Components/UODGaming'
+import UODGaming from './Components/UODGaming';
+import Leaderboard from './Components/Leaderboard';
 import Snake from './Components/Snake'
 import ColorG from './Components/ColorG'
 import TTT from './Components/TTT'
@@ -57,6 +58,7 @@ const App = () => {
         <Route path="/sign" element={<Login />} />
         <Route path="/Foote" element={<Foote />} />
         <Route path="/UODGaming" element={<UODGaming />} />
+        <Route path="/Leaderboard" element={<Leaderboard />} />
         <Route path="/Snake" element={<Snake />} />  
         <Route path="/ColorG" element={<ColorG />} />  
         <Route path="/TTT" element={<TTT />} />  
