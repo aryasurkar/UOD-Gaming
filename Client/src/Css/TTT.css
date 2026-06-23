@@ -5,7 +5,10 @@
 .ttt-container {
   font-family: var(--font-secondary);
   text-align: center;
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  box-sizing: border-box;
+  overflow: hidden;
   background-color: #0a0a0f;
   color: var(--text-primary);
   padding-top: 80px;
@@ -13,48 +16,45 @@
   flex-direction: column;
   align-items: center;
 
-  /* Sleek Navigation Bar */
-  .game-nav-bar {
-    width: 90%;
-    max-width: 950px;
+  .floating-back-btn {
+    position: absolute;
+    top: 96px;
+    left: 23px; /* Centered exactly under the Zap icon */
+    z-index: 100;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: rgba(20, 20, 30, 0.6);
+    border: 1px solid rgba(0, 212, 255, 0.25);
+    color: var(--text-secondary);
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: var(--space-sm) var(--space-md);
-    margin-bottom: var(--space-lg);
-    background: rgba(10, 10, 15, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: var(--radius-lg);
+    justify-content: center;
+    transition: all var(--transition-fast) ease;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  }
-
-  .back-btn {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    color: var(--text-secondary);
-    text-decoration: none;
-    font-family: var(--font-gaming);
-    font-weight: 600;
-    text-transform: uppercase;
-    font-size: 0.85rem;
-    transition: all var(--transition-normal);
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.05);
 
     &:hover {
-      color: var(--primary-neon);
-      text-shadow: 0 0 8px rgba(0, 212, 255, 0.5);
-      transform: translateX(-2px);
+      background: rgba(0, 212, 255, 0.15);
+      border-color: var(--primary-neon);
+      color: #fff;
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.35);
+      transform: scale(1.05);
+    }
+
+    &:active {
+      transform: scale(0.95);
     }
   }
 
-  .game-status-title {
-    font-family: var(--font-primary);
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
+  @media (max-width: 768px) {
+    .floating-back-btn {
+      top: 90px;
+      left: 9px; /* Centered exactly under the Zap icon on mobile */
+      width: 38px;
+      height: 38px;
+    }
   }
 
   /* Game Cabinet Card */
@@ -79,7 +79,7 @@
     position: relative;
     width: 100%;
     max-width: calc(80vh - 120px);
-    aspect-ratio: 1;
+    aspect-ratio: auto;
     background: #050508;
     border: 4px solid rgba(255, 255, 255, 0.05);
     border-radius: var(--radius-lg);

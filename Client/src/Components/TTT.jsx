@@ -3,7 +3,6 @@ import { Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, RotateCcw, Trophy, Users, Play, Cpu } from 'lucide-react';
 import axios from 'axios';
 import "../Css/TTT.css";
-import Foote from './Foote';
 
 const TTT = () => {
   const location = useLocation();
@@ -42,14 +41,33 @@ const TTT = () => {
 
   const startGame = (e) => {
     e.preventDefault();
-    const p1Input = document.getElementById('player-name').value.trim();
-    const p2Input = document.getElementById('player-name2').value.trim();
-    if (p1Input === '' || (gameMode === 'duo' && p2Input === '')) {
-      alert('Please enter the required player names to start.');
-      return;
+    let p1Input = '';
+    let p2Input = '';
+    
+    if (gameMode === 'cpu') {
+      const storedUser = localStorage.getItem('user');
+      let defaultPlayerName = 'Player';
+      if (storedUser) {
+        try {
+          const userObj = JSON.parse(storedUser);
+          if (userObj.username) defaultPlayerName = userObj.username;
+        } catch (err) {}
+      }
+      p1Input = defaultPlayerName;
+      p2Input = 'Cyber CPU';
+    } else {
+      const p1El = document.getElementById('player-name');
+      const p2El = document.getElementById('player-name2');
+      p1Input = p1El ? p1El.value.trim() : '';
+      p2Input = p2El ? p2El.value.trim() : '';
+      if (p1Input === '' || p2Input === '') {
+        alert('Please enter the required player names to start.');
+        return;
+      }
     }
+
     setPlayer1Name(p1Input);
-    setPlayer2Name(gameMode === 'cpu' ? 'Cyber CPU' : p2Input);
+    setPlayer2Name(p2Input);
     setGameActive(true);
     setHasStarted(true);
     resetBoard();
@@ -248,16 +266,16 @@ const TTT = () => {
     return currentBoard.every(cell => cell !== '');
   };
 
+  const isGameplayActive = hasStarted && gameActive;
+
   return (
     <div className="ttt-container">
-      {/* Sleek Navigation Bar */}
-      <div className="game-nav-bar">
-        <Link to="/UODGaming" className="back-btn">
-          <ArrowLeft size={16} />
-          <span>Back to Games</span>
+      {/* Floating minimal back button overlay */}
+      {!isGameplayActive && (
+        <Link to="/UODGaming" className="floating-back-btn" title="Back to Games">
+          <ArrowLeft size={20} />
         </Link>
-        <span className="game-status-title">Arcade Room: TTT</span>
-      </div>
+      )}
 
       <div className="game-content-card">
         <div className="game-header">
@@ -298,30 +316,32 @@ const TTT = () => {
             <h3 className="setup-title">
               {gameMode === 'cpu' ? 'Prepare Player vs CPU' : 'Register Players'}
             </h3>
-            <div className="setup-input-group">
-              <div className="input-field-wrapper">
-                <span className="player-indicator p1-color">X</span>
-                <input 
-                  type="text" 
-                  id="player-name" 
-                  placeholder="Player Name" 
-                  defaultValue={player1Name}
-                  required 
-                />
+            {gameMode !== 'cpu' && (
+              <div className="setup-input-group">
+                <div className="input-field-wrapper">
+                  <span className="player-indicator p1-color">X</span>
+                  <input 
+                    type="text" 
+                    id="player-name" 
+                    placeholder="Player Name" 
+                    defaultValue={player1Name}
+                    required 
+                  />
+                </div>
+                <div className="input-field-wrapper">
+                  <span className="player-indicator p2-color">O</span>
+                  <input 
+                    type="text" 
+                    id="player-name2" 
+                    placeholder="Opponent Name" 
+                    value={gameMode === 'cpu' ? 'Cyber CPU' : player2Name}
+                    onChange={(e) => gameMode !== 'cpu' && setPlayer2Name(e.target.value)}
+                    disabled={gameMode === 'cpu'}
+                    required 
+                  />
+                </div>
               </div>
-              <div className="input-field-wrapper">
-                <span className="player-indicator p2-color">O</span>
-                <input 
-                  type="text" 
-                  id="player-name2" 
-                  placeholder="Opponent Name" 
-                  value={gameMode === 'cpu' ? 'Cyber CPU' : player2Name}
-                  onChange={(e) => gameMode !== 'cpu' && setPlayer2Name(e.target.value)}
-                  disabled={gameMode === 'cpu'}
-                  required 
-                />
-              </div>
-            </div>
+            )}
             <button type="submit" className="start-game-btn">
               <Play size={18} fill="currentColor" />
                Start Battle
@@ -433,7 +453,6 @@ const TTT = () => {
           </div>
         )}
       </div>
-      <Foote />
     </div>
   );
 };

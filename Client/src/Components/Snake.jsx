@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ArrowLeft, Play, Pause, RotateCcw, Award, Settings } from 'lucide-react';
+import { ArrowLeft, Play, Pause, RotateCcw, Award, Settings, Gamepad2, Square } from 'lucide-react';
 import axios from 'axios';
 import '../Css/Snake.css';
-import Foote from './Foote';
 
 const Snake = () => {
   const location = useLocation();
@@ -27,6 +26,15 @@ const Snake = () => {
   const [hasStarted, setHasStarted] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isGameOver, setIsGameOver] = useState(false);
+
+  const hasStartedRef = useRef(false);
+  const isPausedRef = useRef(false);
+  const isGameOverRef = useRef(false);
+
+  useEffect(() => { hasStartedRef.current = hasStarted; }, [hasStarted]);
+  useEffect(() => { isPausedRef.current = isPaused; }, [isPaused]);
+  useEffect(() => { isGameOverRef.current = isGameOver; }, [isGameOver]);
+
   const [score, setScore] = useState(0);
   const [rewards, setRewards] = useState(null);
   const [submitStatus, setSubmitStatus] = useState(''); // 'submitting', 'submitted', 'failed', 'offline'
@@ -36,14 +44,45 @@ const Snake = () => {
   
   // Game Settings States
   const [difficulty, setDifficulty] = useState('medium');
-  const [wallMode, setWallMode] = useState('wrap');
   const [isMuted, setIsMuted] = useState(false);
+
+  // Leaderboard States
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+
+  const mockLeaderboard = [
+    { username: "CYBER_NINJA", score: 450, rank: 1 },
+    { username: "NEON_RIDER", score: 380, rank: 2 },
+    { username: "RETRO_BOY", score: 310, rank: 3 },
+    { username: "GRID_RUNNER", score: 260, rank: 4 },
+    { username: "SNAKE_MASTER", score: 210, rank: 5 }
+  ];
+
+  const fetchLeaderboard = async () => {
+    if (!gameId) return;
+    try {
+      setLeaderboardLoading(true);
+      const res = await axios.get(`/api/v1/leaderboard/game/${gameId}?limit=7`);
+      setLeaderboard(res.data.leaderboardWithRanks || res.data.leaderboard || []);
+    } catch (err) {
+      console.error("Failed to fetch leaderboard:", err);
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (gameId) {
+      fetchLeaderboard();
+    }
+  }, [gameId]);
 
   const canvasRef = useRef(null);
   const gameIntervalRef = useRef(null);
   const requestRef = useRef(null);
   const directionRef = useRef('right');
   const nextDirectionRef = useRef('right');
+  const inputQueueRef = useRef([]);
   const snakeRef = useRef([{ x: 10, y: 10 }]);
   const fruitRef = useRef({ x: 15, y: 15 });
   const goldenFruitRef = useRef(null);
@@ -77,31 +116,71 @@ const Snake = () => {
   // Handle keyboard inputs
   useEffect(() => {
     const handleKeyDown = (e) => {
-      const activeKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+      // 1. Intercept Spacebar for Start / Pause / Resume / Restart
+      if (e.code === 'Space' || e.key === ' ') {
+        e.preventDefault();
+        if (!hasStartedRef.current) {
+          startGame();
+        } else if (isGameOverRef.current) {
+          restartGame();
+        } else {
+          togglePause();
+        }
+        return;
+      }
+
+      // 2. Intercept P key for Pause / Resume
+      if (e.key === 'p' || e.key === 'P') {
+        e.preventDefault();
+        if (hasStartedRef.current && !isGameOverRef.current) {
+          togglePause();
+        }
+        return;
+      }
+
+      const activeKeys = [
+        'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+        'w', 'a', 's', 'd', 'W', 'A', 'S', 'D'
+      ];
       
       // Prevent webpage scrolling when playing
-      if (hasStarted && !isGameOver && activeKeys.includes(e.key)) {
+      if (hasStartedRef.current && !isGameOverRef.current && activeKeys.includes(e.key)) {
         e.preventDefault();
       }
 
-      if (!hasStarted || isPaused || isGameOver) return;
+      if (!hasStartedRef.current || isPausedRef.current || isGameOverRef.current) return;
 
-      const currentDir = directionRef.current;
+      let keyDir = null;
+      const key = e.key.toLowerCase();
+      if (key === 'arrowup' || key === 'w') keyDir = 'up';
+      else if (key === 'arrowdown' || key === 's') keyDir = 'down';
+      else if (key === 'arrowleft' || key === 'a') keyDir = 'left';
+      else if (key === 'arrowright' || key === 'd') keyDir = 'right';
 
-      if (e.key === 'ArrowUp' && currentDir !== 'down') {
-        nextDirectionRef.current = 'up';
-      } else if (e.key === 'ArrowDown' && currentDir !== 'up') {
-        nextDirectionRef.current = 'down';
-      } else if (e.key === 'ArrowLeft' && currentDir !== 'right') {
-        nextDirectionRef.current = 'left';
-      } else if (e.key === 'ArrowRight' && currentDir !== 'left') {
-        nextDirectionRef.current = 'right';
+      if (!keyDir) return;
+
+      // Limit queue to 2 inputs to prevent trailing buffering lag
+      if (inputQueueRef.current.length < 2) {
+        const lastInQueue = inputQueueRef.current.length > 0 
+          ? inputQueueRef.current[inputQueueRef.current.length - 1] 
+          : directionRef.current;
+        
+        // Prevent immediate 180-degree turns relative to the last queued direction
+        const isOpposite = 
+          (keyDir === 'up' && lastInQueue === 'down') ||
+          (keyDir === 'down' && lastInQueue === 'up') ||
+          (keyDir === 'left' && lastInQueue === 'right') ||
+          (keyDir === 'right' && lastInQueue === 'left');
+
+        if (!isOpposite && keyDir !== lastInQueue) {
+          inputQueueRef.current.push(keyDir);
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [hasStarted, isPaused, isGameOver]);
+  }, []);
 
   // Audio Synthesizer using Web Audio API
   const getAudioContext = () => {
@@ -243,17 +322,41 @@ const Snake = () => {
     particlesRef.current = remaining;
   };
 
-  // 60FPS Render Loop
+  // High Precision Render & Tick Loop using requestAnimationFrame
   const startRenderLoop = () => {
     if (requestRef.current) cancelAnimationFrame(requestRef.current);
     
-    const tick = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
+    let lastTickTime = null;
+    inputQueueRef.current = []; // Clear key queue on start
+    
+    const tick = (now) => {
+      if (!lastTickTime) lastTickTime = now;
+      const elapsed = now - lastTickTime;
       
-      drawGame(ctx);
-      updateAndDrawParticles(ctx);
+      // Update game physics if active (using stable delta accumulator)
+      if (hasStartedRef.current && !isPausedRef.current && !isGameOverRef.current) {
+        let ticks = 0;
+        let tempElapsed = elapsed;
+        
+        while (tempElapsed >= speedRef.current && ticks < 5 && !isGameOverRef.current) {
+          gameLoop();
+          tempElapsed -= speedRef.current;
+          ticks++;
+        }
+        
+        if (ticks > 0) {
+          lastTickTime = now - tempElapsed;
+        }
+      } else {
+        lastTickTime = now;
+      }
+      
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        drawGame(ctx);
+        updateAndDrawParticles(ctx);
+      }
       
       requestRef.current = requestAnimationFrame(tick);
     };
@@ -287,21 +390,11 @@ const Snake = () => {
     speedRef.current = initialSpeed;
 
     generateFruit();
-
-    if (gameIntervalRef.current) {
-      clearInterval(gameIntervalRef.current);
-    }
-    gameIntervalRef.current = setInterval(gameLoop, speedRef.current);
-
     startRenderLoop();
   };
 
   const updateGameSpeed = (newSpeed) => {
     speedRef.current = newSpeed;
-    if (gameIntervalRef.current && hasStarted && !isPaused && !isGameOver) {
-      clearInterval(gameIntervalRef.current);
-      gameIntervalRef.current = setInterval(gameLoop, speedRef.current);
-    }
   };
 
   const adjustSpeed = (newScore) => {
@@ -325,15 +418,9 @@ const Snake = () => {
     playSound('click');
     if (isPaused) {
       setIsPaused(false);
-      if (gameIntervalRef.current) clearInterval(gameIntervalRef.current);
-      gameIntervalRef.current = setInterval(gameLoop, speedRef.current);
       startRenderLoop();
     } else {
       setIsPaused(true);
-      if (gameIntervalRef.current) {
-        clearInterval(gameIntervalRef.current);
-        gameIntervalRef.current = null;
-      }
       stopRenderLoop();
     }
   };
@@ -342,10 +429,6 @@ const Snake = () => {
     setRewards(null);
     setSubmitStatus('');
     stopRenderLoop();
-    if (gameIntervalRef.current) {
-      clearInterval(gameIntervalRef.current);
-      gameIntervalRef.current = null;
-    }
     startGame();
   };
 
@@ -354,14 +437,9 @@ const Snake = () => {
     setRewards(null);
     setSubmitStatus('');
     stopRenderLoop();
-    if (gameIntervalRef.current) {
-      clearInterval(gameIntervalRef.current);
-      gameIntervalRef.current = null;
-    }
     setHasStarted(false);
     setIsPaused(false);
     setIsGameOver(false);
-    setScore(0);
   };
 
   const generateFruit = () => {
@@ -417,6 +495,9 @@ const Snake = () => {
   };
 
   const moveSnake = () => {
+    if (inputQueueRef.current.length > 0) {
+      nextDirectionRef.current = inputQueueRef.current.shift();
+    }
     const snake = [...snakeRef.current];
     const direction = nextDirectionRef.current;
     directionRef.current = direction;
@@ -428,13 +509,10 @@ const Snake = () => {
     else if (direction === 'left') head.x--;
     else if (direction === 'right') head.x++;
 
-    const wrap = wallMode === 'wrap' && difficulty !== 'hard';
-    if (wrap) {
-      if (head.x < 0) head.x = CELL_COUNT - 1;
-      else if (head.x >= CELL_COUNT) head.x = 0;
-      
-      if (head.y < 0) head.y = CELL_COUNT - 1;
-      else if (head.y >= CELL_COUNT) head.y = 0;
+    // Check boundary collision BEFORE unshifting the head (so the head bumps and stays inside the grid visually)
+    if (head.x < 0 || head.x >= CELL_COUNT || head.y < 0 || head.y >= CELL_COUNT) {
+      triggerGameOver();
+      return;
     }
 
     snake.unshift(head);
@@ -482,14 +560,6 @@ const Snake = () => {
     const snake = snakeRef.current;
     const head = snake[0];
 
-    const wrap = wallMode === 'wrap' && difficulty !== 'hard';
-    if (!wrap) {
-      if (head.x < 0 || head.x >= CELL_COUNT || head.y < 0 || head.y >= CELL_COUNT) {
-        triggerGameOver();
-        return;
-      }
-    }
-
     for (let i = 1; i < snake.length; i++) {
       if (snake[i].x === head.x && snake[i].y === head.y) {
         triggerGameOver();
@@ -500,6 +570,7 @@ const Snake = () => {
 
   const triggerGameOver = () => {
     playSound('crash');
+    isGameOverRef.current = true;
     if (gameIntervalRef.current) {
       clearInterval(gameIntervalRef.current);
       gameIntervalRef.current = null;
@@ -508,6 +579,7 @@ const Snake = () => {
     setIsGameOver(true);
     
     const token = localStorage.getItem('token');
+    
     if (gameId && token) {
       setSubmitStatus('submitting');
       axios.post(`/api/v1/games/${gameId}/score`, {
@@ -525,6 +597,7 @@ const Snake = () => {
           leveledUp: res.data.leveledUp
         });
         setSubmitStatus('submitted');
+        fetchLeaderboard();
         
         // Sync local storage user
         const storedUser = localStorage.getItem('user');
@@ -568,6 +641,11 @@ const Snake = () => {
       ctx.lineTo(CANVAS_SIZE, i * GRID_SIZE);
       ctx.stroke();
     }
+
+    // Draw neon border around the grid
+    ctx.strokeStyle = 'rgba(0, 255, 136, 0.4)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
     const snake = snakeRef.current;
 
@@ -723,252 +801,252 @@ const Snake = () => {
     }
   }, [hasStarted, isPaused, isGameOver]);
 
+  const isGameplayActive = hasStarted && !isPaused && !isGameOver;
+
   return (
     <div className="snake-container">
-      {/* Sleek Navigation Bar */}
-      <div className="game-nav-bar">
-        <Link to="/UODGaming" className="back-btn">
-          <ArrowLeft size={16} />
-          <span>Back to Games</span>
+      {/* Floating minimal back button overlay */}
+      {!isGameplayActive && (
+        <Link to="/UODGaming" className="floating-back-btn" title="Back to Games">
+          <ArrowLeft size={20} />
         </Link>
-        <span className="game-status-title">Arcade Room: Snake</span>
-      </div>
+      )}
 
-      <div className="game-content-card">
-        {/* Arcade Cabinet Frame */}
-        <div className="cabinet-screen crt-screen">
-          {/* CRT scanlines, reflection and flicker overlay */}
-          <div className="crt-scanlines"></div>
-          <div className="crt-reflection"></div>
-          <div className="crt-flicker"></div>
+      <div className={`game-content-card snake-game-layout ${isGameplayActive ? 'gameplay-active' : ''}`}>
+        {/* Left Column: Leaderboard */}
+        <div className="layout-column side-column leaderboard-column">
+          <div className="sidebar-header">
+            <Award size={18} style={{ color: 'var(--accent-yellow)', filter: 'drop-shadow(0 0 5px var(--accent-yellow))' }} />
+            <h3 className="sidebar-title">LEADERBOARD</h3>
+          </div>
+          <div className="leaderboard-list">
+            {leaderboardLoading ? (
+              <div className="sidebar-loading">Loading rankings...</div>
+            ) : (leaderboard.length > 0 ? leaderboard : mockLeaderboard).map((entry, idx) => (
+              <div key={idx} className={`leaderboard-entry rank-${entry.rank || idx + 1}`}>
+                <span className="entry-rank">{entry.rank || idx + 1}</span>
+                <span className="entry-username">{entry.username || (entry.user && entry.user.username) || "PLAYER"}</span>
+                <span className="entry-score">{entry.score}</span>
+              </div>
+            ))}
+          </div>
+        </div>
 
-          {/* Floating HUD Overlays */}
-          <div className="game-hud-container">
-            <div className="game-hud-item">
-              <span className="game-hud-label">Score</span>
-              <span className="game-hud-value">{String(score).padStart(3, '0')}</span>
+        {/* Center Column: Arcade Cabinet Frame */}
+        <div className="layout-column main-column">
+          <div className="cabinet-screen crt-screen">
+            {/* CRT scanlines, reflection and flicker overlay */}
+            <div className="crt-scanlines"></div>
+            <div className="crt-reflection"></div>
+            <div className="crt-flicker"></div>
+
+            {/* Floating HUD Overlays - Relocated inside playing area boundary strip */}
+            <div className="game-hud-container snake-hud-strip">
+              <div className="game-hud-item">
+                <span className="game-hud-label" style={{ fontSize: '0.65rem' }}>Score</span>
+                <span className="game-hud-value" style={{ fontSize: '1.2rem' }}>{String(score).padStart(3, '0')}</span>
+              </div>
+
+              <div className="game-hud-item">
+                <span className="game-hud-label" style={{ fontSize: '0.65rem' }}>Diff</span>
+                <span className="game-hud-value" style={{ fontSize: '1.0rem', color: 'var(--primary-neon)' }}>{difficulty.toUpperCase()}</span>
+              </div>
+
+              <div className="game-hud-item">
+                <span className="game-hud-label" style={{ fontSize: '0.65rem' }}>Best</span>
+                <span className="game-hud-value" style={{ fontSize: '1.2rem', color: 'var(--accent-yellow)', textShadow: '0 0 8px rgba(255, 255, 0, 0.4)' }}>
+                  {String(highScore).padStart(3, '0')}
+                </span>
+              </div>
             </div>
 
-            <div className="game-hud-item" style={{ flexDirection: 'row', gap: '8px', pointerEvents: 'auto' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span className="game-hud-label">Diff</span>
-                <span className="game-hud-value" style={{ fontSize: '0.85rem' }}>{difficulty.toUpperCase()}</span>
+            <canvas 
+              ref={canvasRef} 
+              id="gameCanvas" 
+              width={CANVAS_SIZE} 
+              height={CANVAS_SIZE}
+            />
+
+            {/* Start Overlay Screen - Made cleaner since controls are on side */}
+            {!hasStarted && (
+              <div className="screen-overlay start-overlay" style={{ cursor: 'pointer' }} onClick={startGame}>
+                <h2 className="overlay-title pulse">SNAKE ARCADE</h2>
+                <Gamepad2 className="mb-4 text-cyan-400" style={{ filter: 'drop-shadow(0 0 8px #00d4ff)' }} size={48} />
+                <p className="overlay-instructions" style={{ fontSize: '0.9rem' }}>Press SPACEBAR or CLICK HERE to Play</p>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', maxWidth: '300px', lineHeight: '1.4' }}>
+                  Use Arrow keys or WASD to navigate. Eat neon food to grow and speed up!
+                </span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span className="game-hud-label">Walls</span>
-                <span className="game-hud-value" style={{ fontSize: '0.85rem' }}>{difficulty === 'hard' ? 'SOLID' : wallMode.toUpperCase()}</span>
+            )}
+
+            {/* Pause Overlay Screen */}
+            {hasStarted && isPaused && (
+              <div className="screen-overlay pause-overlay">
+                <h2 className="overlay-title">Paused</h2>
+                <p className="overlay-instructions" style={{ fontSize: '0.8rem', marginBottom: '15px' }}>Press SPACEBAR to Resume</p>
+                <button 
+                  onClick={togglePause} 
+                  className="arcade-btn resume-btn" 
+                  style={{ padding: '8px 16px', fontSize: '0.8rem', minWidth: '150px', justifyContent: 'center' }}
+                >
+                  Resume Game
+                </button>
               </div>
+            )}
+
+            {/* Game Over Overlay Screen */}
+            {hasStarted && isGameOver && (
+              <div className="screen-overlay game-over-overlay">
+                <h2 className="overlay-title text-alert">Game Over</h2>
+                <p className="overlay-instructions" style={{ fontSize: '0.9rem', marginBottom: '4px' }}>Final score: {score}</p>
+                {score >= highScore && score > 0 && (
+                  <div className="new-record-badge">NEW HIGH SCORE!</div>
+                )}
+                
+                {submitStatus === 'submitting' && (
+                  <p className="rewards-status-text" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Saving score online...</p>
+                )}
+                {submitStatus === 'submitted' && rewards && (
+                  <div className="game-over-rewards" style={{ margin: '8px 0', padding: '6px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', fontSize: '0.8rem' }}>
+                    <div style={{ color: '#ffd700', marginBottom: '2px' }}>🪙 +{rewards.coinsEarned} Coins</div>
+                    <div style={{ color: 'var(--primary-neon)', marginBottom: '2px' }}>⚡ +{rewards.expGained} XP</div>
+                    {rewards.leveledUp && (
+                      <div style={{ color: '#00ff88', fontWeight: 'bold', textShadow: '0 0 5px rgba(0,255,136,0.5)', marginTop: '2px' }}>LEVEL UP! (Lv {rewards.level})</div>
+                    )}
+                  </div>
+                )}
+                {submitStatus === 'failed' && (
+                  <p className="rewards-status-text" style={{ fontSize: '0.75rem', color: 'var(--secondary-neon)' }}>Failed to save score online.</p>
+                )}
+                {submitStatus === 'offline' && (
+                  <p className="rewards-status-text" style={{ fontSize: '0.75rem', color: 'var(--accent-orange)' }}>Log in to save stats & earn coins!</p>
+                )}
+                
+                <button onClick={restartGame} className="arcade-btn restart-btn" style={{ padding: '8px 16px', fontSize: '0.8rem', marginTop: '10px' }}>
+                  Try Again
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column: Other buttons & Settings */}
+        <div className="layout-column side-column controls-column">
+          <div className="sidebar-header">
+            <Settings size={18} style={{ color: 'var(--primary-neon)', filter: 'drop-shadow(0 0 5px var(--primary-neon))' }} />
+            <h3 className="sidebar-title">SYSTEM CONTROLS</h3>
+          </div>
+
+          <div className="sidebar-content" style={{ display: 'flex', flexDirection: 'column', gap: '10px', flexGrow: 1 }}>
+            {/* Primary Action Button - Play/Pause/Resume */}
+            <div className="sidebar-section">
+              <span className="section-label">Arcade Action</span>
+              {!hasStarted ? (
+                <button onClick={startGame} className="primary-control-btn glow-green">
+                  <Play size={18} fill="currentColor" />
+                  <span>START RUN</span>
+                </button>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {isPaused ? (
+                    <button onClick={togglePause} className="primary-control-btn glow-blue">
+                      <Play size={18} fill="currentColor" />
+                      <span>RESUME RUN</span>
+                    </button>
+                  ) : (
+                    <button onClick={togglePause} className="primary-control-btn glow-yellow" disabled={isGameOver}>
+                      <Pause size={18} />
+                      <span>PAUSE RUN</span>
+                    </button>
+                  )}
+                  
+                  {!isGameOver && (
+                    <button 
+                      onClick={() => { playSound('click'); triggerGameOver(); }} 
+                      className="primary-control-btn glow-red"
+                    >
+                      <Square size={16} fill="currentColor" />
+                      <span>END RUN</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Game Options */}
+            <div className="sidebar-section">
+              <span className="section-label">Difficulty</span>
+              <div className="option-toggle-group">
+                <button 
+                  onClick={() => { playSound('click'); setDifficulty('easy'); }}
+                  className={`opt-toggle-btn diff-easy ${difficulty === 'easy' ? 'active' : ''}`}
+                >
+                  EASY
+                </button>
+                <button 
+                  onClick={() => { playSound('click'); setDifficulty('medium'); }}
+                  className={`opt-toggle-btn diff-medium ${difficulty === 'medium' ? 'active' : ''}`}
+                >
+                  MED
+                </button>
+                <button 
+                  onClick={() => { playSound('click'); setDifficulty('hard'); }}
+                  className={`opt-toggle-btn diff-hard ${difficulty === 'hard' ? 'active' : ''}`}
+                >
+                  HARD
+                </button>
+              </div>
+            </div>
+
+            <div className="sidebar-section">
+              <span className="section-label">Audio Synth</span>
               <button 
-                onClick={() => setIsMuted(prev => !prev)} 
-                className={`spec-mute-btn ${isMuted ? 'is-muted' : ''}`}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', fontSize: '1rem' }}
-                title={isMuted ? "Unmute" : "Mute"}
+                onClick={() => {
+                  const newMute = !isMuted;
+                  setIsMuted(newMute);
+                  if (!newMute) {
+                    try {
+                      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                      const osc = ctx.createOscillator();
+                      const gain = ctx.createGain();
+                      osc.frequency.setValueAtTime(600, ctx.currentTime);
+                      gain.gain.setValueAtTime(0.05, ctx.currentTime);
+                      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
+                      osc.connect(gain);
+                      gain.connect(ctx.destination);
+                      osc.start();
+                      osc.stop(ctx.currentTime + 0.05);
+                    } catch(e){}
+                  }
+                }}
+                className="secondary-control-btn"
               >
-                {isMuted ? '🔇' : '🔊'}
+                {isMuted ? '🔊 UNMUTE AUDIO' : '🔇 MUTE AUDIO'}
               </button>
-            </div>
-
-            <div className="game-hud-item">
-              <span className="game-hud-label">Best</span>
-              <span className="game-hud-value" style={{ color: 'var(--accent-yellow)', textShadow: '0 0 8px rgba(255, 255, 0, 0.4)' }}>
-                {String(highScore).padStart(3, '0')}
-              </span>
             </div>
           </div>
 
-          <canvas 
-            ref={canvasRef} 
-            id="gameCanvas" 
-            width={CANVAS_SIZE} 
-            height={CANVAS_SIZE}
-          />
-
-          {/* Start Overlay Screen */}
-          {!hasStarted && (
-            <div className="screen-overlay start-overlay">
-              <h2 className="overlay-title pulse">SNAKE ARCADE</h2>
-              
-              <div className="settings-panel">
-                <div className="settings-group">
-                  <span className="settings-label">DIFFICULTY</span>
-                  <div className="settings-options">
-                    <button 
-                      onClick={() => { playSound('click'); setDifficulty('easy'); }}
-                      className={`setting-option-btn diff-easy ${difficulty === 'easy' ? 'active' : ''}`}
-                    >
-                      <span className="active-dot"></span>
-                      EASY
-                    </button>
-                    <button 
-                      onClick={() => { playSound('click'); setDifficulty('medium'); }}
-                      className={`setting-option-btn diff-medium ${difficulty === 'medium' ? 'active' : ''}`}
-                    >
-                      <span className="active-dot"></span>
-                      MEDIUM
-                    </button>
-                    <button 
-                      onClick={() => { playSound('click'); setDifficulty('hard'); }}
-                      className={`setting-option-btn diff-hard ${difficulty === 'hard' ? 'active' : ''}`}
-                    >
-                      <span className="active-dot"></span>
-                      HARD
-                    </button>
-                  </div>
-                </div>
-
-                <div className="settings-group">
-                  <span className="settings-label">WALL MODE</span>
-                  <div className="settings-options">
-                    <button 
-                      disabled={difficulty === 'hard'}
-                      onClick={() => { playSound('click'); setWallMode('wrap'); }}
-                      className={`setting-option-btn wall-wrap ${wallMode === 'wrap' && difficulty !== 'hard' ? 'active' : ''} ${difficulty === 'hard' ? 'disabled' : ''}`}
-                    >
-                      <span className="active-dot"></span>
-                      WRAP
-                    </button>
-                    <button 
-                      disabled={difficulty === 'hard'}
-                      onClick={() => { playSound('click'); setWallMode('solid'); }}
-                      className={`setting-option-btn wall-solid ${wallMode === 'solid' || difficulty === 'hard' ? 'active' : ''} ${difficulty === 'hard' ? 'disabled-locked' : ''}`}
-                    >
-                      <span className="active-dot"></span>
-                      SOLID
-                    </button>
-                  </div>
-                  {difficulty === 'hard' && (
-                    <span className="settings-warning">HARD MODE LOCKS WALLS TO SOLID</span>
-                  )}
-                </div>
-
-                <div className="settings-group">
-                  <span className="settings-label">SOUND EFFECTS</span>
-                  <button 
-                    onClick={() => {
-                      const newMute = !isMuted;
-                      setIsMuted(newMute);
-                      if (!newMute) {
-                        try {
-                          const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                          const osc = ctx.createOscillator();
-                          const gain = ctx.createGain();
-                          osc.frequency.setValueAtTime(600, ctx.currentTime);
-                          gain.gain.setValueAtTime(0.05, ctx.currentTime);
-                          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
-                          osc.connect(gain);
-                          gain.connect(ctx.destination);
-                          osc.start();
-                          osc.stop(ctx.currentTime + 0.05);
-                        } catch(e){}
-                      }
-                    }}
-                    className={`setting-sound-btn ${isMuted ? 'muted' : 'unmuted'}`}
-                  >
-                    {isMuted ? 'SOUND: OFF' : 'SOUND: ON'}
-                  </button>
-                </div>
-              </div>
-
-              <button onClick={startGame} className="arcade-btn start-btn">
-                <Play size={18} fill="currentColor" />
-                INSERT COIN & PLAY
-              </button>
-            </div>
-          )}
-
-          {/* Pause Overlay Screen */}
-          {hasStarted && isPaused && (
-            <div className="screen-overlay pause-overlay">
-              <h2 className="overlay-title">Paused</h2>
-              <p className="overlay-instructions">Press resume to continue your run.</p>
-              <div className="overlay-buttons" style={{ display: 'flex', gap: '15px', marginTop: '10px' }}>
-                <button onClick={togglePause} className="arcade-btn resume-btn">
-                  <Play size={18} fill="currentColor" />
-                  Resume
-                </button>
-                <button onClick={returnToMenu} className="arcade-btn menu-btn-overlay">
-                  <Settings size={18} />
-                  Menu
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Game Over Overlay Screen */}
-          {hasStarted && isGameOver && (
-            <div className="screen-overlay game-over-overlay">
-              <h2 className="overlay-title text-alert">Game Over</h2>
-              <p className="overlay-instructions">Final score: {score}</p>
-              {score >= highScore && score > 0 && (
-                <div className="new-record-badge">NEW HIGH SCORE!</div>
-              )}
-              
-              {submitStatus === 'submitting' && (
-                <p className="rewards-status-text" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Saving score online...</p>
-              )}
-              {submitStatus === 'submitted' && rewards && (
-                <div className="game-over-rewards" style={{ margin: '12px 0', padding: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', fontSize: '0.9rem' }}>
-                  <div style={{ color: '#ffd700', marginBottom: '4px' }}>🪙 +{rewards.coinsEarned} Coins</div>
-                  <div style={{ color: 'var(--primary-neon)', marginBottom: '4px' }}>⚡ +{rewards.expGained} XP</div>
-                  {rewards.leveledUp && (
-                    <div style={{ color: '#00ff88', fontWeight: 'bold', textShadow: '0 0 5px rgba(0,255,136,0.5)', marginTop: '4px' }}>LEVEL UP! (Lv {rewards.level})</div>
-                  )}
-                </div>
-              )}
-              {submitStatus === 'failed' && (
-                <p className="rewards-status-text" style={{ fontSize: '0.85rem', color: 'var(--secondary-neon)' }}>Failed to save score online.</p>
-              )}
-              {submitStatus === 'offline' && (
-                <p className="rewards-status-text" style={{ fontSize: '0.85rem', color: 'var(--accent-orange)' }}>Log in to save stats & earn coins!</p>
-              )}
-              
-              <div className="overlay-buttons" style={{ display: 'flex', gap: '15px', marginTop: '10px' }}>
-                <button onClick={restartGame} className="arcade-btn restart-btn">
-                  <RotateCcw size={18} />
-                  Try Again
-                </button>
-                <button onClick={returnToMenu} className="arcade-btn menu-btn-overlay">
-                  <Settings size={18} />
-                  Menu
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Cabinet Control Panel - Always visible to simulate cabinet layout */}
-        <div className="cabinet-controls">
-          <button 
-            disabled={!hasStarted || isGameOver}
-            onClick={togglePause} 
-            className={`control-btn pause-btn ${(!hasStarted || isGameOver) ? 'disabled' : ''}`}
-            title="Pause/Resume Game"
-          >
-            {isPaused ? <Play size={18} fill="currentColor" /> : <Pause size={18} />}
-            <span>{isPaused ? 'Run' : 'Pause'}</span>
-          </button>
-          <button 
-            disabled={!hasStarted}
-            onClick={restartGame} 
-            className={`control-btn restart-btn ${!hasStarted ? 'disabled' : ''}`}
-            title="Restart Game"
-          >
-            <RotateCcw size={18} />
-            <span>Reset</span>
-          </button>
-          <button 
-            disabled={!hasStarted}
-            onClick={returnToMenu} 
-            className={`control-btn menu-btn ${!hasStarted ? 'disabled' : ''}`}
-            title="Return to Menu"
-          >
-            <Settings size={18} />
-            <span>Menu</span>
-          </button>
+          <div className="sidebar-footer-buttons" style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
+            <button 
+              disabled={!hasStarted}
+              onClick={restartGame} 
+              className="secondary-control-btn"
+              title="Restart Game"
+            >
+              <RotateCcw size={14} />
+              <span>RESTART RUN</span>
+            </button>
+            <button 
+              onClick={returnToMenu} 
+              className="secondary-control-btn"
+              title="Return to Menu"
+            >
+              <Settings size={14} />
+              <span>EXIT CABINET</span>
+            </button>
+          </div>
         </div>
       </div>
-
-      <Foote />
     </div>
   );
 };

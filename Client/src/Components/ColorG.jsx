@@ -3,7 +3,6 @@ import { Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, RotateCcw, Trophy, Award, Zap, Save } from 'lucide-react';
 import axios from 'axios';
 import "../Css/ColorG.css";
-import Foote from '../Components/Foote';
 
 const ColorG = () => {
   const location = useLocation();
@@ -156,14 +155,10 @@ const ColorG = () => {
 
   return (
     <div className="color-g-container">
-      {/* Sleek Navigation Bar */}
-      <div className="game-nav-bar">
-        <Link to="/UODGaming" className="back-btn">
-          <ArrowLeft size={16} />
-          <span>Back to Games</span>
-        </Link>
-        <span className="game-status-title">Arcade Room: ColorG</span>
-      </div>
+      {/* Floating minimal back button overlay */}
+      <Link to="/UODGaming" className="floating-back-btn" title="Back to Games">
+        <ArrowLeft size={20} />
+      </Link>
 
       <div className="game-content-card">
         {/* Arcade Cabinet Frame */}
@@ -237,19 +232,19 @@ const ColorG = () => {
         </div>
 
         {/* Save Score Section */}
-        <div className="player-save-form" style={{ marginTop: '20px', padding: '15px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-          <h3 className="save-form-title" style={{ fontSize: '1rem', marginBottom: '10px', color: 'var(--text-secondary)' }}>Leaderboard Score Submission</h3>
+        <div className="player-save-form" style={{ marginTop: '10px', padding: '10px 14px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <h3 className="save-form-title" style={{ fontSize: '0.85rem', marginBottom: '6px', color: 'var(--text-secondary)' }}>Leaderboard Score Submission</h3>
           
           {submitStatus === 'submitting' && (
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Saving score online...</p>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Saving score online...</p>
           )}
 
           {submitStatus === 'submitted' && rewards && (
-            <div className="rewards-display-banner" style={{ display: 'inline-block', margin: '10px auto', padding: '10px 20px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', textAlign: 'center' }}>
-              <div style={{ color: '#ffd700', fontWeight: 'bold', fontSize: '1rem', marginBottom: '4px' }}>🪙 +{rewards.coinsEarned} Coins</div>
-              <div style={{ color: 'var(--primary-neon)', fontSize: '0.95rem' }}>⚡ +{rewards.expGained} XP Gained</div>
+            <div className="rewards-display-banner" style={{ display: 'inline-block', margin: '6px auto', padding: '6px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ color: '#ffd700', fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '2px' }}>🪙 +{rewards.coinsEarned} Coins</div>
+              <div style={{ color: 'var(--primary-neon)', fontSize: '0.85rem' }}>⚡ +{rewards.expGained} XP Gained</div>
               {rewards.leveledUp && (
-                <div style={{ color: '#00ff88', fontWeight: 'bold', textShadow: '0 0 5px rgba(0,255,136,0.5)', marginTop: '6px' }}>LEVEL UP! (Lv {rewards.level})</div>
+                <div style={{ color: '#00ff88', fontWeight: 'bold', textShadow: '0 0 5px rgba(0,255,136,0.5)', marginTop: '4px' }}>LEVEL UP! (Lv {rewards.level})</div>
               )}
             </div>
           )}
@@ -272,8 +267,6 @@ const ColorG = () => {
           )}
         </div>
       </div>
-
-      <Foote />
     </div>
   );
 };
