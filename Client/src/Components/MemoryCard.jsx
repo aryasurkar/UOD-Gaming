@@ -24,7 +24,6 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import '../Css/MemoryCard.css';
-import Foote from './Foote';
 
 const ICON_MAP = {
   Zap,
@@ -330,22 +329,15 @@ const MemoryCard = () => {
     return `${mins.toString().padStart(2, '0')}:${remainingSecs.toString().padStart(2, '0')}`;
   };
 
+  const isGameplayActive = gameStarted && !isWon && !isGameOver;
+
   return (
     <div className="memory-page-wrapper">
-      <div className="game-nav-bar">
-        {gameStarted ? (
-          <button onClick={exitToConfig} className="back-btn" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-            <ArrowLeft size={16} />
-            <span>Config Screen</span>
-          </button>
-        ) : (
-          <Link to="/UODGaming" className="back-btn">
-            <ArrowLeft size={16} />
-            <span>Back to Games</span>
-          </Link>
-        )}
-        <span className="game-status-title">Arcade Room: Memory Match</span>
-      </div>
+      {!isGameplayActive && (
+        <Link to="/UODGaming" className="floating-back-btn" title="Back to Games">
+          <ArrowLeft size={20} />
+        </Link>
+      )}
 
       <div className="game-content-card">
         {/* CONFIG SCREEN */}
@@ -613,7 +605,6 @@ const MemoryCard = () => {
         )}
       </div>
 
-      <Foote />
     </div>
   );
 };

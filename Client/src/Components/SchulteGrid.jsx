@@ -15,7 +15,6 @@ import {
   Gamepad2
 } from 'lucide-react';
 import '../Css/SchulteGrid.css';
-import Foote from './Foote';
 
 const playSound = (type, enabled = true) => {
   if (!enabled) return;
@@ -264,15 +263,15 @@ const SchulteGrid = () => {
     shuffleGrid();
   };
 
+  const isGameplayActive = gameState === 'playing';
+
   return (
     <div className="schulte-page-wrapper">
-      <div className="game-nav-bar">
-        <Link to="/UODGaming" className="back-btn">
-          <ArrowLeft size={16} />
-          <span>Back to Games</span>
+      {!isGameplayActive && (
+        <Link to="/UODGaming" className="floating-back-btn" title="Back to Games">
+          <ArrowLeft size={20} />
         </Link>
-        <span className="game-status-title">Arcade Room: Grid Finder</span>
-      </div>
+      )}
 
       <div className="game-content-card">
         {/* Arcade Cabinet Frame */}
@@ -417,7 +416,6 @@ const SchulteGrid = () => {
         </div>
       </div>
 
-      <Foote />
     </div>
   );
 };

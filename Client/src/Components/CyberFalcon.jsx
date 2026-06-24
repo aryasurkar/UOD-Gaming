@@ -15,7 +15,6 @@ import {
   TrendingUp
 } from 'lucide-react';
 import '../Css/CyberFalcon.css';
-import Foote from './Foote';
 
 const playSound = (type, enabled = true) => {
   if (!enabled) return;
@@ -383,15 +382,15 @@ const CyberFalcon = () => {
     };
   }, [gameOver, paused, soundEnabled, highScore]);
 
+  const isGameplayActive = hasStarted && !gameOver && !paused;
+
   return (
     <div className="falcon-page-wrapper">
-      <div className="game-nav-bar">
-        <Link to="/UODGaming" className="back-btn">
-          <ArrowLeft size={16} />
-          <span>Back to Games</span>
+      {!isGameplayActive && (
+        <Link to="/UODGaming" className="floating-back-btn" title="Back to Games">
+          <ArrowLeft size={20} />
         </Link>
-        <span className="game-status-title">Arcade Room: Cyber Falcon</span>
-      </div>
+      )}
 
       <div className="game-content-card">
         {/* Arcade Cabinet Frame */}
@@ -489,7 +488,6 @@ const CyberFalcon = () => {
         </div>
       </div>
 
-      <Foote />
     </div>
   );
 };

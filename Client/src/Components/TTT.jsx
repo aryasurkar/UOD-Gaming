@@ -294,7 +294,7 @@ const TTT = () => {
                 onClick={() => setGameMode('duo')}
               >
                 <Users size={14} />
-                <span>Duo Combat</span>
+                <span>Duo Mode</span>
               </button>
               <button 
                 type="button" 
@@ -443,7 +443,7 @@ const TTT = () => {
             <div className="ttt-controls">
               <button onClick={resetBoard} className="btn-control reset-btn">
                 <RotateCcw size={16} />
-                Reset Round
+                Next Round
               </button>
               <button onClick={startNewGame} className="btn-control lobby-btn">
                 <Users size={16} />

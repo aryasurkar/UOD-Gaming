@@ -5,21 +5,38 @@
 .tetris-page-wrapper {
   background-color: #0a0a0f;
   color: var(--text-primary);
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
   padding-top: 80px;
   font-family: var(--font-primary);
-  overflow-x: hidden;
+  overflow: hidden;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.floating-back-btn {
+  border-color: rgba(0, 240, 240, 0.25);
+  box-shadow: 0 0 15px rgba(0, 240, 240, 0.05);
+}
+
+.floating-back-btn:hover {
+  background: rgba(0, 240, 240, 0.15);
+  border-color: #00f0f0;
+  box-shadow: 0 0 20px rgba(0, 240, 240, 0.35);
 }
 
 /* Game Cabinet Card */
 .tetris-page-wrapper .game-content-card {
   width: 95%;
   max-width: 1200px;
-  margin: 20px auto var(--space-xl);
+  margin: 5px auto;
   background: rgba(20, 20, 30, 0.5);
   border: 1.5px solid rgba(139, 92, 246, 0.15);
   border-radius: var(--radius-xl);
-  padding: var(--space-md) var(--space-lg);
+  padding: 8px 12px;
   backdrop-filter: blur(15px);
   -webkit-backdrop-filter: blur(15px);
   box-shadow: var(--shadow-card);
@@ -30,23 +47,11 @@
 
 /* CRT Screen Wrapper */
 .cabinet-screen.crt-screen {
-  position: relative;
-  width: 100%;
   max-width: calc(45vh); /* 1:2 aspect ratio playfield container width */
-  aspect-ratio: 0.5; /* 1:2 aspect ratio */
-  background: #050508;
-  border: 4px solid rgba(255, 255, 255, 0.05);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
+  aspect-ratio: 0.5 !important; /* 1:2 aspect ratio override */
   box-shadow: 
     0 0 20px rgba(139, 92, 246, 0.15),
     inset 0 0 35px rgba(0, 0, 0, 0.95);
-  margin: 0 auto var(--space-md) auto;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding-top: 60px; /* space for absolute HUD overlays */
 }
 
 .game-play-area {

@@ -15,7 +15,6 @@ import {
   Gamepad2
 } from 'lucide-react';
 import '../Css/TowerStack.css';
-import Foote from './Foote';
 
 const playSound = (type, enabled = true) => {
   if (!enabled) return;
@@ -519,15 +518,15 @@ const TowerStack = () => {
     };
   }, [gameStarted, gameOver, paused, score, soundEnabled]);
 
+  const isGameplayActive = gameStarted && !gameOver && !paused;
+
   return (
     <div className="stack-page-wrapper">
-      <div className="game-nav-bar">
-        <Link to="/UODGaming" className="back-btn">
-          <ArrowLeft size={16} />
-          <span>Back to Games</span>
+      {!isGameplayActive && (
+        <Link to="/UODGaming" className="floating-back-btn" title="Back to Games">
+          <ArrowLeft size={20} />
         </Link>
-        <span className="game-status-title">Arcade Room: Tower Stack</span>
-      </div>
+      )}
 
       <div className="game-content-card">
         {/* Arcade Cabinet Frame */}
@@ -634,7 +633,6 @@ const TowerStack = () => {
         </div>
       </div>
 
-      <Foote />
     </div>
   );
 };
