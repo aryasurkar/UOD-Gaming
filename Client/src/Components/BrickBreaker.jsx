@@ -1,33 +1,36 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Pause } from 'lucide-react';
 import axios from 'axios';
-import { 
-  ArrowLeft, 
-  RotateCcw, 
-  Trophy, 
-  Play, 
-  Pause, 
-  HelpCircle,
-  Heart,
-  Volume2,
-  VolumeX,
-  Zap,
-  Gamepad2
-} from 'lucide-react';
 import '../Css/BrickBreaker.css';
 
-const playSound = (type, enabled = true) => {
-  if (!enabled) return;
+// Sound synthesizer using Web Audio API
+const playSound = (type, muted = false) => {
+  if (muted) return;
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
     gain.connect(ctx.destination);
-
     const now = ctx.currentTime;
-    if (type === 'paddle') {
+
+    if (type === 'click') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, now);
+      gain.gain.setValueAtTime(0.03, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      osc.start(now);
+      osc.stop(now + 0.05);
+    } else if (type === 'move') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.exponentialRampToValueAtTime(550, now + 0.08);
+      gain.gain.setValueAtTime(0.02, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      osc.start(now);
+      osc.stop(now + 0.08);
+    } else if (type === 'paddle') {
       osc.type = 'sine';
       osc.frequency.setValueAtTime(440, now);
       gain.gain.setValueAtTime(0.04, now);
@@ -53,7 +56,7 @@ const playSound = (type, enabled = true) => {
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(180, now);
       osc.frequency.linearRampToValueAtTime(80, now + 0.35);
-      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.setValueAtTime(0.06, now);
       gain.gain.linearRampToValueAtTime(0, now + 0.35);
       osc.start(now);
       osc.stop(now + 0.35);
@@ -63,38 +66,84 @@ const playSound = (type, enabled = true) => {
       osc.frequency.setValueAtTime(659.25, now + 0.1);
       osc.frequency.setValueAtTime(783.99, now + 0.2);
       osc.frequency.setValueAtTime(1046.50, now + 0.3);
-      gain.gain.setValueAtTime(0.06, now);
+      gain.gain.setValueAtTime(0.05, now);
       gain.gain.linearRampToValueAtTime(0, now + 0.5);
       osc.start(now);
       osc.stop(now + 0.5);
+    } else if (type === 'gameover') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(150, now);
+      osc.frequency.linearRampToValueAtTime(50, now + 0.6);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.linearRampToValueAtTime(0, now + 0.6);
+      osc.start(now);
+      osc.stop(now + 0.6);
     }
   } catch (e) {
-    console.warn("Web Audio API failed:", e);
+    console.warn("Audio Context init failed:", e);
   }
 };
 
 const BRICK_COLORS = ['#ff007f', '#ea580c', '#00d4ff', '#00ff88'];
 
 const BrickBreaker = () => {
+  // Game states: 'LOBBY' | 'GAMEPLAY' | 'PAUSE' | 'GAMEOVER'
+  const [gameState, setGameState] = useState('LOBBY');
+  const gameStateRef = useRef('LOBBY');
+  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+
+  // Audio Control
+  const [muted, setMuted] = useState(() => localStorage.getItem('arcade_muted') === 'true');
+  const mutedRef = useRef(false);
+  useEffect(() => {
+    mutedRef.current = muted;
+    localStorage.setItem('arcade_muted', muted.toString());
+  }, [muted]);
+
+  // Core metrics
+  const [score, setScore] = useState(0);
+  const scoreRef = useRef(0);
+  useEffect(() => { scoreRef.current = score; }, [score]);
+
+  const [lives, setLives] = useState(3);
+  const livesRef = useRef(3);
+  useEffect(() => { livesRef.current = lives; }, [lives]);
+
+  const [level, setLevel] = useState(1);
+  const levelRef = useRef(1);
+  useEffect(() => { levelRef.current = level; }, [level]);
+
+  const [highScore, setHighScore] = useState(() => {
+    return parseInt(localStorage.getItem('breakout_high_score') || '0', 10);
+  });
+
+  const [isBallLaunched, setIsBallLaunched] = useState(false);
+  const isBallLaunchedRef = useRef(false);
+  useEffect(() => { isBallLaunchedRef.current = isBallLaunched; }, [isBallLaunched]);
+
+  // Menu navigation index
+  const [menuIndex, setMenuIndex] = useState(0);
+
+  // API sync states
+  const [gameId, setGameId] = useState(null);
+  const [submitStatus, setSubmitStatus] = useState('');
+  const [rewards, setRewards] = useState(null);
+
+  // Canvas Refs & gravity loops
   const canvasRef = useRef(null);
   const requestRef = useRef(null);
+  const lastFrameTimeRef = useRef(0);
 
-  // Game configuration & status
-  const [score, setScore] = useState(0);
-  const [lives, setLives] = useState(3);
-  const [level, setLevel] = useState(1);
-  const [gameOver, setGameOver] = useState(false);
-  const [isWon, setIsWon] = useState(false);
-  const [paused, setPaused] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [highScore, setHighScore] = useState(
-    localStorage.getItem('breakout_high_score') ? parseInt(localStorage.getItem('breakout_high_score')) : 0
-  );
-  const [isRunning, setIsRunning] = useState(false);
-  const [gameId, setGameId] = useState(null);
-  const [rewards, setRewards] = useState(null);
-  const [submitStatus, setSubmitStatus] = useState(''); // 'submitting', 'submitted', 'failed', 'offline'
+  // Simulation parameters
+  const paddleRef = useRef({ x: 255, width: 90, height: 12 });
+  const ballRef = useRef({ x: 300, y: 360, vx: 2.5, vy: -3.5, radius: 7, baseSpeed: 4.5 });
+  const bricksRef = useRef([]);
+  const keysRef = useRef({ left: false, right: false });
 
+  // Constants
+  const CANVAS_SIZE = 600;
+
+  // Retrieve game info
   useEffect(() => {
     axios.get('/api/v1/games')
       .then(res => {
@@ -104,70 +153,57 @@ const BrickBreaker = () => {
       .catch(err => console.error("Failed to load game info:", err));
   }, []);
 
-  useEffect(() => {
-    if (gameOver) {
-      const token = localStorage.getItem('token');
-      if (gameId && token && score > 0) {
-        setSubmitStatus('submitting');
-        axios.post(`/api/v1/games/${gameId}/score`, {
-          score: score,
-          level: level
+  // Submit high score
+  const submitBreakoutScore = async (finalScore) => {
+    const token = localStorage.getItem('token');
+    if (gameId && token && finalScore > 0) {
+      setSubmitStatus('submitting');
+      try {
+        const res = await axios.post(`/api/v1/games/${gameId}/score`, {
+          score: finalScore,
+          level: levelRef.current
         }, {
           headers: { Authorization: `Bearer ${token}` }
-        })
-        .then(res => {
-          console.log('Score submitted successfully:', res.data);
-          setRewards({
-            coinsEarned: res.data.coinsEarned,
-            expGained: res.data.expGained,
-            level: res.data.level,
-            leveledUp: res.data.leveledUp
-          });
-          setSubmitStatus('submitted');
-          
-          // Sync local storage user
-          const storedUser = localStorage.getItem('user');
-          if (storedUser) {
-            try {
-              const userObj = JSON.parse(storedUser);
-              userObj.coins = res.data.totalCoins;
-              if (!userObj.gameStats) userObj.gameStats = {};
-              userObj.gameStats.level = res.data.level;
-              localStorage.setItem('user', JSON.stringify(userObj));
-              window.dispatchEvent(new Event('user-stats-changed'));
-            } catch (e) {
-              console.error('Failed to sync user stats:', e);
-            }
-          }
-        })
-        .catch(err => {
-          console.error('Failed to submit score:', err);
-          setSubmitStatus('failed');
         });
-      } else {
-        setSubmitStatus('offline');
-      }
-    }
-  }, [gameOver, gameId, score, level]);
+        setRewards({
+          coinsEarned: res.data.coinsEarned,
+          expGained: res.data.expGained,
+          level: res.data.level,
+          leveledUp: res.data.leveledUp
+        });
+        setSubmitStatus('submitted');
 
-  // Mutable game physics references to avoid stale closures in requestAnimationFrame
-  const gameState = useRef({
-    paddle: { x: 250, width: 90, height: 12 },
-    ball: { x: 300, y: 350, vx: 3, vy: -3, radius: 7, baseSpeed: 4.5 },
-    bricks: [],
-    keys: { left: false, right: false },
-    isRunning: false,
-    mouseActive: false
-  });
+        // Sync local storage user
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          try {
+            const userObj = JSON.parse(storedUser);
+            userObj.coins = res.data.totalCoins;
+            if (!userObj.gameStats) userObj.gameStats = {};
+            userObj.gameStats.level = res.data.level;
+            localStorage.setItem('user', JSON.stringify(userObj));
+            window.dispatchEvent(new Event('user-stats-changed'));
+          } catch (e) {
+            console.error('Failed to sync user stats:', e);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        setSubmitStatus('failed');
+      }
+    } else {
+      setSubmitStatus('offline');
+    }
+  };
 
   // Re-build bricks layout
   const buildBricks = () => {
     const cols = 8;
     const rows = 4;
-    const padding = 10;
-    const offsetTop = 45;
-    const offsetLeft = 15;
-    const brickW = 68;
+    const padding = 8;
+    const offsetTop = 120;
+    const offsetLeft = 32;
+    const brickW = 60;
     const brickH = 18;
 
     const list = [];
@@ -183,63 +219,115 @@ const BrickBreaker = () => {
         });
       }
     }
-    gameState.current.bricks = list;
+    bricksRef.current = list;
   };
 
   const resetBall = () => {
-    const state = gameState.current;
-    state.ball.x = state.paddle.x + state.paddle.width / 2;
-    state.ball.y = 360;
-    state.ball.vx = 2.5 * (Math.random() > 0.5 ? 1 : -1);
-    state.ball.vy = -3.5;
-    state.isRunning = false;
-    setIsRunning(false);
+    const paddle = paddleRef.current;
+    const ball = ballRef.current;
+    ball.x = paddle.x + paddle.width / 2;
+    ball.y = 515;
+    ball.vx = 2.5 * (Math.random() > 0.5 ? 1 : -1);
+    ball.vy = -3.5;
+    setIsBallLaunched(false);
   };
 
-  const initGame = () => {
-    setRewards(null);
-    setSubmitStatus('');
+  // Launch fresh game
+  const startGame = () => {
     setScore(0);
     setLives(3);
     setLevel(1);
-    setGameOver(false);
-    setIsWon(false);
-    setPaused(false);
-    setIsRunning(false);
+    setRewards(null);
+    setSubmitStatus('');
+    setMenuIndex(0);
 
-    gameState.current.paddle.x = 255;
-    gameState.current.ball.baseSpeed = 4.5;
+    paddleRef.current.x = 255;
+    ballRef.current.baseSpeed = 4.5;
     buildBricks();
     resetBall();
+    setGameState('GAMEPLAY');
   };
 
-  // Setup game components
-  useEffect(() => {
-    initGame();
-    return () => {
-      if (requestRef.current) cancelAnimationFrame(requestRef.current);
-    };
-  }, []);
+  const triggerBallLaunch = () => {
+    if (gameStateRef.current === 'GAMEPLAY' && !isBallLaunchedRef.current) {
+      setIsBallLaunched(true);
+      playSound('paddle', mutedRef.current);
+    }
+  };
 
-  // Keyboard listeners
+  // Keyboard navigation controls
+  const handleKeyboardNav = (code) => {
+    const curState = gameStateRef.current;
+    if (curState === 'LOBBY') {
+      if (code === 'Space' || code === 'Enter') {
+        playSound('click', mutedRef.current);
+        startGame();
+      }
+    } else if (curState === 'PAUSE') {
+      if (code === 'ArrowUp' || code === 'KeyW') {
+        playSound('click', mutedRef.current);
+        setMenuIndex(prev => (prev === 0 ? 2 : prev - 1));
+      } else if (code === 'ArrowDown' || code === 'KeyS') {
+        playSound('click', mutedRef.current);
+        setMenuIndex(prev => (prev === 2 ? 0 : prev + 1));
+      } else if (code === 'Space' || code === 'Enter') {
+        playSound('click', mutedRef.current);
+        if (menuIndex === 0) {
+          lastFrameTimeRef.current = performance.now();
+          setGameState('GAMEPLAY');
+        } else if (menuIndex === 1) {
+          startGame();
+        } else {
+          setGameState('LOBBY');
+        }
+      } else if (code === 'Escape') {
+        playSound('click', mutedRef.current);
+        lastFrameTimeRef.current = performance.now();
+        setGameState('GAMEPLAY');
+      }
+    } else if (curState === 'GAMEOVER') {
+      if (code === 'ArrowUp' || code === 'KeyW' || code === 'ArrowDown' || code === 'KeyS') {
+        playSound('click', mutedRef.current);
+        setMenuIndex(prev => (prev === 0 ? 1 : 0));
+      } else if (code === 'Space' || code === 'Enter') {
+        playSound('click', mutedRef.current);
+        if (menuIndex === 0) {
+          startGame();
+        } else {
+          setGameState('LOBBY');
+        }
+      }
+    } else if (curState === 'GAMEPLAY') {
+      if (code === 'Escape') {
+        playSound('click', mutedRef.current);
+        setGameState('PAUSE');
+        setMenuIndex(0);
+      } else if (code === 'Space' || code === 'Enter') {
+        triggerBallLaunch();
+      }
+    }
+  };
+
+  // Keyboard listeners hooks
   useEffect(() => {
     const handleKeyDown = (e) => {
-      const activeKeys = ['ArrowLeft', 'ArrowRight', ' '];
-      if (activeKeys.includes(e.key)) {
-        e.preventDefault();
+      const activeStates = ['LOBBY', 'PAUSE', 'GAMEOVER', 'GAMEPLAY'];
+      if (activeStates.includes(gameStateRef.current)) {
+        if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+          e.preventDefault();
+        }
+        handleKeyboardNav(e.code);
       }
 
-      if (e.key === 'ArrowLeft') gameState.current.keys.left = true;
-      if (e.key === 'ArrowRight') gameState.current.keys.right = true;
-      if (e.key === ' ' && !gameState.current.isRunning && !gameOver && !paused) {
-        gameState.current.isRunning = true;
-        setIsRunning(true);
+      if (gameStateRef.current === 'GAMEPLAY') {
+        if (e.code === 'ArrowLeft' || e.code === 'KeyA') keysRef.current.left = true;
+        if (e.code === 'ArrowRight' || e.code === 'KeyD') keysRef.current.right = true;
       }
     };
 
     const handleKeyUp = (e) => {
-      if (e.key === 'ArrowLeft') gameState.current.keys.left = false;
-      if (e.key === 'ArrowRight') gameState.current.keys.right = false;
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') keysRef.current.left = false;
+      if (e.code === 'ArrowRight' || e.code === 'KeyD') keysRef.current.right = false;
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -248,347 +336,605 @@ const BrickBreaker = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [gameOver, paused]);
+  }, []);
 
-  // Mouse Listener inside Canvas
-  const handleMouseMove = (e) => {
+  // Canvas Clicks
+  const handleCanvasClick = (e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
     const rect = canvas.getBoundingClientRect();
-    const relativeX = (e.clientX - rect.left) * (canvas.width / rect.width);
-    const state = gameState.current;
+    const scaleX = CANVAS_SIZE / rect.width;
+    const scaleY = CANVAS_SIZE / rect.height;
+    const clickX = (e.clientX - rect.left) * scaleX;
+    const clickY = (e.clientY - rect.top) * scaleY;
 
-    state.paddle.x = Math.max(0, Math.min(600 - state.paddle.width, relativeX - state.paddle.width / 2));
-    if (!state.isRunning) {
-      state.ball.x = state.paddle.x + state.paddle.width / 2;
+    // Speaker check
+    if (clickX >= 540 && clickX <= 590 && clickY >= 10 && clickY <= 50) {
+      playSound('click', !muted);
+      setMuted(prev => !prev);
+      return;
+    }
+
+    const curState = gameState;
+    if (curState === 'LOBBY') {
+      if (clickX >= 150 && clickX <= 450 && clickY >= 280 && clickY <= 320) {
+        playSound('click', muted);
+        startGame();
+      }
+    } else if (curState === 'PAUSE') {
+      if (clickX >= 200 && clickX <= 400 && clickY >= 240 && clickY <= 280) {
+        playSound('click', muted);
+        lastFrameTimeRef.current = performance.now();
+        setGameState('GAMEPLAY');
+      } else if (clickX >= 200 && clickX <= 400 && clickY >= 300 && clickY <= 340) {
+        playSound('click', muted);
+        startGame();
+      } else if (clickX >= 200 && clickX <= 400 && clickY >= 360 && clickY <= 400) {
+        playSound('click', muted);
+        setGameState('LOBBY');
+      }
+    } else if (curState === 'GAMEOVER') {
+      if (clickX >= 150 && clickX <= 450 && clickY >= 440 && clickY <= 480) {
+        playSound('click', muted);
+        startGame();
+      } else if (clickX >= 150 && clickX <= 450 && clickY >= 495 && clickY <= 535) {
+        playSound('click', muted);
+        setGameState('LOBBY');
+      }
+    } else if (curState === 'GAMEPLAY') {
+      triggerBallLaunch();
     }
   };
 
-  const handleCanvasClick = () => {
-    const state = gameState.current;
-    if (!state.isRunning && !gameOver && !paused) {
-      state.isRunning = true;
-      setIsRunning(true);
+  // Mouse Move tracks paddle
+  const handleCanvasMouseMove = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas || gameStateRef.current !== 'GAMEPLAY') return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = CANVAS_SIZE / rect.width;
+    const mouseX = (e.clientX - rect.left) * scaleX;
+
+    const paddle = paddleRef.current;
+    paddle.x = Math.max(0, Math.min(CANVAS_SIZE - paddle.width, mouseX - paddle.width / 2));
+
+    if (!isBallLaunchedRef.current) {
+      ballRef.current.x = paddle.x + paddle.width / 2;
     }
   };
 
-  // Main Canvas Render & Physics Loop
+  // Main Canvas physics & draw loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    const updatePhysics = () => {
-      const state = gameState.current;
-      if (gameOver || paused) return;
+    const render = (time) => {
+      if (!lastFrameTimeRef.current) lastFrameTimeRef.current = time;
+      const dt = time - lastFrameTimeRef.current;
+      lastFrameTimeRef.current = time;
 
-      // Move Paddle with Keyboard
-      if (state.keys.left) {
-        state.paddle.x = Math.max(0, state.paddle.x - 7);
-      }
-      if (state.keys.right) {
-        state.paddle.x = Math.min(600 - state.paddle.width, state.paddle.x + 7);
-      }
+      // Update Physics
+      if (gameStateRef.current === 'GAMEPLAY') {
+        const paddle = paddleRef.current;
+        const ball = ballRef.current;
+        const keys = keysRef.current;
 
-      if (!state.isRunning) {
-        state.ball.x = state.paddle.x + state.paddle.width / 2;
-        return;
-      }
+        // Move paddle with keys
+        if (keys.left) {
+          paddle.x = Math.max(0, paddle.x - 7);
+        }
+        if (keys.right) {
+          paddle.x = Math.min(CANVAS_SIZE - paddle.width, paddle.x + 7);
+        }
 
-      // Move Ball
-      const ball = state.ball;
-      ball.x += ball.vx;
-      ball.y += ball.vy;
+        if (!isBallLaunchedRef.current) {
+          ball.x = paddle.x + paddle.width / 2;
+          ball.y = 515;
+        } else {
+          // Ball movement
+          ball.x += ball.vx;
+          ball.y += ball.vy;
 
-      // Ball and wall collision
-      if (ball.x + ball.radius > 600) {
-        ball.x = 600 - ball.radius;
-        ball.vx = -ball.vx;
-        playSound('wall', soundEnabled);
-      } else if (ball.x - ball.radius < 0) {
-        ball.x = ball.radius;
-        ball.vx = -ball.vx;
-        playSound('wall', soundEnabled);
-      }
-
-      if (ball.y - ball.radius < 0) {
-        ball.y = ball.radius;
-        ball.vy = -ball.vy;
-        playSound('wall', soundEnabled);
-      }
-
-      // Ball and bottom wall (lose life)
-      if (ball.y + ball.radius > 400) {
-        playSound('lose', soundEnabled);
-        setLives(prev => {
-          const nextLives = prev - 1;
-          if (nextLives <= 0) {
-            setGameOver(true);
-          } else {
-            resetBall();
+          // Wall bounces
+          if (ball.x + ball.radius >= CANVAS_SIZE) {
+            ball.x = CANVAS_SIZE - ball.radius;
+            ball.vx = -ball.vx;
+            playSound('wall', mutedRef.current);
+          } else if (ball.x - ball.radius <= 0) {
+            ball.x = ball.radius;
+            ball.vx = -ball.vx;
+            playSound('wall', mutedRef.current);
           }
-          return nextLives;
-        });
-        return;
-      }
 
-      // Ball and paddle collision
-      const paddle = state.paddle;
-      if (
-        ball.y + ball.radius >= 370 &&
-        ball.y - ball.radius <= 372 &&
-        ball.x >= paddle.x &&
-        ball.x <= paddle.x + paddle.width
-      ) {
-        playSound('paddle', soundEnabled);
-        
-        // Dynamic bounce physics
-        const relativeX = ball.x - (paddle.x + paddle.width / 2);
-        const normalized = relativeX / (paddle.width / 2);
-        const maxAngle = Math.PI / 3; // 60 degrees
-        const angle = normalized * maxAngle;
-        
-        const speed = ball.baseSpeed;
-        ball.vx = speed * Math.sin(angle);
-        ball.vy = -speed * Math.cos(angle);
-        ball.y = 370 - ball.radius; // correct position
-      }
+          if (ball.y - ball.radius <= 80) { // top boundary is HUD divider
+            ball.y = 80 + ball.radius;
+            ball.vy = -ball.vy;
+            playSound('wall', mutedRef.current);
+          }
 
-      // Ball and brick collision
-      let activeBricks = 0;
-      for (let i = 0; i < state.bricks.length; i++) {
-        const brick = state.bricks[i];
-        if (!brick.active) continue;
-        activeBricks++;
+          // Lose life when falling below bottom boundary
+          if (ball.y + ball.radius >= 560) {
+            playSound('lose', mutedRef.current);
+            setLives(prev => {
+              const nextLives = prev - 1;
+              if (nextLives <= 0) {
+                setGameState('GAMEOVER');
+                setMenuIndex(0);
+                playSound('gameover', mutedRef.current);
+                submitBreakoutScore(scoreRef.current);
+              } else {
+                resetBall();
+              }
+              return nextLives;
+            });
+          }
 
-        // Box collision
-        if (
-          ball.x + ball.radius >= brick.x &&
-          ball.x - ball.radius <= brick.x + brick.w &&
-          ball.y + ball.radius >= brick.y &&
-          ball.y - ball.radius <= brick.y + brick.h
-        ) {
-          brick.active = false;
-          playSound('brick', soundEnabled);
-          
-          // Reverse Y movement
-          ball.vy = -ball.vy;
+          // Paddle bounce
+          if (
+            ball.y + ball.radius >= 530 &&
+            ball.y - ball.radius <= 534 &&
+            ball.x >= paddle.x &&
+            ball.x <= paddle.x + paddle.width &&
+            ball.vy > 0
+          ) {
+            playSound('paddle', mutedRef.current);
+            // Dynamic angle math
+            const relativeX = ball.x - (paddle.x + paddle.width / 2);
+            const normalized = relativeX / (paddle.width / 2);
+            const maxAngle = Math.PI / 3;
+            const angle = normalized * maxAngle;
+            const speed = ball.baseSpeed;
 
-          setScore(prev => {
-            const nextScore = prev + 10;
-            if (nextScore > highScore) {
-              localStorage.setItem('breakout_high_score', nextScore.toString());
-              setHighScore(nextScore);
+            ball.vx = speed * Math.sin(angle);
+            ball.vy = -speed * Math.cos(angle);
+            ball.y = 530 - ball.radius;
+          }
+
+          // Bricks collision loop
+          let activeCount = 0;
+          const bricks = bricksRef.current;
+          for (let i = 0; i < bricks.length; i++) {
+            const brick = bricks[i];
+            if (!brick.active) continue;
+            activeCount++;
+
+            if (
+              ball.x + ball.radius >= brick.x &&
+              ball.x - ball.radius <= brick.x + brick.w &&
+              ball.y + ball.radius >= brick.y &&
+              ball.y - ball.radius <= brick.y + brick.h
+            ) {
+              brick.active = false;
+              playSound('brick', mutedRef.current);
+              ball.vy = -ball.vy;
+
+              setScore(prev => {
+                const nextScore = prev + 10;
+                if (nextScore > highScore) {
+                  localStorage.setItem('breakout_high_score', nextScore.toString());
+                  setHighScore(nextScore);
+                }
+                return nextScore;
+              });
+
+              activeCount--;
+              break;
             }
-            return nextScore;
-          });
-          
-          activeBricks--;
-          break; // only hit one brick per frame
+          }
+
+          // Level advanced
+          if (activeCount === 0 && bricks.length > 0) {
+            playSound('win', mutedRef.current);
+            setLevel(prev => {
+              const nextLvl = prev + 1;
+              ball.baseSpeed += 0.5;
+              buildBricks();
+              resetBall();
+              return nextLvl;
+            });
+          }
         }
       }
 
-      // Level Cleared
-      if (activeBricks === 0 && state.bricks.length > 0) {
-        playSound('win', soundEnabled);
-        setLevel(prev => {
-          const nextLvl = prev + 1;
-          state.ball.baseSpeed += 0.5; // speed up
-          buildBricks();
-          resetBall();
-          return nextLvl;
+      // Drawing
+      ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+      ctx.shadowBlur = 0;
+
+      // Space lines
+      ctx.strokeStyle = '#0a0512';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 6; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * 100, 0);
+        ctx.lineTo(i * 100, CANVAS_SIZE);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(0, i * 100);
+        ctx.lineTo(CANVAS_SIZE, i * 100);
+        ctx.stroke();
+      }
+
+      const curState = gameStateRef.current;
+
+      // ----------------------------------------------------
+      // STATE: LOBBY
+      // ----------------------------------------------------
+      if (curState === 'LOBBY') {
+        ctx.shadowColor = '#00d4ff';
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = '#00d4ff';
+        ctx.font = 'bold 36px "Orbitron", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('NEON BRICK BREAKER', CANVAS_SIZE / 2, 130);
+
+        ctx.shadowColor = '#ff007f';
+        ctx.fillStyle = '#b4b4c8';
+        ctx.font = '14px "Exo 2", sans-serif';
+        ctx.fillText('DEFLECTOR DEFENSE CABINET', CANVAS_SIZE / 2, 170);
+
+        const lobbyItems = ['START SIMULATION'];
+        lobbyItems.forEach((text, idx) => {
+          const isSelected = menuIndex === 0;
+          const y = 300 + idx * 60;
+
+          if (isSelected) {
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#00d4ff';
+            ctx.strokeStyle = '#00d4ff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(CANVAS_SIZE / 2 - 140, y - 28, 280, 40);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 18px "Orbitron", monospace';
+          } else {
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#8888a0';
+            ctx.font = '16px "Orbitron", monospace';
+          }
+          ctx.fillText(text, CANVAS_SIZE / 2, y);
+        });
+
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '12px "Exo 2", sans-serif';
+        ctx.fillText('USE ARROWS / WASD TO NAVIGATE • SPACEBAR TO SELECT', CANVAS_SIZE / 2, 550);
+      }
+
+      // ----------------------------------------------------
+      // STATE: PAUSE
+      // ----------------------------------------------------
+      else if (curState === 'PAUSE') {
+        drawActiveGameElements(ctx);
+
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(5, 5, 10, 0.85)';
+        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+        ctx.shadowColor = '#ff007f';
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = '#ff007f';
+        ctx.font = 'bold 36px "Orbitron", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('SYSTEM PAUSED', CANVAS_SIZE / 2, 160);
+
+        const pauseItems = ['RESUME', 'RESTART', 'BACK TO MENU'];
+        pauseItems.forEach((text, idx) => {
+          const isSelected = menuIndex === idx;
+          const y = 266 + idx * 60;
+
+          if (isSelected) {
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#00d4ff';
+            ctx.strokeStyle = '#00d4ff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(CANVAS_SIZE / 2 - 100, y - 26, 200, 36);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 16px "Orbitron", monospace';
+          } else {
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#8888a0';
+            ctx.font = '15px "Orbitron", monospace';
+          }
+          ctx.fillText(text, CANVAS_SIZE / 2, y);
         });
       }
+
+      // ----------------------------------------------------
+      // STATE: GAMEOVER
+      // ----------------------------------------------------
+      else if (curState === 'GAMEOVER') {
+        drawActiveGameElements(ctx);
+
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(5, 5, 10, 0.88)';
+        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+        ctx.shadowColor = '#ff007f';
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = '#ff007f';
+        ctx.font = 'bold 34px "Orbitron", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('SYSTEM OVERLOADED', CANVAS_SIZE / 2, 110);
+
+        // CLI Sync logger
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillRect(80, 160, 440, 230);
+        ctx.strokeStyle = 'rgba(255, 0, 127, 0.2)';
+        ctx.strokeRect(80, 160, 440, 230);
+
+        ctx.font = '13px "Courier New", monospace';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#ff007f';
+        ctx.fillText(`> Deflector shield matrices collapsed.`, 100, 190);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(`> Telemetry Final Score: ${scoreRef.current.toLocaleString()}`, 100, 210);
+
+        if (submitStatus === 'submitting') {
+          ctx.fillStyle = '#00d4ff';
+          ctx.fillText(`> Connecting to deflector registry database...`, 100, 240);
+          ctx.fillText(`> Syncing highscore blocks...`, 100, 260);
+        } else if (submitStatus === 'submitted' && rewards) {
+          ctx.fillStyle = '#00ff88';
+          ctx.fillText(`> DATA UPLOAD VERIFIED. SYNC STABLE.`, 100, 240);
+          ctx.fillStyle = '#ffd700';
+          ctx.fillText(`> CREDITS EARNED:`, 100, 270);
+          ctx.fillText(`  🪙 +${rewards.coinsEarned} Arcade Coins`, 100, 290);
+          ctx.fillText(`  ⚡ +${rewards.expGained} Experience Nodes`, 100, 310);
+          if (rewards.leveledUp) {
+            ctx.fillStyle = '#00d4ff';
+            ctx.fillText(`  [NOTICE] LEVEL UP! New Level ${rewards.level}`, 100, 335);
+          }
+        } else if (submitStatus === 'failed') {
+          ctx.fillStyle = '#ff0055';
+          ctx.fillText(`> [CRITICAL_ERROR] DATABASE NODE SYNC FAILURE`, 100, 240);
+        } else if (submitStatus === 'offline') {
+          ctx.fillStyle = '#ffaa00';
+          ctx.fillText(`> [NOTICE] OFFLINE OPERATION ACTIVE`, 100, 240);
+          ctx.fillText(`> Log in to authorize rewards.`, 100, 265);
+        }
+
+        // Action Options
+        const gameOverItems = ['PLAY AGAIN', 'QUIT TO MENU'];
+        gameOverItems.forEach((text, idx) => {
+          const isSelected = menuIndex === idx;
+          const y = 460 + idx * 55;
+
+          ctx.textAlign = 'center';
+          if (isSelected) {
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#00d4ff';
+            ctx.strokeStyle = '#00d4ff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(CANVAS_SIZE / 2 - 130, y - 26, 260, 36);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 16px "Orbitron", monospace';
+          } else {
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#8888a0';
+            ctx.font = '15px "Orbitron", monospace';
+          }
+          ctx.fillText(text, CANVAS_SIZE / 2, y);
+        });
+      }
+
+      // ----------------------------------------------------
+      // STATE: GAMEPLAY
+      // ----------------------------------------------------
+      else if (curState === 'GAMEPLAY') {
+        drawActiveGameElements(ctx);
+      }
+
+      // Draw global speaker speaker icon
+      drawSpeakerIcon(ctx);
+
+      requestRef.current = requestAnimationFrame(render);
     };
 
-    const draw = () => {
-      // Clear
-      ctx.clearRect(0, 0, 600, 400);
+    // Helper: Draw bricks, paddles, ball, and overlays
+    const drawActiveGameElements = (c) => {
+      // 1. Draw top HUD panel
+      c.textAlign = 'left';
+      c.fillStyle = '#8888a0';
+      c.font = '11px "Orbitron", monospace';
+      c.fillText('SCORE', 50, 30);
+      c.fillText('LEVEL', 200, 30);
+      c.fillText('DEFENSE SHIELDS', 350, 30);
+      c.fillText('BEST', 500, 30);
 
-      const state = gameState.current;
+      c.fillStyle = '#ffffff';
+      c.font = 'bold 16px "Orbitron", monospace';
+      c.fillText(scoreRef.current.toLocaleString(), 50, 52);
 
-      // Draw Bricks
-      state.bricks.forEach(brick => {
-        if (!brick.active) return;
-        ctx.fillStyle = brick.color + '1a';
-        ctx.strokeStyle = brick.color;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        if (ctx.roundRect) {
-          ctx.roundRect(brick.x, brick.y, brick.w, brick.h, 4);
-        } else {
-          ctx.rect(brick.x, brick.y, brick.w, brick.h);
+      c.fillStyle = '#00d4ff';
+      c.fillText(String(levelRef.current), 200, 52);
+
+      c.fillStyle = '#ffd700';
+      c.fillText(highScore.toLocaleString(), 500, 52);
+
+      // Draw glowing battery shield cells
+      for (let i = 0; i < 3; i++) {
+        const x = 350 + i * 20;
+        const y = 38;
+        const w = 12;
+        const h = 18;
+
+        c.strokeStyle = 'rgba(255,255,255,0.15)';
+        c.lineWidth = 1.5;
+        c.strokeRect(x, y, w, h);
+        c.fillStyle = 'rgba(255,255,255,0.2)';
+        c.fillRect(x + 3, y - 2, 6, 2);
+
+        if (i < livesRef.current) {
+          c.fillStyle = livesRef.current === 1 ? '#ff0055' : '#00ff88';
+          c.fillRect(x + 2, y + 2, w - 4, h - 4);
         }
-        ctx.fill();
-        ctx.stroke();
+      }
+
+      // Divider line
+      c.strokeStyle = 'rgba(0, 212, 255, 0.15)';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.moveTo(0, 78);
+      c.lineTo(CANVAS_SIZE, 78);
+      c.stroke();
+
+      // 2. Draw Bricks
+      const bricks = bricksRef.current;
+      bricks.forEach(brick => {
+        if (!brick.active) return;
+        c.fillStyle = brick.color + '26'; // transparent fill
+        c.fillRect(brick.x, brick.y, brick.w, brick.h);
+
+        c.shadowColor = brick.color;
+        c.shadowBlur = 8;
+        c.strokeStyle = brick.color;
+        c.lineWidth = 2;
+        c.beginPath();
+        c.roundRect(brick.x, brick.y, brick.w, brick.h, 4);
+        c.stroke();
+        c.shadowBlur = 0;
       });
 
-      // Draw Paddle
-      ctx.fillStyle = '#00d4ff1a';
-      ctx.strokeStyle = '#00d4ff';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      if (ctx.roundRect) {
-        ctx.roundRect(state.paddle.x, 370, state.paddle.width, state.paddle.height, 6);
-      } else {
-        ctx.rect(state.paddle.x, 370, state.paddle.width, state.paddle.height);
+      // 3. Draw Paddle
+      const paddle = paddleRef.current;
+      c.fillStyle = '#00d4ff26';
+      c.fillRect(paddle.x, 530, paddle.width, paddle.height);
+      c.strokeStyle = '#00d4ff';
+      c.lineWidth = 3;
+      c.shadowColor = '#00d4ff';
+      c.shadowBlur = 10;
+      c.beginPath();
+      c.roundRect(paddle.x, 530, paddle.width, paddle.height, 6);
+      c.stroke();
+      c.shadowBlur = 0;
+
+      // 4. Draw Ball
+      const ball = ballRef.current;
+      c.fillStyle = '#00ff88';
+      c.beginPath();
+      c.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+      c.fill();
+      c.shadowBlur = 10;
+      c.shadowColor = '#00ff88';
+      c.beginPath();
+      c.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+      c.stroke();
+      c.shadowBlur = 0;
+
+      // 5. Blinking launch prompt overlay if not launched yet
+      if (!isBallLaunchedRef.current && gameStateRef.current === 'GAMEPLAY') {
+        c.textAlign = 'center';
+        c.fillStyle = 'rgba(0,0,0,0.5)';
+        c.fillRect(50, 320, 500, 70);
+        c.strokeStyle = 'rgba(0,212,255,0.15)';
+        c.strokeRect(50, 320, 500, 70);
+
+        const blinkState = Math.floor(time / 450) % 2 === 0;
+        c.fillStyle = blinkState ? '#ffffff' : '#8888a0';
+        c.font = 'bold 15px "Orbitron", monospace';
+        c.fillText('PRESS SPACEBAR OR CLICK SCREEN TO DEFLECT BALL', CANVAS_SIZE / 2, 350);
+
+        c.fillStyle = '#8888a0';
+        c.font = '11px "Exo 2", sans-serif';
+        c.fillText('MOVE MOUSE OR ARROW KEYS (A/D) TO CONTROL DEFLECTOR SHIELD', CANVAS_SIZE / 2, 375);
       }
-      ctx.fill();
-      ctx.stroke();
-
-      // Draw Ball
-      ctx.fillStyle = '#00ff88';
-      ctx.beginPath();
-      ctx.arc(state.ball.x, state.ball.y, state.ball.radius, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Add a subtle ball glowing filter
-      ctx.shadowBlur = 10;
-      ctx.shadowColor = '#00ff88';
-      ctx.arc(state.ball.x, state.ball.y, state.ball.radius, 0, Math.PI * 2);
-      ctx.shadowBlur = 0; // reset
     };
 
-    const loop = () => {
-      updatePhysics();
-      draw();
-      requestRef.current = requestAnimationFrame(loop);
+    // Helper: Draw global speaker mute toggler button
+    const drawSpeakerIcon = (c) => {
+      c.save();
+      const x = 555;
+      const y = 20;
+
+      c.strokeStyle = muted ? '#ff0055' : '#8888a0';
+      c.fillStyle = muted ? 'rgba(255,0,85,0.05)' : 'rgba(255,255,255,0.05)';
+      c.lineWidth = 2;
+
+      c.beginPath();
+      c.moveTo(x, y + 6);
+      c.lineTo(x + 6, y + 6);
+      c.lineTo(x + 12, y);
+      c.lineTo(x + 12, y + 16);
+      c.lineTo(x + 6, y + 10);
+      c.lineTo(x, y + 10);
+      c.closePath();
+      c.fill();
+      c.stroke();
+
+      if (!muted) {
+        c.beginPath();
+        c.arc(x + 10, y + 8, 5, -Math.PI / 3, Math.PI / 3);
+        c.stroke();
+        c.beginPath();
+        c.arc(x + 10, y + 8, 9, -Math.PI / 3, Math.PI / 3);
+        c.stroke();
+      } else {
+        c.strokeStyle = '#ff0055';
+        c.beginPath();
+        c.moveTo(x + 16, y + 3);
+        c.lineTo(x + 22, y + 13);
+        c.moveTo(x + 22, y + 3);
+        c.lineTo(x + 16, y + 13);
+        c.stroke();
+      }
+      c.restore();
     };
 
-    loop();
-
+    requestRef.current = requestAnimationFrame(render);
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
     };
-  }, [gameOver, paused, soundEnabled, highScore]);
-
-  const isGameplayActive = hasStarted && !gameOver && !paused;
+  }, [gameState, level, lives, muted, submitStatus, rewards, highScore, menuIndex, isBallLaunched]);
 
   return (
     <div className="bb-page-wrapper">
-      {!isGameplayActive && (
+      {/* Floating circular navigation button aligned vertically below logo */}
+      {gameState === 'LOBBY' || gameState === 'GAMEOVER' || gameState === 'PAUSE' ? (
         <Link to="/UODGaming" className="floating-back-btn" title="Back to Games">
           <ArrowLeft size={20} />
         </Link>
-      )}
+      ) : null}
+
+      {gameState === 'GAMEPLAY' ? (
+        <button
+          onClick={() => {
+            playSound('click', muted);
+            setGameState('PAUSE');
+            setMenuIndex(0);
+          }}
+          className="floating-back-btn"
+          title="Pause Game"
+          style={{ cursor: 'pointer', outline: 'none' }}
+        >
+          <Pause size={20} />
+        </button>
+      ) : null}
 
       <div className="game-content-card">
-        {/* Arcade Cabinet Frame */}
-        <div className="cabinet-screen crt-screen">
+        <div 
+          className="cabinet-screen crt-screen" 
+          onClick={handleCanvasClick} 
+          onMouseMove={handleCanvasMouseMove}
+        >
           {/* CRT scanlines, reflection and flicker overlay */}
           <div className="crt-scanlines"></div>
           <div className="crt-reflection"></div>
           <div className="crt-flicker"></div>
 
-          {/* Floating HUD Overlays */}
-          <div className="game-hud-container">
-            <div className="game-hud-item">
-              <span className="game-hud-label">Score</span>
-              <span className="game-hud-value">{score.toLocaleString()}</span>
-            </div>
-
-            <div className="game-hud-item" style={{ flexDirection: 'row', gap: '10px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span className="game-hud-label">Level</span>
-                <span className="game-hud-value" style={{ color: 'var(--primary-neon)' }}>{level}</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span className="game-hud-label">Shields</span>
-                <div style={{ display: 'flex', gap: '3px', marginTop: '2px' }}>
-                  {[...Array(3)].map((_, i) => (
-                    <Heart 
-                      key={i} 
-                      size={14} 
-                      fill={i < lives ? '#ff007f' : 'none'} 
-                      color={i < lives ? '#ff007f' : 'rgba(255, 255, 255, 0.2)'} 
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="game-hud-item">
-              <span className="game-hud-label">Best</span>
-              <span className="game-hud-value" style={{ color: 'var(--accent-yellow)', textShadow: '0 0 8px rgba(255,255,0,0.4)' }}>{highScore.toLocaleString()}</span>
-            </div>
-          </div>
-
-          <div className="game-play-area">
-            <div className="canvas-wrapper">
-              <canvas 
-                ref={canvasRef} 
-                width={600} 
-                height={400} 
-                onMouseMove={handleMouseMove}
-                onClick={handleCanvasClick}
-                className="breakout-canvas"
-              />
-
-              {!isRunning && !gameOver && !paused && (
-                <div className="start-prompt-overlay" onClick={handleCanvasClick}>
-                  <p>Press <strong>SPACEBAR</strong> or <strong>CLICK SCREEN</strong> to Launch Ball</p>
-                  <span>Move your cursor or use Left/Right arrows to navigate the paddle.</span>
-                </div>
-              )}
-
-              {/* Overlays */}
-              <AnimatePresence>
-                {gameOver && (
-                  <div className="start-prompt-overlay gameover">
-                    <h2>Arcade Over</h2>
-                    <p>All lives lost. Final score: <strong>{score.toLocaleString()}</strong></p>
-                    
-                    {submitStatus === 'submitting' && (
-                      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '8px 0' }}>Saving score online...</p>
-                    )}
-                    {submitStatus === 'submitted' && rewards && (
-                      <div className="game-over-rewards" style={{ margin: '12px auto', padding: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', fontSize: '0.9rem' }}>
-                        <div style={{ color: '#ffd700', marginBottom: '4px' }}>🪙 +{rewards.coinsEarned} Coins</div>
-                        <div style={{ color: 'var(--primary-neon)', marginBottom: '4px' }}>⚡ +{rewards.expGained} XP</div>
-                        {rewards.leveledUp && (
-                          <div style={{ color: '#00ff88', fontWeight: 'bold', textShadow: '0 0 5px rgba(0,255,136,0.5)', marginTop: '4px' }}>LEVEL UP! (Lv {rewards.level})</div>
-                        )}
-                      </div>
-                    )}
-                    {submitStatus === 'failed' && (
-                      <p style={{ fontSize: '0.85rem', color: 'var(--secondary-neon)', margin: '8px 0' }}>Failed to save score online.</p>
-                    )}
-                    {submitStatus === 'offline' && (
-                      <p style={{ fontSize: '0.85rem', color: 'var(--accent-orange)', margin: '8px 0' }}>Log in to save stats & earn coins!</p>
-                    )}
-
-                    <button className="btn btn-primary mt-4" onClick={initGame}>Insert Coin (Play)</button>
-                  </div>
-                )}
-
-                {paused && (
-                  <div className="start-prompt-overlay paused">
-                    <h2>Paused</h2>
-                    <button className="btn btn-primary mt-4" onClick={() => setPaused(false)}>Resume Game</button>
-                  </div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-        </div>
-
-        {/* Action Controls */}
-        <div className="bb-controls" style={{ display: 'flex', gap: '15px', marginTop: '10px', justifyContent: 'center' }}>
-          <button className="btn btn-primary" onClick={() => setPaused(!paused)} disabled={gameOver}>
-            {paused ? <Play size={16} /> : <Pause size={16} />}
-            <span>{paused ? 'Resume' : 'Pause'}</span>
-          </button>
-          <button className="btn btn-reset" onClick={initGame}>
-            <RotateCcw size={16} />
-            <span>Restart</span>
-          </button>
-          <button className="btn btn-reset" onClick={() => setSoundEnabled(!soundEnabled)}>
-            {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-            <span>Sound: {soundEnabled ? 'ON' : 'OFF'}</span>
-          </button>
+          <canvas
+            ref={canvasRef}
+            width={CANVAS_SIZE}
+            height={CANVAS_SIZE}
+            style={{ display: 'block', background: '#020205', width: '100%', height: 'auto', maxWidth: '600px' }}
+          />
         </div>
       </div>
-
     </div>
   );
 };

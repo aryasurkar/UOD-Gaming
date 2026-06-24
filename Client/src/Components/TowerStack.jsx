@@ -1,53 +1,56 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Pause } from 'lucide-react';
 import axios from 'axios';
-import { 
-  ArrowLeft, 
-  RotateCcw, 
-  Trophy, 
-  Play, 
-  Pause, 
-  HelpCircle,
-  Volume2,
-  VolumeX,
-  Zap,
-  Gamepad2
-} from 'lucide-react';
 import '../Css/TowerStack.css';
 
-const playSound = (type, enabled = true) => {
-  if (!enabled) return;
+// Sound synthesizer using Web Audio API
+const playSound = (type, muted = false) => {
+  if (muted) return;
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
     gain.connect(ctx.destination);
-
     const now = ctx.currentTime;
-    if (type === 'place') {
+
+    if (type === 'click') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, now);
+      gain.gain.setValueAtTime(0.03, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      osc.start(now);
+      osc.stop(now + 0.05);
+    } else if (type === 'move') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.exponentialRampToValueAtTime(550, now + 0.08);
+      gain.gain.setValueAtTime(0.02, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      osc.start(now);
+      osc.stop(now + 0.08);
+    } else if (type === 'place') {
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(330, now);
-      gain.gain.setValueAtTime(0.06, now);
+      gain.gain.setValueAtTime(0.05, now);
       gain.gain.linearRampToValueAtTime(0, now + 0.08);
       osc.start(now);
       osc.stop(now + 0.08);
     } else if (type === 'chop') {
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(150, now);
-      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.setValueAtTime(0.06, now);
       gain.gain.linearRampToValueAtTime(0, now + 0.12);
       osc.start(now);
       osc.stop(now + 0.12);
     } else if (type === 'perfect') {
-      // Ascending chord sequence for perfect hits
       osc.type = 'sine';
       osc.frequency.setValueAtTime(523.25, now); // C5
       osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
       osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
       osc.frequency.setValueAtTime(1046.50, now + 0.24); // C6
-      gain.gain.setValueAtTime(0.05, now);
+      gain.gain.setValueAtTime(0.04, now);
       gain.gain.linearRampToValueAtTime(0, now + 0.35);
       osc.start(now);
       osc.stop(now + 0.35);
@@ -55,7 +58,7 @@ const playSound = (type, enabled = true) => {
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(220, now);
       osc.frequency.linearRampToValueAtTime(55, now + 0.4);
-      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.setValueAtTime(0.08, now);
       gain.gain.linearRampToValueAtTime(0, now + 0.4);
       osc.start(now);
       osc.stop(now + 0.4);
@@ -64,36 +67,75 @@ const playSound = (type, enabled = true) => {
       osc.frequency.setValueAtTime(440, now);
       osc.frequency.setValueAtTime(554.37, now + 0.1);
       osc.frequency.setValueAtTime(659.25, now + 0.2);
-      gain.gain.setValueAtTime(0.05, now);
+      gain.gain.setValueAtTime(0.04, now);
       gain.gain.linearRampToValueAtTime(0, now + 0.4);
       osc.start(now);
       osc.stop(now + 0.4);
     }
   } catch (e) {
-    console.warn("Web Audio API failed:", e);
+    console.warn("Audio Context init failed:", e);
   }
 };
 
 const NEON_COLORS = ['#ff007f', '#ea580c', '#eab308', '#00ff88', '#00d4ff', '#a855f7'];
 
 const TowerStack = () => {
+  // Game states: 'LOBBY' | 'GAMEPLAY' | 'PAUSE' | 'GAMEOVER'
+  const [gameState, setGameState] = useState('LOBBY');
+  const gameStateRef = useRef('LOBBY');
+  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+
+  // Audio Control
+  const [muted, setMuted] = useState(() => localStorage.getItem('arcade_muted') === 'true');
+  const mutedRef = useRef(false);
+  useEffect(() => {
+    mutedRef.current = muted;
+    localStorage.setItem('arcade_muted', muted.toString());
+  }, [muted]);
+
+  // Core metrics
+  const [score, setScore] = useState(0);
+  const scoreRef = useRef(0);
+  useEffect(() => { scoreRef.current = score; }, [score]);
+
+  const [combo, setCombo] = useState(0);
+  const comboRef = useRef(0);
+  useEffect(() => { comboRef.current = combo; }, [combo]);
+
+  const [highScore, setHighScore] = useState(() => {
+    return parseInt(localStorage.getItem('stack_high_score') || '0', 10);
+  });
+
+  // Menu navigation index
+  const [menuIndex, setMenuIndex] = useState(0);
+
+  // API sync states
+  const [gameId, setGameId] = useState(null);
+  const [submitStatus, setSubmitStatus] = useState('');
+  const [rewards, setRewards] = useState(null);
+
+  // Canvas Refs & loops
   const canvasRef = useRef(null);
   const requestRef = useRef(null);
+  const lastFrameTimeRef = useRef(0);
 
-  // React State
-  const [score, setScore] = useState(0);
-  const [highScore, setHighScore] = useState(
-    localStorage.getItem('stack_high_score') ? parseInt(localStorage.getItem('stack_high_score')) : 0
-  );
-  const [gameOver, setGameOver] = useState(false);
-  const [paused, setPaused] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [combo, setCombo] = useState(0);
-  const [gameStarted, setGameStarted] = useState(false);
-  const [gameId, setGameId] = useState(null);
-  const [rewards, setRewards] = useState(null);
-  const [submitStatus, setSubmitStatus] = useState(''); // 'submitting', 'submitted', 'failed', 'offline'
+  // Simulation physics parameters
+  const blocksRef = useRef([]); // { x, w, color, isPerfect }
+  const debrisRef = useRef([]); // { x, y, w, color, vy, alpha }
+  const slidingBlockRef = useRef({ x: 0, w: 160, direction: 1, baseSpeed: 3.5 });
+  const cameraYRef = useRef(0);
+  const targetCameraYRef = useRef(0);
+  const perfectFlashRef = useRef(0);
+  const perfectFlashXRef = useRef(0);
+  const perfectFlashWRef = useRef(0);
+  const debrisMissRef = useRef(null);
 
+  // Constants
+  const CANVAS_SIZE = 600;
+  const STACK_HEIGHT = 560; // Bottom of stacks
+  const BLOCK_HEIGHT = 24;
+
+  // Retrieve game info
   useEffect(() => {
     axios.get('/api/v1/games')
       .then(res => {
@@ -103,137 +145,102 @@ const TowerStack = () => {
       .catch(err => console.error("Failed to load game info:", err));
   }, []);
 
-  useEffect(() => {
-    if (gameOver) {
-      const token = localStorage.getItem('token');
-      if (gameId && token && score > 0) {
-        setSubmitStatus('submitting');
-        axios.post(`/api/v1/games/${gameId}/score`, {
-          score: score
+  // Submit high score
+  const submitStackScore = async (finalScore) => {
+    const token = localStorage.getItem('token');
+    if (gameId && token && finalScore > 0) {
+      setSubmitStatus('submitting');
+      try {
+        const res = await axios.post(`/api/v1/games/${gameId}/score`, {
+          score: finalScore
         }, {
           headers: { Authorization: `Bearer ${token}` }
-        })
-        .then(res => {
-          console.log('Score submitted successfully:', res.data);
-          setRewards({
-            coinsEarned: res.data.coinsEarned,
-            expGained: res.data.expGained,
-            level: res.data.level,
-            leveledUp: res.data.leveledUp
-          });
-          setSubmitStatus('submitted');
-          
-          // Sync local storage user
-          const storedUser = localStorage.getItem('user');
-          if (storedUser) {
-            try {
-              const userObj = JSON.parse(storedUser);
-              userObj.coins = res.data.totalCoins;
-              if (!userObj.gameStats) userObj.gameStats = {};
-              userObj.gameStats.level = res.data.level;
-              localStorage.setItem('user', JSON.stringify(userObj));
-              window.dispatchEvent(new Event('user-stats-changed'));
-            } catch (e) {
-              console.error('Failed to sync user stats:', e);
-            }
-          }
-        })
-        .catch(err => {
-          console.error('Failed to submit score:', err);
-          setSubmitStatus('failed');
         });
-      } else {
-        setSubmitStatus('offline');
+        setRewards({
+          coinsEarned: res.data.coinsEarned,
+          expGained: res.data.expGained,
+          level: res.data.level,
+          leveledUp: res.data.leveledUp
+        });
+        setSubmitStatus('submitted');
+
+        // Sync local storage user
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          try {
+            const userObj = JSON.parse(storedUser);
+            userObj.coins = res.data.totalCoins;
+            if (!userObj.gameStats) userObj.gameStats = {};
+            userObj.gameStats.level = res.data.level;
+            localStorage.setItem('user', JSON.stringify(userObj));
+            window.dispatchEvent(new Event('user-stats-changed'));
+          } catch (e) {
+            console.error('Failed to sync user stats:', e);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        setSubmitStatus('failed');
       }
+    } else {
+      setSubmitStatus('offline');
     }
-  }, [gameOver, gameId, score]);
+  };
 
-  // Mutable Game Physics (to avoid closures inside requestAnimationFrame)
-  const gameState = useRef({
-    blocks: [], // { x, w, color, isPerfect }
-    debris: [], // { x, y, w, color, vy, alpha }
-    slidingBlock: { x: 0, w: 180, direction: 1, baseSpeed: 3.5 },
-    cameraY: 0,
-    targetCameraY: 0,
-    perfectFlash: 0,
-    perfectFlashX: 0,
-    perfectFlashW: 0,
-    debrisMiss: null // if missed completely
-  });
-
-  const blockHeight = 24;
-
-  const initGame = () => {
-    setRewards(null);
-    setSubmitStatus('');
-    playSound('restart', soundEnabled);
+  // Launch fresh game
+  const startGame = () => {
     setScore(0);
     setCombo(0);
-    setGameOver(false);
-    setPaused(false);
-    setGameStarted(true);
+    setRewards(null);
+    setSubmitStatus('');
+    setMenuIndex(0);
+
+    playSound('restart', mutedRef.current);
 
     const baseWidth = 160;
-    gameState.current.blocks = [
+    blocksRef.current = [
       {
-        x: (400 - baseWidth) / 2,
+        x: 100 + (400 - baseWidth) / 2, // Stack centers in x=100 to 500 area
         w: baseWidth,
         color: NEON_COLORS[0],
         isPerfect: false
       }
     ];
-    gameState.current.debris = [];
-    gameState.current.slidingBlock = {
-      x: -baseWidth,
+    debrisRef.current = [];
+    slidingBlockRef.current = {
+      x: 100 - baseWidth,
       w: baseWidth,
       direction: 1,
       baseSpeed: 3.5
     };
-    gameState.current.cameraY = 0;
-    gameState.current.targetCameraY = 0;
-    gameState.current.perfectFlash = 0;
-    gameState.current.debrisMiss = null;
+    cameraYRef.current = 0;
+    targetCameraYRef.current = 0;
+    perfectFlashRef.current = 0;
+    debrisMissRef.current = null;
+
+    setGameState('GAMEPLAY');
   };
 
-  // Keyboard Spacebar listener to place block
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === ' ' || e.key === 'ArrowDown') {
-        e.preventDefault();
-        if (gameStarted && !gameOver && !paused) {
-          dropBlock();
-        } else if (!gameStarted) {
-          initGame();
-        } else if (gameOver) {
-          initGame();
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [gameStarted, gameOver, paused, soundEnabled]);
-
+  // Place block down
   const dropBlock = () => {
-    const state = gameState.current;
-    const stack = state.blocks;
+    if (gameStateRef.current !== 'GAMEPLAY') return;
+
+    const stack = blocksRef.current;
     const topBlock = stack[stack.length - 1];
-    const curr = state.slidingBlock;
+    const curr = slidingBlockRef.current;
 
-    const topBlockY = 500 - stack.length * blockHeight + state.cameraY;
-    const currentBlockY = topBlockY - blockHeight;
+    const topBlockY = STACK_HEIGHT - stack.length * BLOCK_HEIGHT + cameraYRef.current;
+    const currentBlockY = topBlockY - BLOCK_HEIGHT;
 
-    // Check overlap boundaries
+    // Check overlap diff
     const diff = curr.x - topBlock.x;
-    const perfectThreshold = 5; // allow 5px tolerance
+    const perfectThreshold = 5;
 
     if (Math.abs(diff) <= perfectThreshold) {
-      // PERFECT DROP!
+      // PERFECT DROP
       const newX = topBlock.x;
       const newW = topBlock.w;
 
-      // Add block
       stack.push({
         x: newX,
         w: newW,
@@ -241,31 +248,27 @@ const TowerStack = () => {
         isPerfect: true
       });
 
-      // Score and combos
-      const nextCombo = combo + 1;
+      const nextCombo = comboRef.current + 1;
       setCombo(nextCombo);
-      playSound('perfect', soundEnabled);
+      playSound('perfect', mutedRef.current);
 
-      // Flash animation trigger
-      state.perfectFlash = 1.0;
-      state.perfectFlashX = newX;
-      state.perfectFlashW = newW;
+      perfectFlashRef.current = 1.0;
+      perfectFlashXRef.current = newX;
+      perfectFlashWRef.current = newW;
 
-      // Every 5 consecutive combos, reward the player by expanding the block size slightly
+      // Expand slightly on combos
       let rewardedWidth = newW;
       let rewardedX = newX;
       if (nextCombo > 0 && nextCombo % 5 === 0) {
         rewardedWidth = Math.min(220, newW + 12);
-        rewardedX = Math.max(10, newX - 6);
-        // Update top block to reflect expansion
+        rewardedX = Math.max(100, Math.min(500 - rewardedWidth, newX - 6));
         stack[stack.length - 1].w = rewardedWidth;
         stack[stack.length - 1].x = rewardedX;
       }
 
-      // Prepare next sliding block
       const nextDir = Math.random() > 0.5 ? 1 : -1;
-      state.slidingBlock = {
-        x: nextDir === 1 ? -rewardedWidth : 400,
+      slidingBlockRef.current = {
+        x: nextDir === 1 ? 100 - rewardedWidth : 500,
         w: rewardedWidth,
         direction: nextDir,
         baseSpeed: curr.baseSpeed
@@ -280,51 +283,48 @@ const TowerStack = () => {
         return nextScore;
       });
 
-      // Update camera height
-      state.targetCameraY = Math.max(0, (stack.length - 8) * blockHeight);
-
+      targetCameraYRef.current = Math.max(0, (stack.length - 8) * BLOCK_HEIGHT);
     } else {
-      // Overlap calculation
+      // CUT DROP
       const left = Math.max(curr.x, topBlock.x);
       const right = Math.min(curr.x + curr.w, topBlock.x + topBlock.w);
       const overlapWidth = right - left;
 
       if (overlapWidth <= 0) {
-        // MISS COMPLETELY!
-        playSound('lose', soundEnabled);
-        state.debrisMiss = {
+        // MISSED TOWER COMPLETELY
+        playSound('lose', mutedRef.current);
+        debrisMissRef.current = {
           x: curr.x,
-          y: currentBlockY - state.cameraY,
+          y: currentBlockY - cameraYRef.current,
           w: curr.w,
           vy: 0,
           alpha: 1.0,
           color: NEON_COLORS[stack.length % NEON_COLORS.length]
         };
-        setGameOver(true);
+        setGameState('GAMEOVER');
+        setMenuIndex(0);
         setCombo(0);
+        submitStackScore(scoreRef.current);
       } else {
-        // PLACED WITH CUT
+        // PLACED AND SLICED
         setCombo(0);
-        playSound('chop', soundEnabled);
+        playSound('chop', mutedRef.current);
 
-        // Debris generation (the cut-off section)
         let debrisX = 0;
         let debrisWidth = 0;
 
         if (curr.x < topBlock.x) {
-          // hanging off the left side
           debrisX = curr.x;
           debrisWidth = topBlock.x - curr.x;
         } else {
-          // hanging off the right side
           debrisX = topBlock.x + topBlock.w;
           debrisWidth = (curr.x + curr.w) - (topBlock.x + topBlock.w);
         }
 
         if (debrisWidth > 0) {
-          state.debris.push({
+          debrisRef.current.push({
             x: debrisX,
-            y: currentBlockY - state.cameraY, // store relative to stack coordinates
+            y: currentBlockY - cameraYRef.current,
             w: debrisWidth,
             vy: 0,
             alpha: 1.0,
@@ -332,7 +332,6 @@ const TowerStack = () => {
           });
         }
 
-        // Add overlapping block to stack
         stack.push({
           x: left,
           w: overlapWidth,
@@ -340,10 +339,9 @@ const TowerStack = () => {
           isPerfect: false
         });
 
-        // Prepare next block
         const nextDir = Math.random() > 0.5 ? 1 : -1;
-        state.slidingBlock = {
-          x: nextDir === 1 ? -overlapWidth : 400,
+        slidingBlockRef.current = {
+          x: nextDir === 1 ? 100 - overlapWidth : 500,
           w: overlapWidth,
           direction: nextDir,
           baseSpeed: curr.baseSpeed
@@ -358,281 +356,564 @@ const TowerStack = () => {
           return nextScore;
         });
 
-        // Update camera height
-        state.targetCameraY = Math.max(0, (stack.length - 8) * blockHeight);
+        targetCameraYRef.current = Math.max(0, (stack.length - 8) * BLOCK_HEIGHT);
       }
     }
   };
 
-  // Main game logic loops
+  // Keyboard navigation controls
+  const handleKeyboardNav = (code) => {
+    const curState = gameStateRef.current;
+    if (curState === 'LOBBY') {
+      if (code === 'Space' || code === 'Enter') {
+        playSound('click', mutedRef.current);
+        startGame();
+      }
+    } else if (curState === 'PAUSE') {
+      if (code === 'ArrowUp' || code === 'KeyW') {
+        playSound('click', mutedRef.current);
+        setMenuIndex(prev => (prev === 0 ? 2 : prev - 1));
+      } else if (code === 'ArrowDown' || code === 'KeyS') {
+        playSound('click', mutedRef.current);
+        setMenuIndex(prev => (prev === 2 ? 0 : prev + 1));
+      } else if (code === 'Space' || code === 'Enter') {
+        playSound('click', mutedRef.current);
+        if (menuIndex === 0) {
+          lastFrameTimeRef.current = performance.now();
+          setGameState('GAMEPLAY');
+        } else if (menuIndex === 1) {
+          startGame();
+        } else {
+          setGameState('LOBBY');
+        }
+      } else if (code === 'Escape') {
+        playSound('click', mutedRef.current);
+        lastFrameTimeRef.current = performance.now();
+        setGameState('GAMEPLAY');
+      }
+    } else if (curState === 'GAMEOVER') {
+      if (code === 'ArrowUp' || code === 'KeyW' || code === 'ArrowDown' || code === 'KeyS') {
+        playSound('click', mutedRef.current);
+        setMenuIndex(prev => (prev === 0 ? 1 : 0));
+      } else if (code === 'Space' || code === 'Enter') {
+        playSound('click', mutedRef.current);
+        if (menuIndex === 0) {
+          startGame();
+        } else {
+          setGameState('LOBBY');
+        }
+      }
+    } else if (curState === 'GAMEPLAY') {
+      if (code === 'Escape') {
+        playSound('click', mutedRef.current);
+        setGameState('PAUSE');
+        setMenuIndex(0);
+      } else if (code === 'Space' || code === 'Enter' || code === 'ArrowDown' || code === 'KeyS') {
+        dropBlock();
+      }
+    }
+  };
+
+  // Keyboard listener hooks
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const activeStates = ['LOBBY', 'PAUSE', 'GAMEOVER', 'GAMEPLAY'];
+      if (activeStates.includes(gameStateRef.current)) {
+        if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+          e.preventDefault();
+        }
+        handleKeyboardNav(e.code);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Canvas Clicks
+  const handleCanvasClick = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = CANVAS_SIZE / rect.width;
+    const scaleY = CANVAS_SIZE / rect.height;
+    const clickX = (e.clientX - rect.left) * scaleX;
+    const clickY = (e.clientY - rect.top) * scaleY;
+
+    // Speaker check
+    if (clickX >= 540 && clickX <= 590 && clickY >= 10 && clickY <= 50) {
+      playSound('click', !muted);
+      setMuted(prev => !prev);
+      return;
+    }
+
+    const curState = gameState;
+    if (curState === 'LOBBY') {
+      if (clickX >= 150 && clickX <= 450 && clickY >= 300 && clickY <= 360) {
+        playSound('click', muted);
+        startGame();
+      }
+    } else if (curState === 'PAUSE') {
+      if (clickX >= 200 && clickX <= 400 && clickY >= 240 && clickY <= 280) {
+        playSound('click', muted);
+        lastFrameTimeRef.current = performance.now();
+        setGameState('GAMEPLAY');
+      } else if (clickX >= 200 && clickX <= 400 && clickY >= 300 && clickY <= 340) {
+        playSound('click', muted);
+        startGame();
+      } else if (clickX >= 200 && clickX <= 400 && clickY >= 360 && clickY <= 400) {
+        playSound('click', muted);
+        setGameState('LOBBY');
+      }
+    } else if (curState === 'GAMEOVER') {
+      if (clickX >= 150 && clickX <= 450 && clickY >= 440 && clickY <= 480) {
+        playSound('click', muted);
+        startGame();
+      } else if (clickX >= 150 && clickX <= 450 && clickY >= 495 && clickY <= 535) {
+        playSound('click', muted);
+        setGameState('LOBBY');
+      }
+    } else if (curState === 'GAMEPLAY') {
+      dropBlock();
+    }
+  };
+
+  // Main Canvas render & physics loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    const update = () => {
-      const state = gameState.current;
-      if (!gameStarted || gameOver || paused) return;
+    const render = (time) => {
+      if (!lastFrameTimeRef.current) lastFrameTimeRef.current = time;
+      const dt = time - lastFrameTimeRef.current;
+      lastFrameTimeRef.current = time;
 
-      // 1. Move camera smoothly
-      state.cameraY += (state.targetCameraY - state.cameraY) * 0.1;
+      // Update Physics
+      if (gameStateRef.current === 'GAMEPLAY') {
+        const stack = blocksRef.current;
+        const curr = slidingBlockRef.current;
 
-      // 2. Move sliding block
-      const curr = state.slidingBlock;
-      // Speed scales up slightly with score
-      const speed = curr.baseSpeed + score * 0.12;
-      curr.x += speed * curr.direction;
+        // Smooth camera slide
+        cameraYRef.current += (targetCameraYRef.current - cameraYRef.current) * 0.1;
 
-      // Reverse horizontal directions at limits
-      if (curr.direction === 1 && curr.x >= 400) {
-        curr.direction = -1;
-      } else if (curr.direction === -1 && curr.x <= -curr.w) {
-        curr.direction = 1;
-      }
+        // Sliding block movement
+        const speed = curr.baseSpeed + scoreRef.current * 0.12;
+        curr.x += speed * curr.direction;
 
-      // 3. Update debris particles falling
-      for (let i = state.debris.length - 1; i >= 0; i--) {
-        const d = state.debris[i];
-        d.vy += 0.35; // gravity
-        d.y += d.vy;
-        d.alpha -= 0.02; // fade
-        if (d.alpha <= 0 || d.y > 600) {
-          state.debris.splice(i, 1);
+        // Bounce slide direction at limits (100 to 500 stack box shifted bounds)
+        if (curr.direction === 1 && curr.x >= 500) {
+          curr.direction = -1;
+        } else if (curr.direction === -1 && curr.x <= 100 - curr.w) {
+          curr.direction = 1;
+        }
+
+        // Falling debris particles
+        const debris = debrisRef.current;
+        for (let i = debris.length - 1; i >= 0; i--) {
+          const d = debris[i];
+          d.vy += 0.35; // gravity
+          d.y += d.vy;
+          d.alpha -= 0.02;
+          if (d.alpha <= 0 || d.y > CANVAS_SIZE) {
+            debris.splice(i, 1);
+          }
+        }
+
+        // Perfect flash alpha
+        if (perfectFlashRef.current > 0) {
+          perfectFlashRef.current -= 0.05;
         }
       }
 
-      // 4. Update perfect flash duration
-      if (state.perfectFlash > 0) {
-        state.perfectFlash -= 0.05;
+      // Drawing
+      ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+      ctx.shadowBlur = 0;
+
+      // Space lines
+      ctx.strokeStyle = '#060512';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 6; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * 100, 0);
+        ctx.lineTo(i * 100, CANVAS_SIZE);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(0, i * 100);
+        ctx.lineTo(CANVAS_SIZE, i * 100);
+        ctx.stroke();
       }
+
+      const curState = gameStateRef.current;
+
+      // ----------------------------------------------------
+      // STATE: LOBBY
+      // ----------------------------------------------------
+      if (curState === 'LOBBY') {
+        ctx.shadowColor = '#a855f7';
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = '#a855f7';
+        ctx.font = 'bold 36px "Orbitron", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('NEON STACK TOWER', CANVAS_SIZE / 2, 130);
+
+        ctx.shadowColor = '#00ff88';
+        ctx.fillStyle = '#b4b4c8';
+        ctx.font = '14px "Exo 2", sans-serif';
+        ctx.fillText('COMBO EXPANSION ALIGNER', CANVAS_SIZE / 2, 170);
+
+        // Draw START RUN button centered
+        ctx.shadowColor = '#a855f7';
+        ctx.shadowBlur = 10;
+        ctx.strokeStyle = '#a855f7';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(CANVAS_SIZE / 2 - 130, 330 - 28, 260, 40);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 18px "Orbitron", monospace';
+        ctx.fillText('START RUN', CANVAS_SIZE / 2, 330);
+
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '12px "Exo 2", sans-serif';
+        ctx.fillText('USE ARROWS / WASD TO NAVIGATE • SPACEBAR TO SELECT', CANVAS_SIZE / 2, 550);
+      }
+
+      // ----------------------------------------------------
+      // STATE: PAUSE
+      // ----------------------------------------------------
+      else if (curState === 'PAUSE') {
+        drawActiveGameElements(ctx);
+
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(5, 5, 10, 0.85)';
+        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+        ctx.shadowColor = '#a855f7';
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = '#a855f7';
+        ctx.font = 'bold 36px "Orbitron", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('SYSTEM PAUSED', CANVAS_SIZE / 2, 160);
+
+        const pauseItems = ['RESUME', 'RESTART', 'BACK TO MENU'];
+        pauseItems.forEach((text, idx) => {
+          const isSelected = menuIndex === idx;
+          const y = 266 + idx * 60;
+
+          if (isSelected) {
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#00d4ff';
+            ctx.strokeStyle = '#00d4ff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(CANVAS_SIZE / 2 - 100, y - 26, 200, 36);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 16px "Orbitron", monospace';
+          } else {
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#8888a0';
+            ctx.font = '15px "Orbitron", monospace';
+          }
+          ctx.fillText(text, CANVAS_SIZE / 2, y);
+        });
+      }
+
+      // ----------------------------------------------------
+      // STATE: GAMEOVER
+      // ----------------------------------------------------
+      else if (curState === 'GAMEOVER') {
+        drawActiveGameElements(ctx);
+
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(5, 5, 10, 0.88)';
+        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+        ctx.shadowColor = '#ff0055';
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = '#ff0055';
+        ctx.font = 'bold 34px "Orbitron", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('TOWER COLLAPSED', CANVAS_SIZE / 2, 110);
+
+        // CLI Sync logger
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillRect(80, 160, 440, 230);
+        ctx.strokeStyle = 'rgba(168, 85, 247, 0.2)';
+        ctx.strokeRect(80, 160, 440, 230);
+
+        ctx.font = '13px "Courier New", monospace';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#a855f7';
+        ctx.fillText(`> Stacking alignment limits exceeded.`, 100, 190);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(`> Telemetry Final Score: ${scoreRef.current} stacked`, 100, 210);
+
+        if (submitStatus === 'submitting') {
+          ctx.fillStyle = '#00d4ff';
+          ctx.fillText(`> Connecting to deflector registry database...`, 100, 240);
+          ctx.fillText(`> Uploading tower logs...`, 100, 260);
+        } else if (submitStatus === 'submitted' && rewards) {
+          ctx.fillStyle = '#00ff88';
+          ctx.fillText(`> DATA SYNC SUCCESS. CORE INTEGRATION COMPLETE.`, 100, 240);
+          ctx.fillStyle = '#ffd700';
+          ctx.fillText(`> REWARDS CREDITED:`, 100, 270);
+          ctx.fillText(`  🪙 +${rewards.coinsEarned} Arcade Coins`, 100, 290);
+          ctx.fillText(`  ⚡ +${rewards.expGained} Experience Nodes`, 100, 310);
+          if (rewards.leveledUp) {
+            ctx.fillStyle = '#a855f7';
+            ctx.fillText(`  [NOTICE] LEVEL UP! New Level ${rewards.level}`, 100, 335);
+          }
+        } else if (submitStatus === 'failed') {
+          ctx.fillStyle = '#ff0055';
+          ctx.fillText(`> [CRITICAL_ERROR] CLOUD NODE REFUSED DATA SYNC`, 100, 240);
+        } else if (submitStatus === 'offline') {
+          ctx.fillStyle = '#ffaa00';
+          ctx.fillText(`> [NOTICE] OFFLINE OPERATION DETECTED`, 100, 240);
+          ctx.fillText(`> Log in to authorize rewards.`, 100, 265);
+        }
+
+        // Action Options
+        const gameOverItems = ['PLAY AGAIN', 'QUIT TO MENU'];
+        gameOverItems.forEach((text, idx) => {
+          const isSelected = menuIndex === idx;
+          const y = 460 + idx * 55;
+
+          ctx.textAlign = 'center';
+          if (isSelected) {
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#a855f7';
+            ctx.strokeStyle = '#a855f7';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(CANVAS_SIZE / 2 - 130, y - 26, 260, 36);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 16px "Orbitron", monospace';
+          } else {
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#8888a0';
+            ctx.font = '15px "Orbitron", monospace';
+          }
+          ctx.fillText(text, CANVAS_SIZE / 2, y);
+        });
+      }
+
+      // ----------------------------------------------------
+      // STATE: GAMEPLAY
+      // ----------------------------------------------------
+      else if (curState === 'GAMEPLAY') {
+        drawActiveGameElements(ctx);
+      }
+
+      // Draw global speaker speaker icon
+      drawSpeakerIcon(ctx);
+
+      requestRef.current = requestAnimationFrame(render);
     };
 
-    const draw = () => {
-      ctx.clearRect(0, 0, 400, 500);
+    // Helper: Draw stack blocks, falling debris, sliding layers, perfect flashes
+    const drawActiveGameElements = (c) => {
+      // 1. Draw top HUD panel
+      c.textAlign = 'left';
+      c.fillStyle = '#8888a0';
+      c.font = '11px "Orbitron", monospace';
+      c.fillText('STACKED', 50, 30);
+      c.fillText('BEST STACK', 300, 30);
 
-      const state = gameState.current;
+      c.fillStyle = '#ffffff';
+      c.font = 'bold 16px "Orbitron", monospace';
+      c.fillText(String(scoreRef.current), 50, 52);
 
-      // Render Stack Blocks
-      state.blocks.forEach((block, index) => {
-        const y = 500 - (index + 1) * blockHeight + state.cameraY;
-        if (y > 550) return; // offscreen bottom
+      c.fillStyle = '#ffd700';
+      c.fillText(highScore.toLocaleString(), 300, 52);
 
-        ctx.fillStyle = block.color + '1c';
-        ctx.strokeStyle = block.color;
-        ctx.lineWidth = 3;
-
-        ctx.beginPath();
-        if (ctx.roundRect) {
-          ctx.roundRect(block.x, y, block.w, blockHeight, 4);
-        } else {
-          ctx.rect(block.x, y, block.w, blockHeight);
-        }
-        ctx.fill();
-        ctx.stroke();
-
-        // If it was a perfect fit, draw a subtle glowing pulse
-        if (block.isPerfect) {
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
-        }
-      });
-
-      // Render Debris
-      state.debris.forEach(d => {
-        const y = d.y + state.cameraY;
-        ctx.fillStyle = d.color;
-        ctx.globalAlpha = d.alpha;
-        ctx.beginPath();
-        ctx.rect(d.x, y, d.w, blockHeight);
-        ctx.fill();
-      });
-      ctx.globalAlpha = 1.0; // reset
-
-      // Render sliding block if game is active
-      if (gameStarted && !gameOver && !paused) {
-        const stackLength = state.blocks.length;
-        const y = 500 - (stackLength + 1) * blockHeight + state.cameraY;
-        const color = NEON_COLORS[stackLength % NEON_COLORS.length];
-
-        ctx.fillStyle = color + '2a';
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 3;
-
-        ctx.beginPath();
-        if (ctx.roundRect) {
-          ctx.roundRect(state.slidingBlock.x, y, state.slidingBlock.w, blockHeight, 4);
-        } else {
-          ctx.rect(state.slidingBlock.x, y, state.slidingBlock.w, blockHeight);
-        }
-        ctx.fill();
-        ctx.stroke();
+      // Draw active combo fire node
+      if (comboRef.current > 0) {
+        c.fillStyle = '#00ff88';
+        c.font = 'bold 12px "Orbitron", monospace';
+        c.fillText(`COMBO x${comboRef.current}`, 180, 52);
       }
 
-      // Render complete miss falling debris
-      if (gameOver && state.debrisMiss) {
-        const d = state.debrisMiss;
+      // Divider line
+      c.strokeStyle = 'rgba(168, 85, 247, 0.15)';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.moveTo(0, 78);
+      c.lineTo(CANVAS_SIZE, 78);
+      c.stroke();
+
+      // 2. Draw Stack Blocks (y shifting via cameraY)
+      const stack = blocksRef.current;
+      stack.forEach((block, index) => {
+        const y = STACK_HEIGHT - (index + 1) * BLOCK_HEIGHT + cameraYRef.current;
+        if (y > 590) return; // offscreen bottom
+
+        c.fillStyle = block.color + '1c';
+        c.strokeStyle = block.color;
+        c.lineWidth = 2.5;
+
+        c.beginPath();
+        c.roundRect(block.x, y, block.w, BLOCK_HEIGHT, 4);
+        c.fill();
+        c.stroke();
+
+        // White border highlight on perfect drop
+        if (block.isPerfect) {
+          c.strokeStyle = '#ffffff';
+          c.lineWidth = 1.2;
+          c.stroke();
+        }
+      });
+
+      // 3. Render falling debris slice blocks
+      const debris = debrisRef.current;
+      debris.forEach(d => {
+        const y = d.y + cameraYRef.current;
+        c.fillStyle = d.color;
+        c.globalAlpha = d.alpha;
+        c.beginPath();
+        c.rect(d.x, y, d.w, BLOCK_HEIGHT);
+        c.fill();
+      });
+      c.globalAlpha = 1.0; // reset
+
+      // 4. Render sliding block if game is active
+      if (gameStateRef.current === 'GAMEPLAY') {
+        const curr = slidingBlockRef.current;
+        const y = STACK_HEIGHT - (stack.length + 1) * BLOCK_HEIGHT + cameraYRef.current;
+        const color = NEON_COLORS[stack.length % NEON_COLORS.length];
+
+        c.fillStyle = color + '2a';
+        c.strokeStyle = color;
+        c.lineWidth = 3;
+
+        c.beginPath();
+        c.roundRect(curr.x, y, curr.w, BLOCK_HEIGHT, 4);
+        c.fill();
+        c.stroke();
+      }
+
+      // 5. Miss completely falling animation
+      if (gameStateRef.current === 'GAMEOVER' && debrisMissRef.current) {
+        const d = debrisMissRef.current;
         d.vy += 0.35;
         d.y += d.vy;
         d.alpha -= 0.025;
 
-        ctx.fillStyle = d.color;
-        ctx.globalAlpha = Math.max(0, d.alpha);
-        ctx.beginPath();
-        ctx.rect(d.x, d.y + state.cameraY, d.w, blockHeight);
-        ctx.fill();
-        ctx.globalAlpha = 1.0;
+        c.fillStyle = d.color;
+        c.globalAlpha = Math.max(0, d.alpha);
+        c.beginPath();
+        c.rect(d.x, d.y + cameraYRef.current, d.w, BLOCK_HEIGHT);
+        c.fill();
+        c.globalAlpha = 1.0;
       }
 
-      // Perfect Hit Flash Overlay
-      if (state.perfectFlash > 0) {
-        const flashY = 500 - state.blocks.length * blockHeight + state.cameraY;
-        ctx.strokeStyle = `rgba(255, 255, 255, ${state.perfectFlash})`;
-        ctx.lineWidth = 8;
-        ctx.beginPath();
-        if (ctx.roundRect) {
-          ctx.roundRect(state.perfectFlashX, flashY, state.perfectFlashW, blockHeight, 4);
-        } else {
-          ctx.rect(state.perfectFlashX, flashY, state.perfectFlashW, blockHeight);
-        }
-        ctx.stroke();
+      // 6. Perfect Hit flash animation
+      if (perfectFlashRef.current > 0) {
+        const flashY = STACK_HEIGHT - stack.length * BLOCK_HEIGHT + cameraYRef.current;
+        c.strokeStyle = `rgba(255, 255, 255, ${perfectFlashRef.current})`;
+        c.lineWidth = 8;
+        c.beginPath();
+        c.roundRect(perfectFlashXRef.current, flashY, perfectFlashWRef.current, BLOCK_HEIGHT, 4);
+        c.stroke();
 
         // Floating 'PERFECT!' text
-        ctx.fillStyle = `rgba(255, 255, 255, ${state.perfectFlash})`;
-        ctx.font = '700 1.2rem var(--font-gaming)';
-        ctx.textAlign = 'center';
-        ctx.fillText('PERFECT!', 200, flashY - 20);
+        c.fillStyle = `rgba(255, 255, 255, ${perfectFlashRef.current})`;
+        c.font = 'bold 15px "Orbitron", monospace';
+        c.textAlign = 'center';
+        c.fillText('PERFECT!', CANVAS_SIZE / 2, flashY - 15);
       }
     };
 
-    const loop = () => {
-      update();
-      draw();
-      requestRef.current = requestAnimationFrame(loop);
+    // Helper: Draw global speaker mute toggler button
+    const drawSpeakerIcon = (c) => {
+      c.save();
+      const x = 555;
+      const y = 20;
+
+      c.strokeStyle = muted ? '#ff0055' : '#8888a0';
+      c.fillStyle = muted ? 'rgba(255,0,85,0.05)' : 'rgba(255,255,255,0.05)';
+      c.lineWidth = 2;
+
+      c.beginPath();
+      c.moveTo(x, y + 6);
+      c.lineTo(x + 6, y + 6);
+      c.lineTo(x + 12, y);
+      c.lineTo(x + 12, y + 16);
+      c.lineTo(x + 6, y + 10);
+      c.lineTo(x, y + 10);
+      c.closePath();
+      c.fill();
+      c.stroke();
+
+      if (!muted) {
+        c.beginPath();
+        c.arc(x + 10, y + 8, 5, -Math.PI / 3, Math.PI / 3);
+        c.stroke();
+        c.beginPath();
+        c.arc(x + 10, y + 8, 9, -Math.PI / 3, Math.PI / 3);
+        c.stroke();
+      } else {
+        c.strokeStyle = '#ff0055';
+        c.beginPath();
+        c.moveTo(x + 16, y + 3);
+        c.lineTo(x + 22, y + 13);
+        c.moveTo(x + 22, y + 3);
+        c.lineTo(x + 16, y + 13);
+        c.stroke();
+      }
+      c.restore();
     };
 
-    loop();
-
+    requestRef.current = requestAnimationFrame(render);
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
     };
-  }, [gameStarted, gameOver, paused, score, soundEnabled]);
-
-  const isGameplayActive = gameStarted && !gameOver && !paused;
+  }, [gameState, score, combo, muted, submitStatus, rewards, highScore, menuIndex]);
 
   return (
     <div className="stack-page-wrapper">
-      {!isGameplayActive && (
+      {/* Floating circular navigation back button */}
+      {gameState === 'LOBBY' || gameState === 'GAMEOVER' || gameState === 'PAUSE' ? (
         <Link to="/UODGaming" className="floating-back-btn" title="Back to Games">
           <ArrowLeft size={20} />
         </Link>
-      )}
+      ) : null}
+
+      {gameState === 'GAMEPLAY' ? (
+        <button
+          onClick={() => {
+            playSound('click', muted);
+            setGameState('PAUSE');
+            setMenuIndex(0);
+          }}
+          className="floating-back-btn"
+          title="Pause Game"
+          style={{ cursor: 'pointer', outline: 'none' }}
+        >
+          <Pause size={20} />
+        </button>
+      ) : null}
 
       <div className="game-content-card">
-        {/* Arcade Cabinet Frame */}
-        <div className="cabinet-screen crt-screen">
+        <div 
+          className="cabinet-screen crt-screen" 
+          onClick={handleCanvasClick}
+        >
           {/* CRT scanlines, reflection and flicker overlay */}
           <div className="crt-scanlines"></div>
           <div className="crt-reflection"></div>
           <div className="crt-flicker"></div>
 
-          {/* Floating HUD Overlays */}
-          <div className="game-hud-container">
-            <div className="game-hud-item">
-              <span className="game-hud-label">Stacked</span>
-              <span className="game-hud-value">{score}</span>
-            </div>
-
-            {combo > 0 && (
-              <div className="game-hud-item" style={{ borderColor: 'rgba(0, 255, 136, 0.3)', background: 'rgba(0, 255, 136, 0.08)' }}>
-                <span className="game-hud-label" style={{ color: 'var(--accent-green)' }}>Combo</span>
-                <span className="game-hud-value" style={{ color: 'var(--accent-green)' }}>{combo}x</span>
-              </div>
-            )}
-
-            <div className="game-hud-item">
-              <span className="game-hud-label">Best</span>
-              <span className="game-hud-value" style={{ color: 'var(--accent-yellow)', textShadow: '0 0 8px rgba(255,255,0,0.4)' }}>{highScore}</span>
-            </div>
-          </div>
-
-          <div className="game-play-area">
-            <div className="canvas-wrapper-stack">
-              <canvas 
-                ref={canvasRef} 
-                width={400} 
-                height={500} 
-                onClick={dropBlock}
-                className="stack-canvas"
-              />
-
-              {!gameStarted && (
-                <div className="start-prompt-overlay" onClick={initGame}>
-                  <Gamepad2 className="mb-4 text-purple-400" size={48} />
-                  <p>Press <strong>SPACEBAR</strong> or <strong>CLICK HERE</strong> to Play</p>
-                  <span>Perfect drops lock size and build combos. Every 5 combos expands the block width!</span>
-                </div>
-              )}
-
-              {/* Overlays */}
-              <AnimatePresence>
-                {gameOver && (
-                  <div className="start-prompt-overlay gameover">
-                    <h2>Tower Collapsed</h2>
-                    <p>Final blocks stacked: <strong>{score}</strong></p>
-                    {combo > 0 && <span className="mb-4">Streak combos: {combo}</span>}
-                    
-                    {submitStatus === 'submitting' && (
-                      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '8px 0' }}>Saving score online...</p>
-                    )}
-                    {submitStatus === 'submitted' && rewards && (
-                      <div className="game-over-rewards" style={{ margin: '12px auto', padding: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', fontSize: '0.9rem' }}>
-                        <div style={{ color: '#ffd700', marginBottom: '4px' }}>🪙 +{rewards.coinsEarned} Coins</div>
-                        <div style={{ color: 'var(--primary-neon)', marginBottom: '4px' }}>⚡ +{rewards.expGained} XP</div>
-                        {rewards.leveledUp && (
-                          <div style={{ color: '#00ff88', fontWeight: 'bold', textShadow: '0 0 5px rgba(0,255,136,0.5)', marginTop: '4px' }}>LEVEL UP! (Lv {rewards.level})</div>
-                        )}
-                      </div>
-                    )}
-                    {submitStatus === 'failed' && (
-                      <p style={{ fontSize: '0.85rem', color: 'var(--secondary-neon)', margin: '8px 0' }}>Failed to save score online.</p>
-                    )}
-                    {submitStatus === 'offline' && (
-                      <p style={{ fontSize: '0.85rem', color: 'var(--accent-orange)', margin: '8px 0' }}>Log in to save stats & earn coins!</p>
-                    )}
-
-                    <button className="btn btn-primary mt-4" onClick={initGame}>Insert Coin (Play)</button>
-                  </div>
-                )}
-
-                {paused && (
-                  <div className="start-prompt-overlay paused">
-                    <h2>Paused</h2>
-                    <button className="btn btn-primary mt-4" onClick={() => setPaused(false)}>Resume Game</button>
-                  </div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-        </div>
-
-        {/* Action Controls */}
-        <div className="stack-controls" style={{ display: 'flex', gap: '15px', marginTop: '10px', justifyContent: 'center' }}>
-          <button className="btn btn-primary" onClick={() => setPaused(!paused)} disabled={gameOver || !gameStarted}>
-            {paused ? <Play size={16} /> : <Pause size={16} />}
-            <span>{paused ? 'Resume' : 'Pause'}</span>
-          </button>
-          <button className="btn btn-reset" onClick={initGame}>
-            <RotateCcw size={16} />
-            <span>Restart</span>
-          </button>
-          <button className="btn btn-reset" onClick={() => setSoundEnabled(!soundEnabled)}>
-            {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-            <span>Sound: {soundEnabled ? 'ON' : 'OFF'}</span>
-          </button>
+          <canvas
+            ref={canvasRef}
+            width={CANVAS_SIZE}
+            height={CANVAS_SIZE}
+            style={{ display: 'block', background: '#030206', width: '100%', height: 'auto', maxWidth: '600px' }}
+          />
         </div>
       </div>
-
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pause } from 'lucide-react';
 import axios from 'axios';
 import '../Css/Snake.css';
 
@@ -101,6 +101,8 @@ const Snake = () => {
 
   // Menu items selection
   const [menuIndex, setMenuIndex] = useState(0);
+  const menuIndexRef = useRef(0);
+  useEffect(() => { menuIndexRef.current = menuIndex; }, [menuIndex]);
 
   // Canvas Refs & Game Objects
   const canvasRef = useRef(null);
@@ -587,21 +589,22 @@ const Snake = () => {
             ctx.strokeRect(CANVAS_SIZE / 2 - 180, y - 28, 360, 40);
 
             ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 18px "Orbitron", monospace';
+            ctx.font = 'bold 17px "Orbitron", monospace';
             ctx.fillText(item.text, CANVAS_SIZE / 2, y);
           } else {
             ctx.shadowBlur = 0;
             ctx.fillStyle = '#8888a0';
-            ctx.font = '16px "Orbitron", monospace';
+            ctx.font = '15px "Orbitron", monospace';
             ctx.fillText(item.text, CANVAS_SIZE / 2, y);
           }
         });
 
         // Instructions Footer
         ctx.shadowBlur = 0;
-        ctx.fillStyle = '#8888a0';
+        ctx.fillStyle = '#6b7280';
         ctx.font = '12px "Exo 2", sans-serif';
-        ctx.fillText('USE ARROWS / WASD TO NAVIGATE • SPACEBAR TO SELECT', CANVAS_SIZE / 2, 550);
+        ctx.fillText('USE ARROWS / WASD TO NAVIGATE • SPACEBAR TO SELECT', CANVAS_SIZE / 2, 535);
+        ctx.fillText(`CURRENT HIGH SCORE: ${highScore} POINTS`, CANVAS_SIZE / 2, 560);
       }
 
       // ----------------------------------------------------
@@ -681,7 +684,7 @@ const Snake = () => {
       // ----------------------------------------------------
       else if (curState === 'PAUSE') {
         // Draw standard gameplay frame behind the blur
-        drawActiveGameplay(ctx);
+        drawActiveGameplay(ctx, time);
 
         // Semi-transparent blackout
         ctx.shadowBlur = 0;
@@ -705,7 +708,7 @@ const Snake = () => {
             ctx.shadowColor = '#00d4ff';
             ctx.strokeStyle = '#00d4ff';
             ctx.lineWidth = 2;
-            ctx.strokeRect(CANVAS_SIZE / 2 - 100, y - 26, 200, 36);
+            ctx.strokeRect(CANVAS_SIZE / 2 - 120, y - 26, 240, 36);
 
             ctx.fillStyle = '#ffffff';
             ctx.font = 'bold 16px "Orbitron", monospace';
@@ -723,7 +726,7 @@ const Snake = () => {
       // ----------------------------------------------------
       else if (curState === 'GAMEOVER') {
         // Draw final screen behind
-        drawActiveGameplay(ctx);
+        drawActiveGameplay(ctx, time);
 
         ctx.shadowBlur = 0;
         ctx.fillStyle = 'rgba(10, 5, 8, 0.9)';
@@ -815,7 +818,7 @@ const Snake = () => {
           lastTickRef.current = time;
         }
 
-        drawActiveGameplay(ctx);
+        drawActiveGameplay(ctx, time);
       }
 
       // request next frame
@@ -823,58 +826,136 @@ const Snake = () => {
     };
 
     // Helper to draw the actual snake and board
-    const drawActiveGameplay = (c) => {
+    const drawActiveGameplay = (c, time) => {
       // 1. Draw boundary glowing border
       c.shadowColor = '#00ff88';
-      c.shadowBlur = 8;
+      c.shadowBlur = 12;
       c.strokeStyle = '#00ff88';
-      c.lineWidth = 3;
+      c.lineWidth = 4;
       c.strokeRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
-      // 2. Draw Food (Neon pink pulsing circle)
-      c.shadowColor = '#ff007f';
-      c.shadowBlur = 12;
-      c.fillStyle = '#ff007f';
+      // Faint neon inner grid dots for enhanced cyber graphics
+      c.shadowBlur = 0;
+      c.fillStyle = 'rgba(0, 255, 136, 0.05)';
+      for (let i = 1; i < CELL_COUNT; i++) {
+        for (let j = 1; j < CELL_COUNT; j++) {
+          c.fillRect(i * GRID_SIZE - 1, j * GRID_SIZE - 1, 2, 2);
+        }
+      }
+
+      // 2. Draw Food (Neon pink pulsing apple with stem and leaf)
+      const pulse = 1 + 0.15 * Math.sin(time * 0.007);
       const fx = fruitRef.current.x * GRID_SIZE + GRID_SIZE / 2;
       const fy = fruitRef.current.y * GRID_SIZE + GRID_SIZE / 2;
+      const fRadius = (GRID_SIZE / 2 - 2) * pulse;
+
+      c.shadowColor = '#ff007f';
+      c.shadowBlur = 15;
+      c.fillStyle = '#ff007f';
       c.beginPath();
-      c.arc(fx, fy, GRID_SIZE / 2 - 2, 0, Math.PI * 2);
+      c.arc(fx, fy, fRadius, 0, Math.PI * 2);
       c.fill();
 
-      // 3. Draw Golden Food if active (Neon Gold Pulsing Diamond)
+      // Stem & Leaf
+      c.shadowBlur = 0;
+      c.strokeStyle = '#8b5a2b'; // brown stem
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.moveTo(fx, fy - fRadius);
+      c.quadraticCurveTo(fx + 2, fy - fRadius - 4, fx + 4, fy - fRadius - 5);
+      c.stroke();
+      
+      c.fillStyle = '#00ff88'; // green leaf
+      c.beginPath();
+      c.ellipse(fx + 3, fy - fRadius - 3, 2, 4, Math.PI / 4, 0, Math.PI * 2);
+      c.fill();
+
+      // 3. Draw Golden Food if active (Glowing Diamond Star)
       if (goldenFruitRef.current) {
         c.shadowColor = '#ffd700';
-        c.shadowBlur = 15;
+        c.shadowBlur = 20;
         c.fillStyle = '#ffd700';
         const gx = goldenFruitRef.current.x * GRID_SIZE + GRID_SIZE / 2;
         const gy = goldenFruitRef.current.y * GRID_SIZE + GRID_SIZE / 2;
-        
+        const gSize = (GRID_SIZE / 2) * (1 + 0.2 * Math.sin(time * 0.01));
+
         c.beginPath();
-        c.moveTo(gx, gy - (GRID_SIZE / 2 - 1));
-        c.lineTo(gx + (GRID_SIZE / 2 - 1), gy);
-        c.lineTo(gx, gy + (GRID_SIZE / 2 - 1));
-        c.lineTo(gx - (GRID_SIZE / 2 - 1), gy);
+        c.moveTo(gx, gy - gSize);
+        c.lineTo(gx + gSize / 2, gy - gSize / 2);
+        c.lineTo(gx + gSize, gy);
+        c.lineTo(gx + gSize / 2, gy + gSize / 2);
+        c.lineTo(gx, gy + gSize);
+        c.lineTo(gx - gSize / 2, gy + gSize / 2);
+        c.lineTo(gx - gSize, gy);
+        c.lineTo(gx - gSize / 2, gy - gSize / 2);
         c.closePath();
         c.fill();
       }
 
-      // 4. Draw Snake
-      snakeRef.current.forEach((part, index) => {
+      // 4. Draw Snake with tapered tail, rounded parts, and directional eyes
+      const snake = snakeRef.current;
+      snake.forEach((part, index) => {
         const isHead = index === 0;
-        const px = part.x * GRID_SIZE + 1;
-        const py = part.y * GRID_SIZE + 1;
-        const size = GRID_SIZE - 2;
+        const px = part.x * GRID_SIZE;
+        const py = part.y * GRID_SIZE;
+        
+        // Taper segments slightly towards the tail
+        const maxTaper = 6;
+        const taper = Math.min(maxTaper, index * 0.3);
+        const size = GRID_SIZE - taper;
+        const offset = taper / 2;
 
         if (isHead) {
           c.shadowColor = '#00ff88';
-          c.shadowBlur = 10;
-          c.fillStyle = '#ffffff'; // white core head
+          c.shadowBlur = 12;
+          c.fillStyle = '#ffffff'; // white core head for high contrast
+          c.beginPath();
+          c.roundRect(px + 1, py + 1, GRID_SIZE - 2, GRID_SIZE - 2, 6);
+          c.fill();
+
+          // Draw neon green eyes based on direction
+          c.shadowBlur = 0;
+          c.fillStyle = '#00ff88';
+          const eyeSize = 3;
+          let e1x = 0, e1y = 0, e2x = 0, e2y = 0;
+          const dir = directionRef.current;
+
+          if (dir === 'right') {
+            e1x = px + GRID_SIZE - 6; e1y = py + 5;
+            e2x = px + GRID_SIZE - 6; e2y = py + GRID_SIZE - 8;
+          } else if (dir === 'left') {
+            e1x = px + 4; e1y = py + 5;
+            e2x = px + 4; e2y = py + GRID_SIZE - 8;
+          } else if (dir === 'up') {
+            e1x = px + 5; e1y = py + 4;
+            e2x = px + GRID_SIZE - 8; e2y = py + 4;
+          } else if (dir === 'down') {
+            e1x = px + 5; e1y = py + GRID_SIZE - 6;
+            e2x = px + GRID_SIZE - 8; e2y = py + GRID_SIZE - 6;
+          }
+
+          c.beginPath();
+          c.arc(e1x, e1y, eyeSize, 0, Math.PI * 2);
+          c.arc(e2x, e2y, eyeSize, 0, Math.PI * 2);
+          c.fill();
+
+          // Dark pupil centers
+          c.fillStyle = '#000000';
+          c.beginPath();
+          c.arc(e1x, e1y, 1.2, 0, Math.PI * 2);
+          c.arc(e2x, e2y, 1.2, 0, Math.PI * 2);
+          c.fill();
         } else {
           c.shadowColor = '#00bb66';
-          c.shadowBlur = 4;
-          c.fillStyle = '#00ff88'; // green body segments
+          c.shadowBlur = 6;
+          // Gradient fading from bright green to dark forest green towards tail
+          const greenVal = Math.max(100, 255 - index * 6);
+          c.fillStyle = `rgb(0, ${greenVal}, ${Math.floor(greenVal * 0.5)})`;
+          
+          c.beginPath();
+          c.roundRect(px + offset, py + offset, size, size, 4);
+          c.fill();
         }
-        c.fillRect(px, py, size, size);
       });
 
       // 5. Draw and update particles
@@ -913,6 +994,21 @@ const Snake = () => {
         <Link to="/UODGaming" className="floating-back-btn" title="Back to Games">
           <ArrowLeft size={20} />
         </Link>
+      ) : null}
+
+      {gameState === 'GAMEPLAY' ? (
+        <button
+          onClick={() => {
+            playSound('click', isMuted);
+            setGameState('PAUSE');
+            setMenuIndex(0);
+          }}
+          className="floating-back-btn"
+          title="Pause Game"
+          style={{ cursor: 'pointer', outline: 'none' }}
+        >
+          <Pause size={20} />
+        </button>
       ) : null}
 
       <div className="game-content-card">

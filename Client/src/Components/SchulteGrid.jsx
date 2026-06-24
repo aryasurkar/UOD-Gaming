@@ -1,86 +1,149 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Pause } from 'lucide-react';
 import axios from 'axios';
-import { 
-  ArrowLeft, 
-  RotateCcw, 
-  Trophy, 
-  Play, 
-  Pause, 
-  HelpCircle,
-  Volume2,
-  VolumeX,
-  Zap,
-  Gamepad2
-} from 'lucide-react';
 import '../Css/SchulteGrid.css';
 
-const playSound = (type, enabled = true) => {
-  if (!enabled) return;
+// Sound synthesizer using Web Audio API
+const playSound = (type, muted = false) => {
+  if (muted) return;
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
     gain.connect(ctx.destination);
-
     const now = ctx.currentTime;
-    if (type === 'correct') {
+
+    if (type === 'click') {
       osc.type = 'sine';
       osc.frequency.setValueAtTime(600, now);
-      osc.frequency.exponentialRampToValueAtTime(900, now + 0.08);
-      gain.gain.setValueAtTime(0.05, now);
+      gain.gain.setValueAtTime(0.03, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      osc.start(now);
+      osc.stop(now + 0.05);
+    } else if (type === 'change') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.exponentialRampToValueAtTime(550, now + 0.08);
+      gain.gain.setValueAtTime(0.02, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      osc.start(now);
+      osc.stop(now + 0.08);
+    } else if (type === 'correct') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, now); // D5
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.08); // A5
+      gain.gain.setValueAtTime(0.04, now);
       gain.gain.linearRampToValueAtTime(0, now + 0.08);
       osc.start(now);
       osc.stop(now + 0.08);
     } else if (type === 'wrong') {
       osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(120, now);
-      gain.gain.setValueAtTime(0.08, now);
-      gain.gain.linearRampToValueAtTime(0, now + 0.25);
+      osc.frequency.setValueAtTime(130, now);
+      gain.gain.setValueAtTime(0.06, now);
+      gain.gain.linearRampToValueAtTime(0, now + 0.2);
       osc.start(now);
-      osc.stop(now + 0.25);
+      osc.stop(now + 0.2);
     } else if (type === 'win') {
-      osc.type = 'triangle';
+      osc.type = 'sine';
       osc.frequency.setValueAtTime(523.25, now); // C5
       osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
       osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
       osc.frequency.setValueAtTime(1046.50, now + 0.24); // C6
-      gain.gain.setValueAtTime(0.06, now);
-      gain.gain.linearRampToValueAtTime(0, now + 0.45);
+      gain.gain.setValueAtTime(0.05, now);
+      gain.gain.linearRampToValueAtTime(0, now + 0.4);
       osc.start(now);
-      osc.stop(now + 0.45);
+      osc.stop(now + 0.4);
     } else if (type === 'start') {
       osc.type = 'sine';
       osc.frequency.setValueAtTime(440, now);
       osc.frequency.setValueAtTime(554.37, now + 0.1);
       osc.frequency.setValueAtTime(659.25, now + 0.2);
-      gain.gain.setValueAtTime(0.05, now);
+      gain.gain.setValueAtTime(0.04, now);
       gain.gain.linearRampToValueAtTime(0, now + 0.4);
       osc.start(now);
       osc.stop(now + 0.4);
     }
   } catch (e) {
-    console.warn("Web Audio API failed:", e);
+    console.warn("Audio Context init failed:", e);
   }
 };
 
 const SchulteGrid = () => {
-  // Game States
-  const [gridSize, setGridSize] = useState(5); // 3 | 5 | 7
-  const [grid, setGrid] = useState([]);
-  const [target, setTarget] = useState(1);
-  const [score, setScore] = useState(0);
-  const [highScore, setHighScore] = useState(0);
-  const [gameState, setGameState] = useState('idle'); // idle | playing | completed
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [elapsedTime, setElapsedTime] = useState(0);
-  const [wrongCellId, setWrongCellId] = useState(null); // index of wrong cell
-  const [gameId, setGameId] = useState(null);
-  const [rewards, setRewards] = useState(null);
-  const [submitStatus, setSubmitStatus] = useState(''); // 'submitting', 'submitted', 'failed', 'offline'
+  // Game states: 'LOBBY' | 'GAMEPLAY' | 'GAMEOVER'
+  const [gameState, setGameState] = useState('LOBBY');
+  const gameStateRef = useRef('LOBBY');
+  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
 
+  // Audio mute
+  const [muted, setMuted] = useState(() => localStorage.getItem('arcade_muted') === 'true');
+  const mutedRef = useRef(false);
+  useEffect(() => {
+    mutedRef.current = muted;
+    localStorage.setItem('arcade_muted', muted.toString());
+  }, [muted]);
+
+  // Grid config & sizing
+  const [gridSize, setGridSize] = useState(5); // 3 | 5 | 7
+  const gridSizeRef = useRef(5);
+  useEffect(() => { gridSizeRef.current = gridSize; }, [gridSize]);
+
+  const [grid, setGrid] = useState([]);
+  const gridRef = useRef([]);
+  useEffect(() => { gridRef.current = grid; }, [grid]);
+
+  // Target number in sequence (1 to N^2)
+  const [target, setTarget] = useState(1);
+  const targetRef = useRef(1);
+  useEffect(() => { targetRef.current = target; }, [target]);
+
+  // Scoring metrics
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const elapsedTimeRef = useRef(0);
+  useEffect(() => { elapsedTimeRef.current = elapsedTime; }, [elapsedTime]);
+
+  const [score, setScore] = useState(0);
+  const scoreRef = useRef(0);
+  useEffect(() => { scoreRef.current = score; }, [score]);
+
+  const [highScores, setHighScores] = useState({
+    3: parseInt(localStorage.getItem('schulte_high_score_3') || '0', 10),
+    5: parseInt(localStorage.getItem('schulte_high_score_5') || '0', 10),
+    7: parseInt(localStorage.getItem('schulte_high_score_7') || '0', 10)
+  });
+
+  // Navigation indices
+  const [menuIndex, setMenuIndex] = useState(0); // 0 = size selector, 1 = START, 2 = EXIT
+  const menuIndexRef = useRef(0);
+  useEffect(() => { menuIndexRef.current = menuIndex; }, [menuIndex]);
+
+  const [gridCursor, setGridCursor] = useState({ row: 0, col: 0 }); // Keyboard selection grid coordinate
+  const gridCursorRef = useRef({ row: 0, col: 0 });
+  useEffect(() => { gridCursorRef.current = gridCursor; }, [gridCursor]);
+
+  // Database API integration
+  const [gameId, setGameId] = useState(null);
+  const [submitStatus, setSubmitStatus] = useState('');
+  const [rewards, setRewards] = useState(null);
+
+  // Canvas details
+  const canvasRef = useRef(null);
+  const requestRef = useRef(null);
+  const startTimeRef = useRef(0);
+  const pauseStartTimeRef = useRef(0);
+
+  const CANVAS_SIZE = 600;
+  const GRID_SIZE_PX = 440;
+  const GRID_X_START = 80;
+  const GRID_Y_START = 110;
+
+  // Flash parameters on correct / incorrect
+  const [wrongCellIdx, setWrongCellIdx] = useState(null);
+  const wrongCellIdxRef = useRef(null);
+  useEffect(() => { wrongCellIdxRef.current = wrongCellIdx; }, [wrongCellIdx]);
+
+  // Retrieve game info on mount
   useEffect(() => {
     axios.get('/api/v1/games')
       .then(res => {
@@ -90,332 +153,777 @@ const SchulteGrid = () => {
       .catch(err => console.error("Failed to load game info:", err));
   }, []);
 
-  // Timer references
-  const timerRef = useRef(null);
-  const startTimeRef = useRef(0);
+  // Submit high score
+  const submitGridScore = async (finalScore, selectedGridSize) => {
+    const token = localStorage.getItem('token');
+    if (gameId && token && finalScore > 0) {
+      setSubmitStatus('submitting');
+      try {
+        const res = await axios.post(`/api/v1/games/${gameId}/score`, {
+          score: finalScore,
+          level: selectedGridSize === 3 ? 1 : selectedGridSize === 5 ? 2 : 3
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setRewards({
+          coinsEarned: res.data.coinsEarned,
+          expGained: res.data.expGained,
+          level: res.data.level,
+          leveledUp: res.data.leveledUp
+        });
+        setSubmitStatus('submitted');
 
-  // Sync high score when gridSize switches
-  useEffect(() => {
-    const key = `schulte_high_score_${gridSize}`;
-    const stored = localStorage.getItem(key) ? parseInt(localStorage.getItem(key)) : 0;
-    setHighScore(stored);
-  }, [gridSize]);
+        // Sync local storage user
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          try {
+            const userObj = JSON.parse(storedUser);
+            userObj.coins = res.data.totalCoins;
+            if (!userObj.gameStats) userObj.gameStats = {};
+            userObj.gameStats.level = res.data.level;
+            localStorage.setItem('user', JSON.stringify(userObj));
+            window.dispatchEvent(new Event('user-stats-changed'));
+          } catch (e) {
+            console.error('Failed to sync user stats:', e);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        setSubmitStatus('failed');
+      }
+    } else {
+      setSubmitStatus('offline');
+    }
+  };
 
-  const shuffleGrid = () => {
-    const totalCells = gridSize * gridSize;
+  // Fisher-Yates shuffle algorithm
+  const generateShuffledGrid = (size) => {
+    const totalCells = size * size;
     const base = Array.from({ length: totalCells }, (_, i) => ({
-      id: i,
       value: i + 1,
       status: 'idle'
     }));
 
-    // Fisher-Yates Shuffle
     for (let i = base.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       const temp = base[i];
       base[i] = base[j];
       base[j] = temp;
     }
-    setGrid(base);
+    return base;
   };
 
-  useEffect(() => {
-    shuffleGrid();
-    return () => clearInterval(timerRef.current);
-  }, [gridSize]);
-
-  const initGame = () => {
+  // Launch new game
+  const startGame = () => {
+    playSound('start', mutedRef.current);
+    const initialGrid = generateShuffledGrid(gridSize);
+    setGrid(initialGrid);
+    setTarget(1);
+    setElapsedTime(0);
+    setScore(0);
     setRewards(null);
     setSubmitStatus('');
-    playSound('start', soundEnabled);
-    setTarget(1);
-    setScore(0);
-    setElapsedTime(0);
-    setGameState('playing');
-    shuffleGrid();
-    
-    startTimeRef.current = Date.now();
-    
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => {
-      const elapsed = (Date.now() - startTimeRef.current) / 1000;
-      setElapsedTime(elapsed);
-    }, 10);
+    setGridCursor({ row: 0, col: 0 });
+    setWrongCellIdx(null);
+
+    startTimeRef.current = performance.now();
+    setGameState('GAMEPLAY');
   };
 
-  const handleCellClick = (cell, index) => {
-    if (gameState === 'idle') {
-      initGame();
-      if (cell.value === 1) {
-        processCorrectClick(index);
+  // Process cell picking at index
+  const selectCell = (idx) => {
+    if (gameStateRef.current !== 'GAMEPLAY') return;
+
+    const currentGrid = [...gridRef.current];
+    const cell = currentGrid[idx];
+    const currentTarget = targetRef.current;
+
+    if (cell.status === 'correct') return; // already done
+
+    if (cell.value === currentTarget) {
+      playSound('correct', mutedRef.current);
+      currentGrid[idx].status = 'correct';
+      setGrid(currentGrid);
+
+      const maxVal = gridSizeRef.current * gridSizeRef.current;
+      if (currentTarget === maxVal) {
+        // VICTORY / COMPLETED
+        const endTime = performance.now();
+        const finalTimeSec = (endTime - startTimeRef.current) / 1000;
+        setElapsedTime(finalTimeSec);
+
+        playSound('win', mutedRef.current);
+
+        let basePoints = 100000;
+        if (gridSizeRef.current === 3) basePoints = 20000;
+        if (gridSizeRef.current === 7) basePoints = 300000;
+
+        const finalScore = Math.max(10, Math.round(basePoints / finalTimeSec));
+        setScore(finalScore);
+
+        // Update High Score local storage
+        const scoreKey = `schulte_high_score_${gridSizeRef.current}`;
+        const prevHighScore = highScores[gridSizeRef.current];
+        if (finalScore > prevHighScore) {
+          localStorage.setItem(scoreKey, finalScore.toString());
+          setHighScores(prev => ({ ...prev, [gridSizeRef.current]: finalScore }));
+        }
+
+        setGameState('GAMEOVER');
+        setMenuIndex(0);
+        submitGridScore(finalScore, gridSizeRef.current);
       } else {
-        processWrongClick(index);
+        setTarget(currentTarget + 1);
       }
+    } else {
+      // Wrong click
+      playSound('wrong', mutedRef.current);
+      setWrongCellIdx(idx);
+      setTimeout(() => {
+        setWrongCellIdx(prev => (prev === idx ? null : prev));
+      }, 300);
+    }
+  };
+
+  // Keyboard navigation mappings
+  const handleKeyboardNav = (code) => {
+    const curState = gameStateRef.current;
+    if (curState === 'LOBBY') {
+      if (code === 'ArrowUp' || code === 'KeyW') {
+        playSound('click', mutedRef.current);
+        setMenuIndex(prev => (prev === 0 ? 1 : prev - 1));
+      } else if (code === 'ArrowDown' || code === 'KeyS') {
+        playSound('click', mutedRef.current);
+        setMenuIndex(prev => (prev === 1 ? 0 : prev + 1));
+      } else if (code === 'ArrowLeft' || code === 'KeyA') {
+        if (menuIndexRef.current === 0) {
+          playSound('change', mutedRef.current);
+          setGridSize(prev => (prev === 5 ? 3 : prev === 7 ? 5 : 7));
+        }
+      } else if (code === 'ArrowRight' || code === 'KeyD') {
+        if (menuIndexRef.current === 0) {
+          playSound('change', mutedRef.current);
+          setGridSize(prev => (prev === 3 ? 5 : prev === 5 ? 7 : 3));
+        }
+      } else if (code === 'Space' || code === 'Enter') {
+        playSound('click', mutedRef.current);
+        startGame();
+      }
+    } else if (curState === 'GAMEPLAY') {
+      const size = gridSizeRef.current;
+      const cursor = gridCursorRef.current;
+
+      if (code === 'ArrowUp' || code === 'KeyW') {
+        setGridCursor(prev => ({ ...prev, row: (prev.row - 1 + size) % size }));
+      } else if (code === 'ArrowDown' || code === 'KeyS') {
+        setGridCursor(prev => ({ ...prev, row: (prev.row + 1) % size }));
+      } else if (code === 'ArrowLeft' || code === 'KeyA') {
+        setGridCursor(prev => ({ ...prev, col: (prev.col - 1 + size) % size }));
+      } else if (code === 'ArrowRight' || code === 'KeyD') {
+        setGridCursor(prev => ({ ...prev, col: (prev.col + 1) % size }));
+      } else if (code === 'Space' || code === 'Enter') {
+        const idx = cursor.row * size + cursor.col;
+        selectCell(idx);
+      } else if (code === 'Escape') {
+        playSound('click', mutedRef.current);
+        pauseStartTimeRef.current = performance.now();
+        setGameState('PAUSE');
+        setMenuIndex(0);
+      }
+    } else if (curState === 'PAUSE') {
+      if (code === 'ArrowUp' || code === 'KeyW') {
+        playSound('click', mutedRef.current);
+        setMenuIndex(prev => (prev === 0 ? 2 : prev - 1));
+      } else if (code === 'ArrowDown' || code === 'KeyS') {
+        playSound('click', mutedRef.current);
+        setMenuIndex(prev => (prev === 2 ? 0 : prev + 1));
+      } else if (code === 'Space' || code === 'Enter') {
+        playSound('click', mutedRef.current);
+        if (menuIndexRef.current === 0) {
+          startTimeRef.current += (performance.now() - pauseStartTimeRef.current);
+          setGameState('GAMEPLAY');
+        } else if (menuIndexRef.current === 1) {
+          startGame();
+        } else {
+          setGameState('LOBBY');
+          setMenuIndex(0);
+        }
+      } else if (code === 'Escape') {
+        playSound('click', mutedRef.current);
+        startTimeRef.current += (performance.now() - pauseStartTimeRef.current);
+        setGameState('GAMEPLAY');
+      }
+    } else if (curState === 'GAMEOVER') {
+      if (code === 'ArrowUp' || code === 'KeyW' || code === 'ArrowDown' || code === 'KeyS') {
+        playSound('click', mutedRef.current);
+        setMenuIndex(prev => (prev === 0 ? 1 : 0));
+      } else if (code === 'Space' || code === 'Enter') {
+        playSound('click', mutedRef.current);
+        if (menuIndexRef.current === 0) {
+          startGame();
+        } else {
+          setGameState('LOBBY');
+          setMenuIndex(0);
+        }
+      }
+    }
+  };
+
+  // Register window listener
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const activeStates = ['LOBBY', 'GAMEPLAY', 'GAMEOVER', 'PAUSE'];
+      if (activeStates.includes(gameStateRef.current)) {
+        if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+          e.preventDefault();
+        }
+        handleKeyboardNav(e.code);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Canvas Clicks
+  const handleCanvasClick = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = CANVAS_SIZE / rect.width;
+    const scaleY = CANVAS_SIZE / rect.height;
+    const clickX = (e.clientX - rect.left) * scaleX;
+    const clickY = (e.clientY - rect.top) * scaleY;
+
+    // Speaker check
+    if (clickX >= 540 && clickX <= 590 && clickY >= 10 && clickY <= 50) {
+      playSound('click', !muted);
+      setMuted(prev => !prev);
       return;
     }
 
-    if (gameState !== 'playing') return;
+    const curState = gameState;
+    if (curState === 'LOBBY') {
+      // START RUN button click coordinates
+      if (clickX >= 180 && clickX <= 420 && clickY >= 320 && clickY <= 360) {
+        playSound('click', muted);
+        startGame();
+      }
+      // Grid Size tabs clicks
+      else if (clickY >= 230 && clickY <= 270) {
+        if (clickX >= 170 && clickX <= 260) {
+          playSound('change', muted);
+          setGridSize(3);
+        } else if (clickX >= 270 && clickX <= 330) {
+          playSound('change', muted);
+          setGridSize(5);
+        } else if (clickX >= 340 && clickX <= 430) {
+          playSound('change', muted);
+          setGridSize(7);
+        }
+      }
+    } else if (curState === 'PAUSE') {
+      if (clickX >= 200 && clickX <= 400 && clickY >= 240 && clickY <= 280) {
+        playSound('click', muted);
+        startTimeRef.current += (performance.now() - pauseStartTimeRef.current);
+        setGameState('GAMEPLAY');
+      } else if (clickX >= 200 && clickX <= 400 && clickY >= 300 && clickY <= 340) {
+        playSound('click', muted);
+        startGame();
+      } else if (clickX >= 200 && clickX <= 400 && clickY >= 360 && clickY <= 400) {
+        playSound('click', muted);
+        setGameState('LOBBY');
+        setMenuIndex(0);
+      }
+    } else if (curState === 'GAMEOVER') {
+      if (clickX >= 150 && clickX <= 450 && clickY >= 455 && clickY <= 495) {
+        playSound('click', muted);
+        startGame();
+      } else if (clickX >= 150 && clickX <= 450 && clickY >= 510 && clickY <= 550) {
+        playSound('click', muted);
+        setGameState('LOBBY');
+        setMenuIndex(0);
+      }
+    } else if (curState === 'GAMEPLAY') {
+      if (
+        clickX >= GRID_X_START &&
+        clickX <= GRID_X_START + GRID_SIZE_PX &&
+        clickY >= GRID_Y_START &&
+        clickY <= GRID_Y_START + GRID_SIZE_PX
+      ) {
+        const cellWidth = GRID_SIZE_PX / gridSize;
+        const cellHeight = GRID_SIZE_PX / gridSize;
+        const col = Math.floor((clickX - GRID_X_START) / cellWidth);
+        const row = Math.floor((clickY - GRID_Y_START) / cellHeight);
 
-    if (cell.value === target) {
-      processCorrectClick(index);
-    } else {
-      processWrongClick(index);
+        if (row >= 0 && row < gridSize && col >= 0 && col < gridSize) {
+          setGridCursor({ row, col });
+          const idx = row * gridSize + col;
+          selectCell(idx);
+        }
+      }
     }
   };
 
-  const processCorrectClick = (index) => {
-    playSound('correct', soundEnabled);
-    
-    setGrid(prev => {
-      const next = [...prev];
-      next[index].status = 'correct';
-      return next;
-    });
+  // Canvas Mouse Move to highlight selectors on hover
+  const handleCanvasMouseMove = (e) => {
+    if (gameStateRef.current !== 'GAMEPLAY') return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    const maxVal = gridSize * gridSize;
-    if (target === maxVal) {
-      // GAME COMPLETED!
-      clearInterval(timerRef.current);
-      setGameState('completed');
-      playSound('win', soundEnabled);
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = CANVAS_SIZE / rect.width;
+    const scaleY = CANVAS_SIZE / rect.height;
+    const mouseX = (e.clientX - rect.left) * scaleX;
+    const mouseY = (e.clientY - rect.top) * scaleY;
 
-      const finalTime = (Date.now() - startTimeRef.current) / 1000;
-      setElapsedTime(finalTime);
+    if (
+      mouseX >= GRID_X_START &&
+      mouseX <= GRID_X_START + GRID_SIZE_PX &&
+      mouseY >= GRID_Y_START &&
+      mouseY <= GRID_Y_START + GRID_SIZE_PX
+    ) {
+      const cellWidth = GRID_SIZE_PX / gridSize;
+      const cellHeight = GRID_SIZE_PX / gridSize;
+      const col = Math.floor((mouseX - GRID_X_START) / cellWidth);
+      const row = Math.floor((mouseY - GRID_Y_START) / cellHeight);
 
-      // Inverse speed scoring logic based on grid size
-      let basePoints = 100000;
-      if (gridSize === 3) basePoints = 20000;
-      if (gridSize === 7) basePoints = 300000;
+      if (
+        row >= 0 &&
+        row < gridSize &&
+        col >= 0 &&
+        col < gridSize &&
+        (gridCursorRef.current.row !== row || gridCursorRef.current.col !== col)
+      ) {
+        setGridCursor({ row, col });
+      }
+    }
+  };
 
-      const finalScore = Math.max(10, Math.round(basePoints / finalTime));
-      setScore(finalScore);
+  // Render Loop
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
 
-      const key = `schulte_high_score_${gridSize}`;
-      if (finalScore > highScore) {
-        localStorage.setItem(key, finalScore.toString());
-        setHighScore(finalScore);
+    const render = () => {
+      // Update Timer in GAMEPLAY
+      if (gameStateRef.current === 'GAMEPLAY') {
+        const timeNow = performance.now();
+        const diff = (timeNow - startTimeRef.current) / 1000;
+        setElapsedTime(diff);
       }
 
-      // Online score submission
-      const token = localStorage.getItem('token');
-      if (gameId && token && finalScore > 0) {
-        setSubmitStatus('submitting');
-        axios.post(`/api/v1/games/${gameId}/score`, {
-          score: finalScore,
-          level: gridSize === 3 ? 1 : gridSize === 5 ? 2 : 3
-        }, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        .then(res => {
-          console.log('Score submitted successfully:', res.data);
-          setRewards({
-            coinsEarned: res.data.coinsEarned,
-            expGained: res.data.expGained,
-            level: res.data.level,
-            leveledUp: res.data.leveledUp
-          });
-          setSubmitStatus('submitted');
-          
-          // Sync local storage user
-          const storedUser = localStorage.getItem('user');
-          if (storedUser) {
-            try {
-              const userObj = JSON.parse(storedUser);
-              userObj.coins = res.data.totalCoins;
-              if (!userObj.gameStats) userObj.gameStats = {};
-              userObj.gameStats.level = res.data.level;
-              localStorage.setItem('user', JSON.stringify(userObj));
-              window.dispatchEvent(new Event('user-stats-changed'));
-            } catch (e) {
-              console.error('Failed to sync user stats:', e);
+      // Drawing background
+      ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+      ctx.shadowBlur = 0;
+
+      // Draw Retro Grid lines in space
+      ctx.strokeStyle = '#050c18';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 6; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * 100, 0);
+        ctx.lineTo(i * 100, CANVAS_SIZE);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(0, i * 100);
+        ctx.lineTo(CANVAS_SIZE, i * 100);
+        ctx.stroke();
+      }
+
+      const curState = gameStateRef.current;
+
+      // ----------------------------------------------------
+      // STATE: LOBBY
+      // ----------------------------------------------------
+      if (curState === 'LOBBY') {
+        ctx.shadowColor = '#00d4ff';
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = '#00d4ff';
+        ctx.font = 'bold 36px "Orbitron", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('CYBER GRID FINDER', CANVAS_SIZE / 2, 130);
+
+        ctx.shadowColor = '#00ff88';
+        ctx.fillStyle = '#8888a0';
+        ctx.font = '14px "Exo 2", sans-serif';
+        ctx.fillText('SEQUENTIAL REFLEX DIAGNOSTIC', CANVAS_SIZE / 2, 170);
+
+        // Row 0: Grid size selector tabs
+        const sizes = [3, 5, 7];
+        const isSizeRowSelected = menuIndex === 0;
+
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = isSizeRowSelected ? '#ffffff' : '#6b7280';
+        ctx.font = '14px "Orbitron", monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText('GRID SIZE:', 100, 252);
+
+        sizes.forEach((sz, idx) => {
+          const isCurrentGridSize = gridSize === sz;
+          const x = 220 + idx * 80;
+
+          if (isCurrentGridSize) {
+            ctx.shadowColor = '#00d4ff';
+            ctx.shadowBlur = 8;
+            ctx.strokeStyle = '#00d4ff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x - 12, 232, 60, 28);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 15px "Orbitron", monospace';
+          } else {
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#8888a0';
+            ctx.font = '14px "Orbitron", monospace';
+          }
+          ctx.textAlign = 'center';
+          ctx.fillText(`${sz}x${sz}`, x + 18, 252);
+        });
+
+        // Row 1: START RUN button
+        const isStartSelected = menuIndex === 1;
+        ctx.textAlign = 'center';
+        if (isStartSelected) {
+          ctx.shadowColor = '#00d4ff';
+          ctx.shadowBlur = 10;
+          ctx.strokeStyle = '#00d4ff';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(CANVAS_SIZE / 2 - 120, 340 - 26, 240, 36);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 17px "Orbitron", monospace';
+        } else {
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = '#8888a0';
+          ctx.font = '15px "Orbitron", monospace';
+        }
+        ctx.fillText('START RUN', CANVAS_SIZE / 2, 340);
+
+        // Instructions
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#555568';
+        ctx.font = '12px "Exo 2", sans-serif';
+        ctx.fillText('USE ARROWS / WASD TO NAVIGATE • SPACEBAR TO CONFIRM', CANVAS_SIZE / 2, 510);
+        ctx.fillText(`CURRENT HIGH SCORE: ${highScores[gridSize].toLocaleString()} POINTS`, CANVAS_SIZE / 2, 540);
+      }
+
+      // ----------------------------------------------------
+      // STATE: GAMEPLAY / PAUSE
+      // ----------------------------------------------------
+      else if (curState === 'GAMEPLAY' || curState === 'PAUSE') {
+        // Draw HUD details
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#8888a0';
+        ctx.font = '11px "Orbitron", monospace';
+        ctx.fillText('FIND SEQUENTIAL TARGET', 40, 30);
+        ctx.fillText('HIGH SCORE', 300, 30);
+
+        ctx.fillStyle = '#00d4ff';
+        ctx.font = 'bold 16px "Orbitron", monospace';
+        ctx.fillText(`[ ${targetRef.current} ]`, 40, 52);
+
+        ctx.fillStyle = '#ffd700';
+        ctx.fillText(highScores[gridSize].toLocaleString(), 300, 52);
+
+        // Timer
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#8888a0';
+        ctx.font = '11px "Orbitron", monospace';
+        ctx.fillText('ELAPSED TIME', 520, 30);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 16px "Orbitron", monospace';
+        ctx.fillText(`${elapsedTimeRef.current.toFixed(2)}s`, 520, 52);
+
+        // Divider
+        ctx.strokeStyle = 'rgba(0, 212, 255, 0.15)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(0, 78);
+        ctx.lineTo(CANVAS_SIZE, 78);
+        ctx.stroke();
+
+        // Draw cells
+        const sz = gridSize;
+        const cellW = GRID_SIZE_PX / sz;
+        const cellH = GRID_SIZE_PX / sz;
+        const cursor = gridCursorRef.current;
+        const currentGrid = gridRef.current;
+
+        for (let r = 0; r < sz; r++) {
+          for (let c = 0; c < sz; c++) {
+            const idx = r * sz + c;
+            if (idx >= currentGrid.length) continue;
+
+            const cell = currentGrid[idx];
+            const x = GRID_X_START + c * cellW;
+            const y = GRID_Y_START + r * cellH;
+
+            // Determine borders and fills
+            let fillStyle = 'rgba(0, 212, 255, 0.03)';
+            let strokeStyle = 'rgba(0, 212, 255, 0.2)';
+            let textStyle = '#ffffff';
+
+            if (cell.status === 'correct') {
+              fillStyle = 'rgba(0, 255, 136, 0.08)';
+              strokeStyle = 'rgba(0, 255, 136, 0.4)';
+              textStyle = '#00ff88';
+            }
+
+            if (wrongCellIdxRef.current === idx) {
+              fillStyle = 'rgba(255, 0, 85, 0.2)';
+              strokeStyle = '#ff0055';
+              textStyle = '#ff0055';
+            }
+
+            // Draw bounding rect
+            ctx.fillStyle = fillStyle;
+            ctx.strokeStyle = strokeStyle;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(x + 4, y + 4, cellW - 8, cellH - 8, 6);
+            ctx.fill();
+            ctx.stroke();
+
+            // Draw value text
+            ctx.fillStyle = textStyle;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Dynamic text sizes depending on grid dimensions
+            const fontSize = sz === 3 ? 34 : sz === 5 ? 24 : 16;
+            ctx.font = `bold ${fontSize}px "Orbitron", monospace`;
+            ctx.fillText(String(cell.value), x + cellW / 2, y + cellH / 2);
+
+            // Draw selection box outline if cursor matches
+            if (cursor.row === r && cursor.col === c) {
+              ctx.shadowColor = '#ffffff';
+              ctx.shadowBlur = 8;
+              ctx.strokeStyle = '#ffffff';
+              ctx.lineWidth = 2.5;
+              ctx.beginPath();
+              ctx.roundRect(x + 1, y + 1, cellW - 2, cellH - 2, 6);
+              ctx.stroke();
+              ctx.shadowBlur = 0; // reset
             }
           }
-        })
-        .catch(err => {
-          console.error('Failed to submit score:', err);
-          setSubmitStatus('failed');
-        });
-      } else {
-        setSubmitStatus('offline');
+        }
+        ctx.textBaseline = 'alphabetic'; // reset
+
+        if (curState === 'PAUSE') {
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = 'rgba(5, 5, 10, 0.85)';
+          ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+          ctx.shadowColor = '#00d4ff';
+          ctx.shadowBlur = 15;
+          ctx.fillStyle = '#00d4ff';
+          ctx.font = 'bold 36px "Orbitron", monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText('SYSTEM PAUSED', CANVAS_SIZE / 2, 160);
+
+          const pauseItems = ['RESUME', 'RESTART', 'BACK TO MENU'];
+          pauseItems.forEach((text, idx) => {
+            const isSelected = menuIndex === idx;
+            const y = 266 + idx * 60;
+
+            if (isSelected) {
+              ctx.shadowBlur = 10;
+              ctx.shadowColor = '#00d4ff';
+              ctx.strokeStyle = '#00d4ff';
+              ctx.lineWidth = 2;
+              ctx.strokeRect(CANVAS_SIZE / 2 - 110, y - 26, 220, 36);
+
+              ctx.fillStyle = '#ffffff';
+              ctx.font = 'bold 16px "Orbitron", monospace';
+            } else {
+              ctx.shadowBlur = 0;
+              ctx.fillStyle = '#8888a0';
+              ctx.font = '15px "Orbitron", monospace';
+            }
+            ctx.fillText(text, CANVAS_SIZE / 2, y);
+          });
+        }
       }
-    } else {
-      setTarget(prev => prev + 1);
-    }
-  };
 
-  const processWrongClick = (index) => {
-    playSound('wrong', soundEnabled);
-    setWrongCellId(index);
+      // ----------------------------------------------------
+      // STATE: GAMEOVER
+      // ----------------------------------------------------
+      else if (curState === 'GAMEOVER') {
+        // Redraw grid behind game over in dark tint
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(4, 4, 8, 0.9)';
+        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
-    setTimeout(() => {
-      setWrongCellId(null);
-    }, 350);
-  };
+        ctx.shadowColor = '#00ff88';
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = '#00ff88';
+        ctx.font = 'bold 34px "Orbitron", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('DIAGNOSTIC COMPLETE', CANVAS_SIZE / 2, 100);
 
-  const resetGame = () => {
-    setRewards(null);
-    setSubmitStatus('');
-    clearInterval(timerRef.current);
-    setGameState('idle');
-    setTarget(1);
-    setScore(0);
-    setElapsedTime(0);
-    shuffleGrid();
-  };
+        // CLI Sync logger box
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.fillRect(70, 140, 460, 270);
+        ctx.strokeStyle = 'rgba(0, 212, 255, 0.2)';
+        ctx.strokeRect(70, 140, 460, 270);
 
-  const isGameplayActive = gameState === 'playing';
+        ctx.font = '13px "Courier New", monospace';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#00d4ff';
+        ctx.fillText(`> Sequence calibration parameters synced.`, 90, 170);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(`> Grid size profile: ${gridSize}x${gridSize} matrix`, 90, 195);
+        ctx.fillText(`> Calibration duration: ${elapsedTimeRef.current.toFixed(2)}s`, 90, 215);
+        ctx.fillText(`> Telemetry Final Score: ${scoreRef.current} pts`, 90, 235);
+
+        if (submitStatus === 'submitting') {
+          ctx.fillStyle = '#00d4ff';
+          ctx.fillText(`> Connecting to registry cloud database...`, 90, 270);
+          ctx.fillText(`> Authorizing signature blocks...`, 90, 290);
+        } else if (submitStatus === 'submitted' && rewards) {
+          ctx.fillStyle = '#00ff88';
+          ctx.fillText(`> DATA SYNC SUCCESS. ACCOUNT STORAGE UPDATED.`, 90, 270);
+          ctx.fillStyle = '#ffd700';
+          ctx.fillText(`> COMPILER REWARDS ISSUED:`, 90, 300);
+          ctx.fillText(`  🪙 +${rewards.coinsEarned} Arcade Coins`, 90, 320);
+          ctx.fillText(`  ⚡ +${rewards.expGained} Experience Nodes`, 90, 340);
+          if (rewards.leveledUp) {
+            ctx.fillStyle = '#a855f7';
+            ctx.fillText(`  [NOTICE] level capacity increased to ${rewards.level}`, 90, 365);
+          }
+        } else if (submitStatus === 'failed') {
+          ctx.fillStyle = '#ff0055';
+          ctx.fillText(`> [CRITICAL_ERROR] DATABASE NODE SYNC FAILURE.`, 90, 270);
+        } else if (submitStatus === 'offline') {
+          ctx.fillStyle = '#ffaa00';
+          ctx.fillText(`> [NOTICE] OFFLINE OPERATION DETECTED`, 90, 270);
+          ctx.fillText(`> Log in to authorize registry credentials.`, 90, 295);
+        }
+
+        // Action Options
+        const gameOverItems = ['PLAY AGAIN', 'QUIT TO MENU'];
+        gameOverItems.forEach((text, idx) => {
+          const isSelected = menuIndex === idx;
+          const y = 475 + idx * 55;
+
+          ctx.textAlign = 'center';
+          if (isSelected) {
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#00d4ff';
+            ctx.strokeStyle = '#00d4ff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(CANVAS_SIZE / 2 - 130, y - 26, 260, 36);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 16px "Orbitron", monospace';
+          } else {
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#8888a0';
+            ctx.font = '15px "Orbitron", monospace';
+          }
+          ctx.fillText(text, CANVAS_SIZE / 2, y);
+        });
+      }
+
+      // Draw Global Speaker Icon
+      drawSpeakerIcon(ctx);
+
+      requestRef.current = requestAnimationFrame(render);
+    };
+
+    // Helper: Draw global speaker mute toggler button
+    const drawSpeakerIcon = (c) => {
+      c.save();
+      const x = 555;
+      const y = 20;
+
+      c.strokeStyle = muted ? '#ff0055' : '#8888a0';
+      c.fillStyle = muted ? 'rgba(255,0,85,0.05)' : 'rgba(255,255,255,0.05)';
+      c.lineWidth = 2;
+
+      c.beginPath();
+      c.moveTo(x, y + 6);
+      c.lineTo(x + 6, y + 6);
+      c.lineTo(x + 12, y);
+      c.lineTo(x + 12, y + 16);
+      c.lineTo(x + 6, y + 10);
+      c.lineTo(x, y + 10);
+      c.closePath();
+      c.fill();
+      c.stroke();
+
+      if (!muted) {
+        c.beginPath();
+        c.arc(x + 10, y + 8, 5, -Math.PI / 3, Math.PI / 3);
+        c.stroke();
+        c.beginPath();
+        c.arc(x + 10, y + 8, 9, -Math.PI / 3, Math.PI / 3);
+        c.stroke();
+      } else {
+        c.strokeStyle = '#ff0055';
+        c.beginPath();
+        c.moveTo(x + 16, y + 3);
+        c.lineTo(x + 22, y + 13);
+        c.moveTo(x + 22, y + 3);
+        c.lineTo(x + 16, y + 13);
+        c.stroke();
+      }
+      c.restore();
+    };
+
+    requestRef.current = requestAnimationFrame(render);
+    return () => {
+      if (requestRef.current) cancelAnimationFrame(requestRef.current);
+    };
+  }, [gameState, target, grid, elapsedTime, score, muted, submitStatus, rewards, menuIndex, gridSize, gridCursor, wrongCellIdx, highScores]);
 
   return (
     <div className="schulte-page-wrapper">
-      {!isGameplayActive && (
+      {/* Floating circular back button (Only visible in Lobby, GameOver or Pause) */}
+      {gameState === 'LOBBY' || gameState === 'GAMEOVER' || gameState === 'PAUSE' ? (
         <Link to="/UODGaming" className="floating-back-btn" title="Back to Games">
           <ArrowLeft size={20} />
         </Link>
-      )}
+      ) : null}
+
+      {gameState === 'GAMEPLAY' ? (
+        <button
+          onClick={() => {
+            playSound('click', muted);
+            pauseStartTimeRef.current = performance.now();
+            setGameState('PAUSE');
+            setMenuIndex(0);
+          }}
+          className="floating-back-btn"
+          title="Pause Game"
+          style={{ cursor: 'pointer', outline: 'none' }}
+        >
+          <Pause size={20} />
+        </button>
+      ) : null}
 
       <div className="game-content-card">
-        {/* Arcade Cabinet Frame */}
-        <div className="cabinet-screen crt-screen">
+        <div 
+          className="cabinet-screen crt-screen"
+          onClick={handleCanvasClick}
+          onMouseMove={handleCanvasMouseMove}
+        >
           {/* CRT scanlines, reflection and flicker overlay */}
           <div className="crt-scanlines"></div>
           <div className="crt-reflection"></div>
           <div className="crt-flicker"></div>
 
-          {/* Floating HUD Overlays */}
-          <div className="game-hud-container">
-            <div className="game-hud-item">
-              <span className="game-hud-label">Best</span>
-              <span className="game-hud-value" style={{ color: 'var(--accent-yellow)', textShadow: '0 0 8px rgba(255,255,0,0.4)' }}>{highScore.toLocaleString()}</span>
-            </div>
-
-            <div className="game-hud-item" style={{ flexDirection: 'row', gap: '8px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span className="game-hud-label">Find</span>
-                <span className="game-hud-value" style={{ color: 'var(--primary-neon)' }}>{gameState === 'completed' ? 'Done' : target}</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span className="game-hud-label">Progress</span>
-                <span className="game-hud-value" style={{ color: 'var(--accent-green)' }}>
-                  {gameState === 'completed' ? '100%' : `${Math.round(((target - 1) / (gridSize * gridSize)) * 100)}%`}
-                </span>
-              </div>
-            </div>
-
-            <div className="game-hud-item">
-              <span className="game-hud-label">Timer</span>
-              <span className="game-hud-value">{elapsedTime.toFixed(2)}s</span>
-            </div>
-          </div>
-
-          <div className="game-play-area">
-            <div className="grid-container-wrapper">
-              <div 
-                className={`schulte-5x5-grid size-${gridSize}`}
-                style={{
-                  gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
-                  gridTemplateRows: `repeat(${gridSize}, 1fr)`
-                }}
-              >
-                {grid.map((cell, index) => {
-                  const isCorrect = cell.status === 'correct';
-                  const isWrong = wrongCellId === index;
-
-                  return (
-                    <motion.button
-                      key={cell.id}
-                      onClick={() => handleCellClick(cell, index)}
-                      className={`schulte-cell ${isCorrect ? 'correct' : ''} ${isWrong ? 'wrong' : ''}`}
-                      animate={isWrong ? { x: [-6, 6, -6, 6, 0] } : {}}
-                      transition={{ duration: 0.3 }}
-                      disabled={isCorrect || gameState === 'completed'}
-                    >
-                      {cell.value}
-                    </motion.button>
-                  );
-                })}
-              </div>
-
-              {gameState === 'idle' && (
-                <div 
-                  className="schulte-start-overlay" 
-                  onClick={(e) => {
-                    if (e.target.closest('.size-btn')) return;
-                    initGame();
-                  }}
-                  style={{ position: 'absolute', zIndex: 12 }}
-                >
-                  <Gamepad2 className="mb-4 text-cyan-400 animate-pulse" size={48} />
-                  <p>Press <strong>START GAME</strong> or <strong>CLICK A CELL</strong> to Begin</p>
-                  
-                  {/* Grid Size selector row */}
-                  <div className="grid-size-selector mb-6">
-                    <span className="selector-label">Choose Grid Size:</span>
-                    <div className="size-buttons-row">
-                      {[3, 5, 7].map(size => (
-                        <button
-                          key={size}
-                          className={`size-btn ${gridSize === size ? 'active' : ''}`}
-                          onClick={() => setGridSize(size)}
-                        >
-                          {size}x{size}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <span>Find and click numbers 1 through {gridSize * gridSize} sequentially. Faster times score higher!</span>
-                  <button className="btn btn-primary mt-4" onClick={initGame}>Start Game</button>
-                </div>
-              )}
-
-              {/* Overlays */}
-              <AnimatePresence>
-                {gameState === 'completed' && (
-                  <div className="schulte-start-overlay completed" style={{ position: 'absolute', zIndex: 12 }}>
-                    <h2>Sequence Complete!</h2>
-                    <p>Elapsed Time: <strong>{elapsedTime.toFixed(2)}s</strong></p>
-                    <p className="text-emerald-400" style={{ marginBottom: '8px' }}>Score Achieved: <strong>{score.toLocaleString()}</strong></p>
-                    
-                    {submitStatus === 'submitting' && (
-                      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '8px 0' }}>Saving score online...</p>
-                    )}
-                    {submitStatus === 'submitted' && rewards && (
-                      <div className="game-over-rewards" style={{ margin: '12px auto', padding: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', fontSize: '0.9rem' }}>
-                        <div style={{ color: '#ffd700', marginBottom: '4px' }}>🪙 +{rewards.coinsEarned} Coins</div>
-                        <div style={{ color: 'var(--primary-neon)', marginBottom: '4px' }}>⚡ +{rewards.expGained} XP</div>
-                        {rewards.leveledUp && (
-                          <div style={{ color: '#00ff88', fontWeight: 'bold', textShadow: '0 0 5px rgba(0,255,136,0.5)', marginTop: '4px' }}>LEVEL UP! (Lv {rewards.level})</div>
-                        )}
-                      </div>
-                    )}
-                    {submitStatus === 'failed' && (
-                      <p style={{ fontSize: '0.85rem', color: 'var(--secondary-neon)', margin: '8px 0' }}>Failed to save score online.</p>
-                    )}
-                    {submitStatus === 'offline' && (
-                      <p style={{ fontSize: '0.85rem', color: 'var(--accent-orange)', margin: '8px 0' }}>Log in to save stats & earn coins!</p>
-                    )}
-
-                    <button className="btn btn-primary mt-4" onClick={initGame}>Insert Coin (Play Again)</button>
-                  </div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-        </div>
-
-        {/* Action Controls */}
-        <div className="schulte-controls" style={{ display: 'flex', gap: '15px', marginTop: '10px', justifyContent: 'center' }}>
-          <button className="btn btn-reset" onClick={resetGame}>
-            <RotateCcw size={16} />
-            <span>Reset Grid</span>
-          </button>
-          <button className="btn btn-reset" onClick={() => setSoundEnabled(!soundEnabled)}>
-            {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-            <span>Sound: {soundEnabled ? 'ON' : 'OFF'}</span>
-          </button>
+          <canvas
+            ref={canvasRef}
+            width={CANVAS_SIZE}
+            height={CANVAS_SIZE}
+            style={{ display: 'block', background: '#030206', width: '100%', height: 'auto', maxWidth: '600px' }}
+          />
         </div>
       </div>
-
     </div>
   );
 };

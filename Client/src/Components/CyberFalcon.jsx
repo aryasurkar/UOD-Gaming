@@ -1,36 +1,40 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Pause } from 'lucide-react';
 import axios from 'axios';
-import { 
-  ArrowLeft, 
-  RotateCcw, 
-  Trophy, 
-  Play, 
-  Pause, 
-  HelpCircle,
-  Volume2,
-  VolumeX,
-  Zap,
-  TrendingUp
-} from 'lucide-react';
 import '../Css/CyberFalcon.css';
 
-const playSound = (type, enabled = true) => {
-  if (!enabled) return;
+// Sound synthesizer using Web Audio API
+const playSound = (type, muted = false) => {
+  if (muted) return;
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
     gain.connect(ctx.destination);
-
     const now = ctx.currentTime;
-    if (type === 'thrust') {
+
+    if (type === 'click') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, now);
+      gain.gain.setValueAtTime(0.03, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      osc.start(now);
+      osc.stop(now + 0.05);
+    } else if (type === 'move') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.exponentialRampToValueAtTime(550, now + 0.08);
+      gain.gain.setValueAtTime(0.02, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      osc.start(now);
+      osc.stop(now + 0.08);
+    } else if (type === 'thrust') {
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(120, now);
       osc.frequency.exponentialRampToValueAtTime(300, now + 0.08);
-      gain.gain.setValueAtTime(0.03, now);
+      gain.gain.setValueAtTime(0.025, now);
       gain.gain.linearRampToValueAtTime(0, now + 0.08);
       osc.start(now);
       osc.stop(now + 0.08);
@@ -38,42 +42,85 @@ const playSound = (type, enabled = true) => {
       osc.type = 'sine';
       osc.frequency.setValueAtTime(659.25, now); // E5
       osc.frequency.setValueAtTime(987.77, now + 0.08); // B5
-      gain.gain.setValueAtTime(0.04, now);
+      gain.gain.setValueAtTime(0.03, now);
       gain.gain.linearRampToValueAtTime(0, now + 0.16);
       osc.start(now);
       osc.stop(now + 0.16);
     } else if (type === 'crash') {
-      // Noise-like explosion rumble
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(100, now);
       osc.frequency.linearRampToValueAtTime(20, now + 0.5);
-      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.setValueAtTime(0.08, now);
       gain.gain.linearRampToValueAtTime(0, now + 0.5);
       osc.start(now);
       osc.stop(now + 0.5);
+    } else if (type === 'gameover') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(150, now);
+      osc.frequency.linearRampToValueAtTime(40, now + 0.6);
+      gain.gain.setValueAtTime(0.07, now);
+      gain.gain.linearRampToValueAtTime(0, now + 0.6);
+      osc.start(now);
+      osc.stop(now + 0.6);
     }
   } catch (e) {
-    console.warn("Web Audio API failed:", e);
+    console.warn("Audio Context init failed:", e);
   }
 };
 
 const CyberFalcon = () => {
+  // Game states: 'LOBBY' | 'GAMEPLAY' | 'PAUSE' | 'GAMEOVER'
+  const [gameState, setGameState] = useState('LOBBY');
+  const gameStateRef = useRef('LOBBY');
+  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+
+  // Audio Control
+  const [muted, setMuted] = useState(() => localStorage.getItem('arcade_muted') === 'true');
+  const mutedRef = useRef(false);
+  useEffect(() => {
+    mutedRef.current = muted;
+    localStorage.setItem('arcade_muted', muted.toString());
+  }, [muted]);
+
+  // Core metrics
+  const [score, setScore] = useState(0);
+  const scoreRef = useRef(0);
+  useEffect(() => { scoreRef.current = score; }, [score]);
+
+  const [highScore, setHighScore] = useState(() => {
+    return parseInt(localStorage.getItem('falcon_high_score') || '0', 10);
+  });
+
+  const [hasStarted, setHasStarted] = useState(false);
+  const hasStartedRef = useRef(false);
+  useEffect(() => { hasStartedRef.current = hasStarted; }, [hasStarted]);
+
+  // Menu navigation index
+  const [menuIndex, setMenuIndex] = useState(0);
+
+  // API sync states
+  const [gameId, setGameId] = useState(null);
+  const [submitStatus, setSubmitStatus] = useState('');
+  const [rewards, setRewards] = useState(null);
+
+  // Canvas Refs & loops
   const canvasRef = useRef(null);
   const requestRef = useRef(null);
+  const lastFrameTimeRef = useRef(0);
 
-  // States
-  const [score, setScore] = useState(0);
-  const [gameOver, setGameOver] = useState(false);
-  const [paused, setPaused] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [hasStarted, setHasStarted] = useState(false);
-  const [highScore, setHighScore] = useState(
-    localStorage.getItem('falcon_high_score') ? parseInt(localStorage.getItem('falcon_high_score')) : 0
-  );
-  const [gameId, setGameId] = useState(null);
-  const [rewards, setRewards] = useState(null);
-  const [submitStatus, setSubmitStatus] = useState(''); // 'submitting', 'submitted', 'failed', 'offline'
+  // Simulation physics parameters
+  const shipRef = useRef({ x: 80, y: 300, vy: 0, radius: 12, gravity: 0.28, lift: -5.2 });
+  const obstaclesRef = useRef([]);
+  const particlesRef = useRef([]);
+  const scrollDistanceRef = useRef(0);
+  const speedRef = useRef(3.2);
 
+  // Constants
+  const CANVAS_SIZE = 600;
+  const GAP_SIZE = 120;
+  const SPAWN_DISTANCE = 250;
+
+  // Retrieve game info
   useEffect(() => {
     axios.get('/api/v1/games')
       .then(res => {
@@ -83,106 +130,83 @@ const CyberFalcon = () => {
       .catch(err => console.error("Failed to load game info:", err));
   }, []);
 
-  useEffect(() => {
-    if (gameOver) {
-      const token = localStorage.getItem('token');
-      if (gameId && token && score > 0) {
-        setSubmitStatus('submitting');
-        axios.post(`/api/v1/games/${gameId}/score`, {
-          score: score
+  // Submit high score
+  const submitFalconScore = async (finalScore) => {
+    const token = localStorage.getItem('token');
+    if (gameId && token && finalScore > 0) {
+      setSubmitStatus('submitting');
+      try {
+        const res = await axios.post(`/api/v1/games/${gameId}/score`, {
+          score: finalScore
         }, {
           headers: { Authorization: `Bearer ${token}` }
-        })
-        .then(res => {
-          console.log('Score submitted successfully:', res.data);
-          setRewards({
-            coinsEarned: res.data.coinsEarned,
-            expGained: res.data.expGained,
-            level: res.data.level,
-            leveledUp: res.data.leveledUp
-          });
-          setSubmitStatus('submitted');
-          
-          // Sync local storage user
-          const storedUser = localStorage.getItem('user');
-          if (storedUser) {
-            try {
-              const userObj = JSON.parse(storedUser);
-              userObj.coins = res.data.totalCoins;
-              if (!userObj.gameStats) userObj.gameStats = {};
-              userObj.gameStats.level = res.data.level;
-              localStorage.setItem('user', JSON.stringify(userObj));
-              window.dispatchEvent(new Event('user-stats-changed'));
-            } catch (e) {
-              console.error('Failed to sync user stats:', e);
-            }
-          }
-        })
-        .catch(err => {
-          console.error('Failed to submit score:', err);
-          setSubmitStatus('failed');
         });
-      } else {
-        setSubmitStatus('offline');
+        setRewards({
+          coinsEarned: res.data.coinsEarned,
+          expGained: res.data.expGained,
+          level: res.data.level,
+          leveledUp: res.data.leveledUp
+        });
+        setSubmitStatus('submitted');
+
+        // Sync local storage user
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          try {
+            const userObj = JSON.parse(storedUser);
+            userObj.coins = res.data.totalCoins;
+            if (!userObj.gameStats) userObj.gameStats = {};
+            userObj.gameStats.level = res.data.level;
+            localStorage.setItem('user', JSON.stringify(userObj));
+            window.dispatchEvent(new Event('user-stats-changed'));
+          } catch (e) {
+            console.error('Failed to sync user stats:', e);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        setSubmitStatus('failed');
       }
+    } else {
+      setSubmitStatus('offline');
     }
-  }, [gameOver, gameId, score]);
-
-  // Physics Ref
-  const physicsState = useRef({
-    ship: { x: 80, y: 180, vy: 0, radius: 12, gravity: 0.28, lift: -5.2 },
-    obstacles: [],
-    particles: [],
-    frame: 0,
-    isRunning: false,
-    speed: 3.2,
-    gap: 120
-  });
-
-  const resetGame = () => {
-    setRewards(null);
-    setSubmitStatus('');
-    setScore(0);
-    setGameOver(false);
-    setPaused(false);
-    setHasStarted(false);
-
-    const state = physicsState.current;
-    state.ship.y = 180;
-    state.ship.vy = 0;
-    state.obstacles = [];
-    state.particles = [];
-    state.frame = 0;
-    state.isRunning = false;
-    state.speed = 3.2;
-    state.gap = 120;
   };
 
-  useEffect(() => {
-    resetGame();
-    return () => {
-      if (requestRef.current) cancelAnimationFrame(requestRef.current);
-    };
-  }, []);
+  // Launch fresh game
+  const startGame = () => {
+    setScore(0);
+    setRewards(null);
+    setSubmitStatus('');
+    setMenuIndex(0);
+    setHasStarted(false);
 
-  // Jump control
+    shipRef.current.y = 300;
+    shipRef.current.vy = 0;
+    obstaclesRef.current = [];
+    particlesRef.current = [];
+    scrollDistanceRef.current = SPAWN_DISTANCE - 50; // trigger early obstacle spawn
+    speedRef.current = 3.2;
+
+    setGameState('GAMEPLAY');
+  };
+
+  // Jetpack thrust boost
   const triggerThrust = () => {
-    const state = physicsState.current;
-    if (gameOver || paused) return;
+    if (gameStateRef.current !== 'GAMEPLAY') return;
 
-    if (!state.isRunning) {
-      state.isRunning = true;
+    if (!hasStartedRef.current) {
       setHasStarted(true);
     }
 
-    playSound('thrust', soundEnabled);
-    state.ship.vy = state.ship.lift;
+    const ship = shipRef.current;
+    ship.vy = ship.lift;
+    playSound('thrust', mutedRef.current);
 
-    // Spawn sparks
+    // Spawn exhaust sparks
     for (let i = 0; i < 6; i++) {
-      state.particles.push({
-        x: state.ship.x - 12,
-        y: state.ship.y,
+      particlesRef.current.push({
+        x: ship.x - 12,
+        y: ship.y,
         vx: -3 - Math.random() * 2,
         vy: (Math.random() - 0.5) * 3,
         alpha: 1,
@@ -192,302 +216,624 @@ const CyberFalcon = () => {
     }
   };
 
-  // Keyboard controls
+  // Keyboard navigation controls
+  const handleKeyboardNav = (code) => {
+    const curState = gameStateRef.current;
+    if (curState === 'LOBBY') {
+      if (code === 'Space' || code === 'Enter') {
+        playSound('click', mutedRef.current);
+        startGame();
+      }
+    } else if (curState === 'PAUSE') {
+      if (code === 'ArrowUp' || code === 'KeyW') {
+        playSound('click', mutedRef.current);
+        setMenuIndex(prev => (prev === 0 ? 2 : prev - 1));
+      } else if (code === 'ArrowDown' || code === 'KeyS') {
+        playSound('click', mutedRef.current);
+        setMenuIndex(prev => (prev === 2 ? 0 : prev + 1));
+      } else if (code === 'Space' || code === 'Enter') {
+        playSound('click', mutedRef.current);
+        if (menuIndex === 0) {
+          lastFrameTimeRef.current = performance.now();
+          setGameState('GAMEPLAY');
+        } else if (menuIndex === 1) {
+          startGame();
+        } else {
+          setGameState('LOBBY');
+        }
+      } else if (code === 'Escape') {
+        playSound('click', mutedRef.current);
+        lastFrameTimeRef.current = performance.now();
+        setGameState('GAMEPLAY');
+      }
+    } else if (curState === 'GAMEOVER') {
+      if (code === 'ArrowUp' || code === 'KeyW' || code === 'ArrowDown' || code === 'KeyS') {
+        playSound('click', mutedRef.current);
+        setMenuIndex(prev => (prev === 0 ? 1 : 0));
+      } else if (code === 'Space' || code === 'Enter') {
+        playSound('click', mutedRef.current);
+        if (menuIndex === 0) {
+          startGame();
+        } else {
+          setGameState('LOBBY');
+        }
+      }
+    } else if (curState === 'GAMEPLAY') {
+      if (code === 'Escape') {
+        playSound('click', mutedRef.current);
+        setGameState('PAUSE');
+        setMenuIndex(0);
+      } else if (code === 'Space' || code === 'ArrowUp' || code === 'KeyW') {
+        triggerThrust();
+      }
+    }
+  };
+
+  // Keyboard listener hooks
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === ' ' || e.key === 'ArrowUp') {
-        e.preventDefault();
-        triggerThrust();
+      const activeStates = ['LOBBY', 'PAUSE', 'GAMEOVER', 'GAMEPLAY'];
+      if (activeStates.includes(gameStateRef.current)) {
+        if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+          e.preventDefault();
+        }
+        handleKeyboardNav(e.code);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [gameOver, paused, soundEnabled]);
+  }, []);
 
-  // Main Canvas loop
+  // Canvas Clicks
+  const handleCanvasClick = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = CANVAS_SIZE / rect.width;
+    const scaleY = CANVAS_SIZE / rect.height;
+    const clickX = (e.clientX - rect.left) * scaleX;
+    const clickY = (e.clientY - rect.top) * scaleY;
+
+    // Speaker check
+    if (clickX >= 540 && clickX <= 590 && clickY >= 10 && clickY <= 50) {
+      playSound('click', !muted);
+      setMuted(prev => !prev);
+      return;
+    }
+
+    const curState = gameState;
+    if (curState === 'LOBBY') {
+      if (clickX >= 150 && clickX <= 450 && clickY >= 300 && clickY <= 360) {
+        playSound('click', muted);
+        startGame();
+      }
+    } else if (curState === 'PAUSE') {
+      if (clickX >= 200 && clickX <= 400 && clickY >= 240 && clickY <= 280) {
+        playSound('click', muted);
+        lastFrameTimeRef.current = performance.now();
+        setGameState('GAMEPLAY');
+      } else if (clickX >= 200 && clickX <= 400 && clickY >= 300 && clickY <= 340) {
+        playSound('click', muted);
+        startGame();
+      } else if (clickX >= 200 && clickX <= 400 && clickY >= 360 && clickY <= 400) {
+        playSound('click', muted);
+        setGameState('LOBBY');
+      }
+    } else if (curState === 'GAMEOVER') {
+      if (clickX >= 150 && clickX <= 450 && clickY >= 440 && clickY <= 480) {
+        playSound('click', muted);
+        startGame();
+      } else if (clickX >= 150 && clickX <= 450 && clickY >= 495 && clickY <= 535) {
+        playSound('click', muted);
+        setGameState('LOBBY');
+      }
+    } else if (curState === 'GAMEPLAY') {
+      triggerThrust();
+    }
+  };
+
+  // Spawn new obstacle
+  const spawnPillar = () => {
+    const obsWidth = 55;
+    const minHeight = 40;
+    // Total vertical playfield height is 480px (80 to 560)
+    const maxHeight = 480 - GAP_SIZE - minHeight;
+    const topHeight = Math.floor(minHeight + Math.random() * (maxHeight - minHeight));
+    const bottomHeight = 480 - GAP_SIZE - topHeight;
+
+    obstaclesRef.current.push({
+      x: 600,
+      width: obsWidth,
+      top: topHeight,
+      bottom: bottomHeight,
+      passed: false
+    });
+  };
+
+  // Main Canvas render & physics loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    const updatePhysics = () => {
-      const state = physicsState.current;
-      if (!state.isRunning || gameOver || paused) return;
+    const render = (time) => {
+      if (!lastFrameTimeRef.current) lastFrameTimeRef.current = time;
+      const dt = time - lastFrameTimeRef.current;
+      lastFrameTimeRef.current = time;
 
-      state.frame++;
+      // Update Physics
+      if (gameStateRef.current === 'GAMEPLAY' && hasStartedRef.current) {
+        const ship = shipRef.current;
+        const speed = speedRef.current;
 
-      // Ship gravity
-      state.ship.vy += state.ship.gravity;
-      state.ship.y += state.ship.vy;
+        // Apply ship gravity
+        ship.vy += ship.gravity;
+        ship.y += ship.vy;
 
-      // Wall bounds checks
-      if (state.ship.y + state.ship.radius > 400) {
-        state.ship.y = 400 - state.ship.radius;
-        playSound('crash', soundEnabled);
-        setGameOver(true);
-      }
-      if (state.ship.y - state.ship.radius < 0) {
-        state.ship.y = state.ship.radius;
-        state.ship.vy = 0;
-      }
+        // Ceil check (clamping)
+        if (ship.y - ship.radius < 80) {
+          ship.y = 80 + ship.radius;
+          ship.vy = 0;
+        }
 
-      // Move Exhaust Particles
-      state.particles.forEach(p => {
-        p.x += p.vx;
-        p.y += p.vy;
-        p.alpha -= 0.04;
-      });
-      state.particles = state.particles.filter(p => p.alpha > 0);
+        // Floor check (death)
+        if (ship.y + ship.radius >= 560) {
+          ship.y = 560 - ship.radius;
+          playSound('crash', mutedRef.current);
+          setGameState('GAMEOVER');
+          setMenuIndex(0);
+          playSound('gameover', mutedRef.current);
+          submitFalconScore(scoreRef.current);
+        }
 
-      // Scroll Obstacles
-      state.obstacles.forEach(obs => {
-        obs.x -= state.speed;
+        // Move Exhaust Particles
+        particlesRef.current.forEach(p => {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.alpha -= 0.04;
+        });
+        particlesRef.current = particlesRef.current.filter(p => p.alpha > 0);
 
-        // Check passing for score
-        if (!obs.passed && obs.x + obs.width < state.ship.x) {
-          obs.passed = true;
-          playSound('point', soundEnabled);
-          setScore(prev => {
-            const nextScore = prev + 1;
-            if (nextScore > highScore) {
-              localStorage.setItem('falcon_high_score', nextScore.toString());
-              setHighScore(nextScore);
+        // Scroll and check obstacles
+        const obstacles = obstaclesRef.current;
+        obstacles.forEach(obs => {
+          obs.x -= speed;
+
+          // Score check
+          if (!obs.passed && obs.x + obs.width < ship.x) {
+            obs.passed = true;
+            playSound('point', mutedRef.current);
+            setScore(prev => {
+              const nextScore = prev + 1;
+              if (nextScore > highScore) {
+                localStorage.setItem('falcon_high_score', nextScore.toString());
+                setHighScore(nextScore);
+              }
+              return nextScore;
+            });
+
+            // Increase speed slightly
+            if (speedRef.current < 6.5) {
+              speedRef.current += 0.08;
             }
-            return nextScore;
-          });
+          }
+        });
 
-          // Increase speed slightly
-          if (state.speed < 6) {
-            state.speed += 0.08;
+        // Filter off-screen obstacles
+        obstaclesRef.current = obstacles.filter(obs => obs.x + obs.width > 0);
+
+        // Spawner check
+        scrollDistanceRef.current += speed;
+        if (scrollDistanceRef.current >= SPAWN_DISTANCE) {
+          scrollDistanceRef.current -= SPAWN_DISTANCE;
+          spawnPillar();
+        }
+
+        // Collision check
+        for (let i = 0; i < obstaclesRef.current.length; i++) {
+          const obs = obstaclesRef.current[i];
+          if (ship.x + ship.radius > obs.x && ship.x - ship.radius < obs.x + obs.width) {
+            if (
+              ship.y - ship.radius < 80 + obs.top ||
+              ship.y + ship.radius > 560 - obs.bottom
+            ) {
+              playSound('crash', mutedRef.current);
+              setGameState('GAMEOVER');
+              setMenuIndex(0);
+              playSound('gameover', mutedRef.current);
+              submitFalconScore(scoreRef.current);
+              break;
+            }
           }
         }
-      });
+      }
 
-      // Filter off-screen obstacles
-      state.obstacles = state.obstacles.filter(obs => obs.x + obs.width > 0);
+      // Drawing
+      ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+      ctx.shadowBlur = 0;
 
-      // Spawn new obstacles every 100 frames
-      if (state.frame % 100 === 0) {
-        const obsWidth = 55;
-        const minHeight = 40;
-        const maxHeight = 400 - state.gap - minHeight;
-        const topHeight = Math.floor(minHeight + Math.random() * (maxHeight - minHeight));
-        const bottomHeight = 400 - state.gap - topHeight;
+      // Space lines
+      ctx.strokeStyle = '#070b16';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 6; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * 100, 0);
+        ctx.lineTo(i * 100, CANVAS_SIZE);
+        ctx.stroke();
 
-        state.obstacles.push({
-          x: 600,
-          width: obsWidth,
-          top: topHeight,
-          bottom: bottomHeight,
-          passed: false
+        ctx.beginPath();
+        ctx.moveTo(0, i * 100);
+        ctx.lineTo(CANVAS_SIZE, i * 100);
+        ctx.stroke();
+      }
+
+      const curState = gameStateRef.current;
+
+      // ----------------------------------------------------
+      // STATE: LOBBY
+      // ----------------------------------------------------
+      if (curState === 'LOBBY') {
+        ctx.shadowColor = '#00d4ff';
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = '#00d4ff';
+        ctx.font = 'bold 36px "Orbitron", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('CYBER FALCON', CANVAS_SIZE / 2, 130);
+
+        ctx.shadowColor = '#ff007f';
+        ctx.fillStyle = '#b4b4c8';
+        ctx.font = '14px "Exo 2", sans-serif';
+        ctx.fillText('NEON JETPACK SIMULATOR', CANVAS_SIZE / 2, 170);
+
+        // Draw START RUN button centered
+        ctx.shadowColor = '#00d4ff';
+        ctx.shadowBlur = 10;
+        ctx.strokeStyle = '#00d4ff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(CANVAS_SIZE / 2 - 130, 330 - 28, 260, 40);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 18px "Orbitron", monospace';
+        ctx.fillText('START RUN', CANVAS_SIZE / 2, 330);
+
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '12px "Exo 2", sans-serif';
+        ctx.fillText('USE ARROWS / WASD TO NAVIGATE • SPACEBAR TO SELECT', CANVAS_SIZE / 2, 550);
+      }
+
+      // ----------------------------------------------------
+      // STATE: PAUSE
+      // ----------------------------------------------------
+      else if (curState === 'PAUSE') {
+        drawActiveGameElements(ctx);
+
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(5, 5, 10, 0.85)';
+        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+        ctx.shadowColor = '#ff007f';
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = '#ff007f';
+        ctx.font = 'bold 36px "Orbitron", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('SYSTEM PAUSED', CANVAS_SIZE / 2, 160);
+
+        const pauseItems = ['RESUME', 'RESTART', 'BACK TO MENU'];
+        pauseItems.forEach((text, idx) => {
+          const isSelected = menuIndex === idx;
+          const y = 266 + idx * 60;
+
+          if (isSelected) {
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#00d4ff';
+            ctx.strokeStyle = '#00d4ff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(CANVAS_SIZE / 2 - 100, y - 26, 200, 36);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 16px "Orbitron", monospace';
+          } else {
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#8888a0';
+            ctx.font = '15px "Orbitron", monospace';
+          }
+          ctx.fillText(text, CANVAS_SIZE / 2, y);
         });
       }
 
-      // Collision checks with pillars
-      const ship = state.ship;
-      for (let i = 0; i < state.obstacles.length; i++) {
-        const obs = state.obstacles[i];
-        
-        // Horizontal overlap check
-        if (ship.x + ship.radius > obs.x && ship.x - ship.radius < obs.x + obs.width) {
-          // Vertical overlap check with top or bottom pillar
-          if (
-            ship.y - ship.radius < obs.top ||
-            ship.y + ship.radius > 400 - obs.bottom
-          ) {
-            playSound('crash', soundEnabled);
-            setGameOver(true);
-            break;
+      // ----------------------------------------------------
+      // STATE: GAMEOVER
+      // ----------------------------------------------------
+      else if (curState === 'GAMEOVER') {
+        drawActiveGameElements(ctx);
+
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(5, 5, 10, 0.88)';
+        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+        ctx.shadowColor = '#ff007f';
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = '#ff007f';
+        ctx.font = 'bold 34px "Orbitron", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('SYSTEM CRASHED', CANVAS_SIZE / 2, 110);
+
+        // CLI Sync logger
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillRect(80, 160, 440, 230);
+        ctx.strokeStyle = 'rgba(255, 0, 127, 0.2)';
+        ctx.strokeRect(80, 160, 440, 230);
+
+        ctx.font = '13px "Courier New", monospace';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#ff007f';
+        ctx.fillText(`> Cyber Falcon hull impact detected.`, 100, 190);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(`> Final Distance Score: ${scoreRef.current} nodes`, 100, 210);
+
+        if (submitStatus === 'submitting') {
+          ctx.fillStyle = '#00d4ff';
+          ctx.fillText(`> Connecting to registry node...`, 100, 240);
+          ctx.fillText(`> Syncing telemetry blocks...`, 100, 260);
+        } else if (submitStatus === 'submitted' && rewards) {
+          ctx.fillStyle = '#00ff88';
+          ctx.fillText(`> DATA UPLOAD SUCCESS. INTEGRATION STABLE.`, 100, 240);
+          ctx.fillStyle = '#ffd700';
+          ctx.fillText(`> REWARDS CREDITED:`, 100, 270);
+          ctx.fillText(`  🪙 +${rewards.coinsEarned} Arcade Coins`, 100, 290);
+          ctx.fillText(`  ⚡ +${rewards.expGained} Experience Nodes`, 100, 310);
+          if (rewards.leveledUp) {
+            ctx.fillStyle = '#00d4ff';
+            ctx.fillText(`  [NOTICE] LEVEL UP! New Level ${rewards.level}`, 100, 335);
           }
+        } else if (submitStatus === 'failed') {
+          ctx.fillStyle = '#ff0055';
+          ctx.fillText(`> [CRITICAL_ERROR] CLOUD SYNC ABORT TIMEOUT`, 100, 240);
+        } else if (submitStatus === 'offline') {
+          ctx.fillStyle = '#ffaa00';
+          ctx.fillText(`> [NOTICE] OFFLINE OPERATION DETECTED`, 100, 240);
+          ctx.fillText(`> Log in to authorize rewards.`, 100, 265);
         }
+
+        // Action Options
+        const gameOverItems = ['PLAY AGAIN', 'QUIT TO MENU'];
+        gameOverItems.forEach((text, idx) => {
+          const isSelected = menuIndex === idx;
+          const y = 460 + idx * 55;
+
+          ctx.textAlign = 'center';
+          if (isSelected) {
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#00d4ff';
+            ctx.strokeStyle = '#00d4ff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(CANVAS_SIZE / 2 - 130, y - 26, 260, 36);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 16px "Orbitron", monospace';
+          } else {
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#8888a0';
+            ctx.font = '15px "Orbitron", monospace';
+          }
+          ctx.fillText(text, CANVAS_SIZE / 2, y);
+        });
+      }
+
+      // ----------------------------------------------------
+      // STATE: GAMEPLAY
+      // ----------------------------------------------------
+      else if (curState === 'GAMEPLAY') {
+        drawActiveGameElements(ctx);
+      }
+
+      // Draw global speaker speaker icon
+      drawSpeakerIcon(ctx);
+
+      requestRef.current = requestAnimationFrame(render);
+    };
+
+    // Helper: Draw exhaust particles, scrolling obstacles, HUD header, and jetpack ship
+    const drawActiveGameElements = (c) => {
+      // 1. Draw exhaust sparks
+      particlesRef.current.forEach(p => {
+        c.fillStyle = p.color;
+        c.globalAlpha = p.alpha;
+        c.beginPath();
+        c.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        c.fill();
+      });
+      c.globalAlpha = 1.0; // reset
+
+      // 2. Draw obstacles
+      const obstacles = obstaclesRef.current;
+      obstacles.forEach(obs => {
+        c.fillStyle = 'rgba(255, 0, 127, 0.1)';
+        c.strokeStyle = '#ff007f';
+        c.lineWidth = 3;
+
+        // Top pillar
+        c.beginPath();
+        c.roundRect(obs.x, 80 - 10, obs.width, obs.top + 10, [0, 0, 6, 6]);
+        c.fill();
+        c.stroke();
+
+        // Bottom pillar
+        c.beginPath();
+        c.roundRect(obs.x, 560 - obs.bottom, obs.width, obs.bottom + 10, [6, 6, 0, 0]);
+        c.fill();
+        c.stroke();
+      });
+
+      // 3. Draw Jetpack Ship (Sleek vector triangle pointing right)
+      const ship = shipRef.current;
+      c.fillStyle = 'rgba(0, 212, 255, 0.2)';
+      c.strokeStyle = '#00d4ff';
+      c.lineWidth = 3;
+      c.beginPath();
+
+      const sy = ship.y;
+      const sx = ship.x;
+      const sr = ship.radius;
+
+      c.moveTo(sx + sr + 4, sy); // nose
+      c.lineTo(sx - sr, sy - sr + 2); // top back
+      c.lineTo(sx - sr + 4, sy); // back indent
+      c.lineTo(sx - sr, sy + sr - 2); // bottom back
+      c.closePath();
+      c.fill();
+      c.stroke();
+
+      // Exhaust flame spark glow
+      c.fillStyle = '#ff007f';
+      c.beginPath();
+      c.arc(sx - sr, sy, 3.5, 0, Math.PI * 2);
+      c.fill();
+
+      c.shadowBlur = 10;
+      c.shadowColor = '#00d4ff';
+      c.beginPath();
+      c.moveTo(sx + sr + 4, sy);
+      c.lineTo(sx - sr, sy - sr + 2);
+      c.lineTo(sx - sr + 4, sy);
+      c.lineTo(sx - sr, sy + sr - 2);
+      c.closePath();
+      c.stroke();
+      c.shadowBlur = 0;
+
+      // 4. Draw HUD headers
+      c.textAlign = 'left';
+      c.fillStyle = '#8888a0';
+      c.font = '11px "Orbitron", monospace';
+      c.fillText('DISTANCE', 50, 30);
+      c.fillText('BEST RECORD', 300, 30);
+
+      c.fillStyle = '#ffffff';
+      c.font = 'bold 16px "Orbitron", monospace';
+      c.fillText(`${scoreRef.current} nodes`, 50, 52);
+
+      c.fillStyle = '#ffd700';
+      c.fillText(`${highScore} nodes`, 300, 52);
+
+      // Bezel border line
+      c.strokeStyle = 'rgba(0, 212, 255, 0.15)';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.moveTo(0, 78);
+      c.lineTo(CANVAS_SIZE, 78);
+      c.moveTo(0, 560);
+      c.lineTo(CANVAS_SIZE, 560);
+      c.stroke();
+
+      // 5. Flashing prompt overlay when not started yet
+      if (!hasStartedRef.current && gameStateRef.current === 'GAMEPLAY') {
+        c.textAlign = 'center';
+        c.fillStyle = 'rgba(0,0,0,0.5)';
+        c.fillRect(50, 320, 500, 70);
+        c.strokeStyle = 'rgba(0,212,255,0.15)';
+        c.strokeRect(50, 320, 500, 70);
+
+        const blinkState = Math.floor(time / 450) % 2 === 0;
+        c.fillStyle = blinkState ? '#ffffff' : '#8888a0';
+        c.font = 'bold 15px "Orbitron", monospace';
+        c.fillText('PRESS SPACEBAR OR CLICK SCREEN TO FLY SHIP', CANVAS_SIZE / 2, 350);
+
+        c.fillStyle = '#8888a0';
+        c.font = '11px "Exo 2", sans-serif';
+        c.fillText('TAP REPEATEDLY TO HOVER THE FALCON THROUGH THE PIPES', CANVAS_SIZE / 2, 375);
       }
     };
 
-    const draw = () => {
-      // Background clear
-      ctx.clearRect(0, 0, 600, 400);
+    // Helper: Draw global speaker mute toggler button
+    const drawSpeakerIcon = (c) => {
+      c.save();
+      const x = 555;
+      const y = 20;
 
-      const state = physicsState.current;
+      c.strokeStyle = muted ? '#ff0055' : '#8888a0';
+      c.fillStyle = muted ? 'rgba(255,0,85,0.05)' : 'rgba(255,255,255,0.05)';
+      c.lineWidth = 2;
 
-      // Draw exhaust particles
-      state.particles.forEach(p => {
-        ctx.fillStyle = p.color;
-        ctx.globalAlpha = p.alpha;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-      });
-      ctx.globalAlpha = 1.0; // reset
+      c.beginPath();
+      c.moveTo(x, y + 6);
+      c.lineTo(x + 6, y + 6);
+      c.lineTo(x + 12, y);
+      c.lineTo(x + 12, y + 16);
+      c.lineTo(x + 6, y + 10);
+      c.lineTo(x, y + 10);
+      c.closePath();
+      c.fill();
+      c.stroke();
 
-      // Draw obstacles
-      state.obstacles.forEach(obs => {
-        ctx.fillStyle = 'rgba(255, 0, 127, 0.1)';
-        ctx.strokeStyle = '#ff007f';
-        ctx.lineWidth = 3;
-
-        // Top Pillar
-        ctx.beginPath();
-        ctx.roundRect(obs.x, -10, obs.width, obs.top + 10, [0, 0, 6, 6]);
-        ctx.fill();
-        ctx.stroke();
-
-        // Bottom Pillar
-        ctx.beginPath();
-        ctx.roundRect(obs.x, 400 - obs.bottom, obs.width, obs.bottom + 10, [6, 6, 0, 0]);
-        ctx.fill();
-        ctx.stroke();
-      });
-
-      // Draw Ship (Cyber Falcon)
-      ctx.fillStyle = 'rgba(0, 212, 255, 0.2)';
-      ctx.strokeStyle = '#00d4ff';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      // Draw a sleek futuristic triangle ship pointing right
-      const sy = state.ship.y;
-      const sx = state.ship.x;
-      const sr = state.ship.radius;
-
-      ctx.moveTo(sx + sr + 4, sy); // nose
-      ctx.lineTo(sx - sr, sy - sr + 2); // top back
-      ctx.lineTo(sx - sr + 4, sy); // back indent
-      ctx.lineTo(sx - sr, sy + sr - 2); // bottom back
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      // Exhaust glow indicator
-      ctx.fillStyle = '#ff007f';
-      ctx.beginPath();
-      ctx.arc(sx - sr, sy, 3, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Glowing effects
-      ctx.shadowBlur = 10;
-      ctx.shadowColor = '#00d4ff';
-      ctx.stroke();
-      ctx.shadowBlur = 0; // reset
+      if (!muted) {
+        c.beginPath();
+        c.arc(x + 10, y + 8, 5, -Math.PI / 3, Math.PI / 3);
+        c.stroke();
+        c.beginPath();
+        c.arc(x + 10, y + 8, 9, -Math.PI / 3, Math.PI / 3);
+        c.stroke();
+      } else {
+        c.strokeStyle = '#ff0055';
+        c.beginPath();
+        c.moveTo(x + 16, y + 3);
+        c.lineTo(x + 22, y + 13);
+        c.moveTo(x + 22, y + 3);
+        c.lineTo(x + 16, y + 13);
+        c.stroke();
+      }
+      c.restore();
     };
 
-    const loop = () => {
-      updatePhysics();
-      draw();
-      requestRef.current = requestAnimationFrame(loop);
-    };
-
-    loop();
-
+    requestRef.current = requestAnimationFrame(render);
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
     };
-  }, [gameOver, paused, soundEnabled, highScore]);
-
-  const isGameplayActive = hasStarted && !gameOver && !paused;
+  }, [gameState, muted, submitStatus, rewards, highScore, menuIndex, hasStarted]);
 
   return (
     <div className="falcon-page-wrapper">
-      {!isGameplayActive && (
+      {/* Floating circular navigation button aligned vertically below logo */}
+      {gameState === 'LOBBY' || gameState === 'GAMEOVER' || gameState === 'PAUSE' ? (
         <Link to="/UODGaming" className="floating-back-btn" title="Back to Games">
           <ArrowLeft size={20} />
         </Link>
-      )}
+      ) : null}
+
+      {gameState === 'GAMEPLAY' ? (
+        <button
+          onClick={() => {
+            playSound('click', muted);
+            setGameState('PAUSE');
+            setMenuIndex(0);
+          }}
+          className="floating-back-btn"
+          title="Pause Game"
+          style={{ cursor: 'pointer', outline: 'none' }}
+        >
+          <Pause size={20} />
+        </button>
+      ) : null}
 
       <div className="game-content-card">
-        {/* Arcade Cabinet Frame */}
-        <div className="cabinet-screen crt-screen">
+        <div 
+          className="cabinet-screen crt-screen" 
+          onClick={handleCanvasClick}
+        >
           {/* CRT scanlines, reflection and flicker overlay */}
           <div className="crt-scanlines"></div>
           <div className="crt-reflection"></div>
           <div className="crt-flicker"></div>
 
-          {/* Floating HUD Overlays */}
-          <div className="game-hud-container">
-            <div className="game-hud-item">
-              <span className="game-hud-label">Distance</span>
-              <span className="game-hud-value">{score} nodes</span>
-            </div>
-
-            <div className="game-hud-item">
-              <span className="game-hud-label">Best Record</span>
-              <span className="game-hud-value" style={{ color: 'var(--accent-yellow)', textShadow: '0 0 8px rgba(255,255,0,0.4)' }}>{highScore} nodes</span>
-            </div>
-          </div>
-
-          <div className="game-play-area">
-            <div className="canvas-wrapper">
-              <canvas 
-                ref={canvasRef} 
-                width={600} 
-                height={400} 
-                onClick={triggerThrust}
-                className="falcon-canvas"
-              />
-
-              {!hasStarted && !gameOver && !paused && (
-                <div className="start-prompt-overlay" onClick={triggerThrust}>
-                  <p>Press <strong>SPACEBAR</strong> or <strong>CLICK SCREEN</strong> to Engage Thrusters</p>
-                  <span>Tap repeatedly to hover the Falcon through the gap of neon pillars.</span>
-                </div>
-              )}
-
-              {/* Overlays */}
-              <AnimatePresence>
-                {gameOver && (
-                  <div className="start-prompt-overlay gameover">
-                    <h2>System Crash</h2>
-                    <p>Collision detected. distance traveled: <strong>{score} nodes</strong></p>
-                    
-                    {submitStatus === 'submitting' && (
-                      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '8px 0' }}>Saving score online...</p>
-                    )}
-                    {submitStatus === 'submitted' && rewards && (
-                      <div className="game-over-rewards" style={{ margin: '12px auto', padding: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', fontSize: '0.9rem' }}>
-                        <div style={{ color: '#ffd700', marginBottom: '4px' }}>🪙 +{rewards.coinsEarned} Coins</div>
-                        <div style={{ color: 'var(--primary-neon)', marginBottom: '4px' }}>⚡ +{rewards.expGained} XP</div>
-                        {rewards.leveledUp && (
-                          <div style={{ color: '#00ff88', fontWeight: 'bold', textShadow: '0 0 5px rgba(0,255,136,0.5)', marginTop: '4px' }}>LEVEL UP! (Lv {rewards.level})</div>
-                        )}
-                      </div>
-                    )}
-                    {submitStatus === 'failed' && (
-                      <p style={{ fontSize: '0.85rem', color: 'var(--secondary-neon)', margin: '8px 0' }}>Failed to save score online.</p>
-                    )}
-                    {submitStatus === 'offline' && (
-                      <p style={{ fontSize: '0.85rem', color: 'var(--accent-orange)', margin: '8px 0' }}>Log in to save stats & earn coins!</p>
-                    )}
-
-                    <button className="btn btn-primary mt-4" onClick={resetGame}>Re-Launch Simulation</button>
-                  </div>
-                )}
-
-                {paused && (
-                  <div className="start-prompt-overlay paused">
-                    <h2>Simulation Paused</h2>
-                    <button className="btn btn-primary mt-4" onClick={() => setPaused(false)}>Resume</button>
-                  </div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-        </div>
-
-        {/* Action Controls */}
-        <div className="falcon-controls" style={{ display: 'flex', gap: '15px', marginTop: '10px', justifyContent: 'center' }}>
-          <button className="btn btn-primary" onClick={() => setPaused(!paused)} disabled={gameOver}>
-            {paused ? <Play size={16} /> : <Pause size={16} />}
-            <span>{paused ? 'Resume' : 'Pause'}</span>
-          </button>
-          <button className="btn btn-reset" onClick={resetGame}>
-            <RotateCcw size={16} />
-            <span>Restart</span>
-          </button>
-          <button className="btn btn-reset" onClick={() => setSoundEnabled(!soundEnabled)}>
-            {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-            <span>Sound: {soundEnabled ? 'ON' : 'OFF'}</span>
-          </button>
+          <canvas
+            ref={canvasRef}
+            width={CANVAS_SIZE}
+            height={CANVAS_SIZE}
+            style={{ display: 'block', background: '#020205', width: '100%', height: 'auto', maxWidth: '600px' }}
+          />
         </div>
       </div>
-
     </div>
   );
 };

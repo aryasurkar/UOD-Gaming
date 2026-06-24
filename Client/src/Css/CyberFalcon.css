@@ -1,122 +1,88 @@
 /* ========================================
-   CYBER FALCON STYLES
+   CYBER FALCON - ARCADE STYLE
    ======================================== */
 
 .falcon-page-wrapper {
-  background-color: #0a0a0f;
-  color: var(--text-primary);
+  font-family: var(--font-secondary);
   height: 100vh;
   max-height: 100vh;
-  padding-top: 80px;
-  font-family: var(--font-primary);
   overflow: hidden;
   box-sizing: border-box;
+  padding-top: 80px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  background: transparent !important;
 }
 
+/* Floating Navigation Back Button Theme */
 .floating-back-btn {
-  border-color: rgba(255, 0, 127, 0.25);
-  box-shadow: 0 0 15px rgba(255, 0, 127, 0.05);
+  border-color: rgba(255, 0, 127, 0.25) !important;
+  box-shadow: 0 0 15px rgba(255, 0, 127, 0.05) !important;
 }
 
 .floating-back-btn:hover {
-  background: rgba(255, 0, 127, 0.15);
-  border-color: var(--secondary-neon);
-  box-shadow: 0 0 20px rgba(255, 0, 127, 0.35);
+  background: rgba(255, 0, 127, 0.15) !important;
+  border-color: var(--secondary-neon, #ff007f) !important;
+  box-shadow: 0 0 20px rgba(255, 0, 127, 0.35) !important;
 }
 
-/* Game Cabinet Card */
-.falcon-page-wrapper .game-content-card {
+/* Centered Game Cabinet Card */
+.game-content-card {
   width: 95%;
-  max-width: 1200px;
+  max-width: 650px;
   margin: 5px auto;
-  background: rgba(20, 20, 30, 0.5);
-  border: 1.5px solid rgba(255, 0, 127, 0.15);
-  border-radius: var(--radius-xl);
   padding: 8px 12px;
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
-  box-shadow: 0 0 30px rgba(255, 0, 127, 0.08), var(--shadow-card);
+  background: rgba(10, 10, 15, 0.95);
+  border: 2px solid rgba(255, 0, 127, 0.2);
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: 
+    0 0 35px rgba(255, 0, 127, 0.08), 
+    inset 0 0 25px rgba(255, 0, 127, 0.02);
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-/* CRT Screen Wrapper */
+/* CRT Screen overrides */
 .cabinet-screen.crt-screen {
-  max-width: calc((80vh - 120px) * 1.5);
-  aspect-ratio: 1.5 / 1 !important;
+  max-width: calc(75vh - 140px);
   box-shadow: 
-    0 0 20px rgba(255, 0, 127, 0.15),
+    0 0 25px rgba(255, 0, 127, 0.15),
     inset 0 0 35px rgba(0, 0, 0, 0.95);
 }
 
-.game-play-area {
-  width: 100%;
-  height: 100%;
-  padding: var(--space-sm);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+/* Canvas responsiveness */
+#gameCanvas {
+  max-width: 100%;
+  height: auto;
+  max-height: 100%;
+  image-rendering: pixelated;
 }
 
-/* Canvas Wrapper with Relative Overlays */
-.canvas-wrapper {
-  position: relative;
-  width: 100%;
-  height: 100%;
+/* Pulsing title/glow styles on overlay components */
+.pulse {
+  animation: falcon-pulse-glow 2s infinite ease-in-out;
 }
 
-.falcon-canvas {
-  width: 100%;
-  height: 100%;
-  border: none;
-  display: block;
+@keyframes falcon-pulse-glow {
+  0%, 100% {
+    text-shadow: 0 0 10px rgba(255, 0, 127, 0.4);
+  }
+  50% {
+    text-shadow: 0 0 20px rgba(255, 0, 127, 0.8);
+  }
 }
 
-/* Scanlines Overlay */
-.crt-scanlines {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 5;
-  background: linear-gradient(
-    rgba(18, 16, 16, 0) 50%, 
-    rgba(0, 0, 0, 0.25) 50%
-  );
-  background-size: 100% 4px;
-}
+@media (max-width: 768px) {
+  .game-content-card {
+    padding: 6px;
+    margin: 5px;
+    max-width: 100%;
+  }
 
-/* Curved CRT Glass Reflection */
-.crt-reflection {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 6;
-  background: radial-gradient(
-    circle at 50% 0%, 
-    rgba(255, 255, 255, 0.06) 0%, 
-    transparent 70%
-  );
-}
-
-/* Subtle CRT Screen Flicker */
-.crt-flicker {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 4;
-  background: rgba(18, 16, 16, 0.02);
-  opacity: 0.15;
-  animation: crt-flicker-anim 0.15s infinite;
-}
-
-@keyframes crt-flicker-anim {
-  0% { opacity: 0.13; }
-  50% { opacity: 0.17; }
-  100% { opacity: 0.13; }
+  .cabinet-screen.crt-screen {
+    max-width: 100%;
+  }
 }
