@@ -1,80 +1,66 @@
 /* ========================================
-   NEON STOWER STACK STYLES
+   NEON STACK TOWER - RETRO ARCADE STYLE
    ======================================== */
 
 .stack-page-wrapper {
-  background-color: #0a0a0f;
-  color: var(--text-primary);
-  min-height: 100vh;
+  font-family: var(--font-secondary);
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  box-sizing: border-box;
   padding-top: 80px;
-  font-family: var(--font-primary);
-  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: transparent !important;
 }
 
-/* Game Cabinet Card */
+/* Floating Navigation Back Button Theme */
+.stack-page-wrapper .floating-back-btn {
+  border-color: rgba(168, 85, 247, 0.25) !important;
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.05) !important;
+}
+
+.stack-page-wrapper .floating-back-btn:hover {
+  background: rgba(168, 85, 247, 0.15) !important;
+  border-color: var(--accent-purple, #a855f7) !important;
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.35) !important;
+}
+
+/* Centered Game Cabinet Card */
 .stack-page-wrapper .game-content-card {
   width: 95%;
-  max-width: 1200px;
-  margin: 20px auto var(--space-xl);
-  background: rgba(20, 20, 30, 0.5);
-  border: 1.5px solid rgba(168, 85, 247, 0.15);
-  border-radius: var(--radius-xl);
-  padding: var(--space-md) var(--space-lg);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
-  box-shadow: 0 0 30px rgba(168, 85, 247, 0.08), var(--shadow-card);
+  max-width: 650px;
+  margin: 5px auto;
+  padding: 8px 12px;
+  background: rgba(10, 10, 15, 0.95);
+  border: 2px solid rgba(168, 85, 247, 0.2);
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: 
+    0 0 35px rgba(168, 85, 247, 0.08), 
+    inset 0 0 25px rgba(168, 85, 247, 0.02);
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-/* CRT Screen Wrapper */
-.cabinet-screen.crt-screen {
+/* CRT Screen overrides */
+.stack-page-wrapper .cabinet-screen.crt-screen {
   position: relative;
   width: 100%;
-  max-width: calc((80vh - 120px) * 0.8);
-  aspect-ratio: 0.8;
-  background: #050508;
-  border: 4px solid rgba(255, 255, 255, 0.05);
-  border-radius: var(--radius-lg);
+  max-width: calc(75vh - 140px);
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-md, 8px);
   overflow: hidden;
   box-shadow: 
-    0 0 20px rgba(168, 85, 247, 0.15),
+    0 0 25px rgba(168, 85, 247, 0.15),
     inset 0 0 35px rgba(0, 0, 0, 0.95);
-  margin: 0 auto var(--space-md) auto;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding-top: 60px; /* space for absolute HUD overlays */
-}
-
-.game-play-area {
-  width: 100%;
-  height: 100%;
-  padding: var(--space-sm);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Canvas Wrapper with Relative Overlays */
-.canvas-wrapper-stack {
-  position: relative;
-  width: 100%;
-  height: 100%;
-}
-
-.stack-canvas {
-  width: 100%;
-  height: 100%;
-  border: none;
-  display: block;
+  background: #030206;
 }
 
 /* Scanlines Overlay */
-.crt-scanlines {
+.stack-page-wrapper .crt-scanlines {
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -87,7 +73,7 @@
 }
 
 /* Curved CRT Glass Reflection */
-.crt-reflection {
+.stack-page-wrapper .crt-reflection {
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -100,7 +86,7 @@
 }
 
 /* Subtle CRT Screen Flicker */
-.crt-flicker {
+.stack-page-wrapper .crt-flicker {
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -115,4 +101,17 @@
   50% { opacity: 0.17; }
   100% { opacity: 0.13; }
 }
+
+@media (max-width: 768px) {
+  .stack-page-wrapper .game-content-card {
+    padding: 6px;
+    margin: 5px;
+    max-width: 100%;
+  }
+
+  .stack-page-wrapper .cabinet-screen.crt-screen {
+    max-width: 100%;
+  }
+}
+
 
