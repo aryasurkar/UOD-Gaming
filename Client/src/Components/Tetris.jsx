@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Pause } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import '../Css/Tetris.css';
 
@@ -815,45 +815,17 @@ const Tetris = () => {
         ctx.fillStyle = '#f00000';
         ctx.font = 'bold 34px "Orbitron", monospace';
         ctx.textAlign = 'center';
-        ctx.fillText('MATRIX COLLAPSED', CANVAS_SIZE / 2, 110);
+        ctx.fillText('GAME OVER', CANVAS_SIZE / 2, 100);
 
-        // CLI rewards logger
         ctx.shadowBlur = 0;
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
-        ctx.fillRect(80, 160, 440, 230);
-        ctx.strokeStyle = 'rgba(240, 0, 0, 0.2)';
-        ctx.strokeRect(80, 160, 440, 230);
+        ctx.fillStyle = '#00d4ff';
+        ctx.font = 'bold 20px "Orbitron", monospace';
+        ctx.fillText(`CURRENT SCORE: ${scoreRef.current}`, CANVAS_SIZE / 2, 140);
 
-        ctx.font = '13px "Courier New", monospace';
-        ctx.textAlign = 'left';
-        ctx.fillStyle = '#f00000';
-        ctx.fillText(`> Tetris matrix storage core overflow.`, 100, 190);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(`> Final Record Score: ${scoreRef.current.toLocaleString()}`, 100, 210);
+        ctx.fillStyle = '#00ff88';
+        ctx.fillText(`BEST SCORE: ${highScore}`, CANVAS_SIZE / 2, 170);
 
-        if (submitStatus === 'submitting') {
-          ctx.fillStyle = '#00f0f0';
-          ctx.fillText(`> Saving records online...`, 100, 240);
-          ctx.fillText(`> Connecting to highscore server...`, 100, 260);
-        } else if (submitStatus === 'submitted' && rewards) {
-          ctx.fillStyle = '#00ff88';
-          ctx.fillText(`> DATA UPLOAD SUCCESS. CREDITS ASSIGNED.`, 100, 240);
-          ctx.fillStyle = '#ffd700';
-          ctx.fillText(`> CREDENTIAL CREDITS RECEIVED:`, 100, 270);
-          ctx.fillText(`  🪙 +${rewards.coinsEarned} Arcade Coins`, 100, 290);
-          ctx.fillText(`  ⚡ +${rewards.expGained} Experience Nodes`, 100, 310);
-          if (rewards.leveledUp) {
-            ctx.fillStyle = '#a000f0';
-            ctx.fillText(`  [NOTICE] LEVEL UP! New Level ${rewards.level}`, 100, 335);
-          }
-        } else if (submitStatus === 'failed') {
-          ctx.fillStyle = '#ff0055';
-          ctx.fillText(`> [ERROR] DATA DEVIATION CONNECT FAILURE`, 100, 240);
-        } else if (submitStatus === 'offline') {
-          ctx.fillStyle = '#ffaa00';
-          ctx.fillText(`> [NOTICE] OFFLINE OPERATION DETECTED`, 100, 240);
-          ctx.fillText(`> Log in to authorize rewards.`, 100, 265);
-        }
+
 
         // Action Options
         const gameOverItems = ['PLAY AGAIN', 'QUIT TO MENU'];
@@ -1103,20 +1075,7 @@ const Tetris = () => {
         </Link>
       ) : null}
 
-      {gameState === 'GAMEPLAY' ? (
-        <button
-          onClick={() => {
-            playSound('click', muted);
-            setGameState('PAUSE');
-            setMenuIndex(0);
-          }}
-          className="floating-back-btn"
-          title="Pause Game"
-          style={{ cursor: 'pointer', outline: 'none' }}
-        >
-          <Pause size={20} />
-        </button>
-      ) : null}
+
 
       <div className="game-content-card">
         <div className="cabinet-screen crt-screen" onClick={handleCanvasClick}>
@@ -1129,7 +1088,7 @@ const Tetris = () => {
             ref={canvasRef}
             width={CANVAS_SIZE}
             height={CANVAS_SIZE}
-            style={{ display: 'block', background: '#020106', width: '100%', height: 'auto', maxWidth: '600px' }}
+            style={{ display: 'block', background: '#020106', width: '100%', height: 'auto', maxWidth: '850px' }}
           />
         </div>
       </div>

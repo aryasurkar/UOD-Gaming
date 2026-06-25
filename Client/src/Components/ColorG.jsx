@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Pause } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import '../Css/ColorG.css';
 
@@ -672,46 +672,17 @@ const ColorG = () => {
         ctx.fillStyle = '#ff0055';
         ctx.font = 'bold 34px "Orbitron", monospace';
         ctx.textAlign = 'center';
-        ctx.fillText('ENERGY SCAN OVERLOAD', CANVAS_SIZE / 2, 100);
+        ctx.fillText('GAME OVER', CANVAS_SIZE / 2, 80);
 
-        // CLI Sync logger box
         ctx.shadowBlur = 0;
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-        ctx.fillRect(70, 140, 460, 270);
-        ctx.strokeStyle = 'rgba(217, 70, 239, 0.2)';
-        ctx.strokeRect(70, 140, 460, 270);
+        ctx.fillStyle = '#00d4ff';
+        ctx.font = 'bold 20px "Orbitron", monospace';
+        ctx.fillText(`CURRENT SCORE: ${scoreRef.current}`, CANVAS_SIZE / 2, 120);
 
-        ctx.font = '13px "Courier New", monospace';
-        ctx.textAlign = 'left';
-        ctx.fillStyle = '#d946ef';
-        ctx.fillText(`> Diagnostics halted. Lifeline batteries drained.`, 90, 170);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(`> Guessed spectrums matching: ${scoreRef.current}`, 90, 195);
-        ctx.fillText(`> Best streak record: ${bestStreak} rounds`, 90, 215);
+        ctx.fillStyle = '#00ff88';
+        ctx.fillText(`BEST SCORE: ${bestStreak}`, CANVAS_SIZE / 2, 150);
 
-        if (submitStatus === 'submitting') {
-          ctx.fillStyle = '#00d4ff';
-          ctx.fillText(`> Accessing local network gateway database...`, 90, 255);
-          ctx.fillText(`> Synchronizing packet logs...`, 90, 275);
-        } else if (submitStatus === 'submitted' && rewards) {
-          ctx.fillStyle = '#00ff88';
-          ctx.fillText(`> DATA SYNC SUCCESS. CORE SIGNALS UPDATED.`, 90, 255);
-          ctx.fillStyle = '#ffd700';
-          ctx.fillText(`> COMPILER REWARDS ISSUED:`, 90, 285);
-          ctx.fillText(`  🪙 +${rewards.coinsEarned} Arcade Coins`, 90, 305);
-          ctx.fillText(`  ⚡ +${rewards.expGained} Experience Nodes`, 90, 325);
-          if (rewards.leveledUp) {
-            ctx.fillStyle = '#d946ef';
-            ctx.fillText(`  [NOTICE] level capacity increased to ${rewards.level}`, 90, 350);
-          }
-        } else if (submitStatus === 'failed') {
-          ctx.fillStyle = '#ff0055';
-          ctx.fillText(`> [CRITICAL_ERROR] DATABASE NODE SYNC FAILURE.`, 90, 255);
-        } else if (submitStatus === 'offline') {
-          ctx.fillStyle = '#ffaa00';
-          ctx.fillText(`> [NOTICE] OFFLINE OPERATION DETECTED`, 90, 255);
-          ctx.fillText(`> Log in to authorize registry credentials.`, 90, 280);
-        }
+
 
         // Action Options
         const gameOverItems = ['PLAY AGAIN', 'QUIT TO MENU'];
@@ -799,20 +770,7 @@ const ColorG = () => {
         </Link>
       ) : null}
 
-      {gameState === 'GAMEPLAY' ? (
-        <button
-          onClick={() => {
-            playSound('click', muted);
-            setGameState('PAUSE');
-            setMenuIndex(0);
-          }}
-          className="floating-back-btn"
-          title="Pause Game"
-          style={{ cursor: 'pointer', outline: 'none' }}
-        >
-          <Pause size={20} />
-        </button>
-      ) : null}
+
 
       <div className="game-content-card">
         <div 
@@ -829,7 +787,7 @@ const ColorG = () => {
             ref={canvasRef}
             width={CANVAS_SIZE}
             height={CANVAS_SIZE}
-            style={{ display: 'block', background: '#030206', width: '100%', height: 'auto', maxWidth: '600px' }}
+            style={{ display: 'block', background: '#030206', width: '100%', height: 'auto', maxWidth: '850px' }}
           />
         </div>
       </div>

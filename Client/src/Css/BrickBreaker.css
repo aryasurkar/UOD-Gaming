@@ -1,88 +1,63 @@
-/* ========================================
-   NEON BRICK BREAKER - ARCADE STYLE
-   ======================================== */
-
-.bb-page-wrapper {
-  font-family: var(--font-secondary);
-  height: 100vh;
-  max-height: 100vh;
-  overflow: hidden;
-  box-sizing: border-box;
-  padding-top: 80px;
+.brickbreaker-page-wrapper {
+  min-height: 100vh;
   display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
+  align-items: center;
+  padding: 100px 20px 40px;
   background: transparent !important;
 }
 
-/* Floating Navigation Back Button Theme */
-.floating-back-btn {
-  border-color: rgba(0, 212, 255, 0.25) !important;
-  box-shadow: 0 0 15px rgba(0, 212, 255, 0.05) !important;
+.brickbreaker-container {
+  width: 100%;
+  max-width: 850px;
+  background: rgba(10, 10, 15, 0.45);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 0 40px rgba(0, 212, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+  margin: 0 auto;
 }
 
-.floating-back-btn:hover {
-  background: rgba(0, 212, 255, 0.15) !important;
-  border-color: var(--primary-neon, #00d4ff) !important;
-  box-shadow: 0 0 20px rgba(0, 212, 255, 0.35) !important;
-}
-
-/* Centered Game Cabinet Card */
-.game-content-card {
-  width: 95%;
-  max-width: 650px;
-  margin: 5px auto;
-  padding: 8px 12px;
-  background: rgba(10, 10, 15, 0.95);
-  border: 2px solid rgba(0, 212, 255, 0.2);
-  border-radius: var(--radius-lg, 12px);
-  box-shadow: 
-    0 0 35px rgba(0, 212, 255, 0.08), 
-    inset 0 0 25px rgba(0, 212, 255, 0.02);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-/* CRT Screen overrides */
-.cabinet-screen.crt-screen {
-  max-width: calc(75vh - 140px);
-  box-shadow: 
-    0 0 25px rgba(0, 212, 255, 0.15),
-    inset 0 0 35px rgba(0, 0, 0, 0.95);
-}
-
-/* Canvas responsiveness */
-#gameCanvas {
-  max-width: 100%;
+.brickbreaker-canvas {
+  width: 100%;
   height: auto;
-  max-height: 100%;
-  image-rendering: pixelated;
+  border-radius: 12px;
+  background: #050508;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: none;
+  box-shadow: inset 0 0 30px rgba(0,0,0,0.8);
+  display: block;
 }
 
-/* Pulsing title/glow styles on overlay components */
-.pulse {
-  animation: bb-pulse-glow 2s infinite ease-in-out;
+.brickbreaker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 0 10px;
 }
 
-@keyframes bb-pulse-glow {
-  0%, 100% {
-    text-shadow: 0 0 10px rgba(0, 212, 255, 0.4);
-  }
-  50% {
-    text-shadow: 0 0 20px rgba(0, 212, 255, 0.8);
-  }
+.bb-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 24px;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(0, 212, 255, 0.8);
+  margin: 0;
 }
 
-@media (max-width: 768px) {
-  .game-content-card {
-    padding: 6px;
-    margin: 5px;
-    max-width: 100%;
-  }
+.bb-stats {
+  display: flex;
+  gap: 20px;
+  font-family: 'Courier New', monospace;
+  color: #00ff88;
+  font-size: 14px;
+}
 
-  .cabinet-screen.crt-screen {
-    max-width: 100%;
-  }
+.bb-stat-item span {
+  color: #8b5cf6;
+  margin-right: 5px;
 }

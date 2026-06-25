@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Pause } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import '../Css/MemoryCard.css';
 
@@ -1067,51 +1067,17 @@ const MemoryCard = () => {
         ctx.fillStyle = isWin ? '#00ff88' : '#ff0055';
         ctx.font = 'bold 32px "Orbitron", monospace';
         ctx.textAlign = 'center';
-        ctx.fillText(isWin ? 'SIMULATION COMPLETE!' : 'SIMULATION ABORTED!', CANVAS_SIZE / 2, 110);
+        ctx.fillText(isWin ? 'YOU WIN' : 'GAME OVER', CANVAS_SIZE / 2, 100);
 
-        // Hacker console logs
         ctx.shadowBlur = 0;
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
-        ctx.fillRect(80, 160, 440, 230);
-        ctx.strokeStyle = isWin ? 'rgba(0,255,136,0.2)' : 'rgba(255,0,85,0.2)';
-        ctx.strokeRect(80, 160, 440, 230);
+        ctx.fillStyle = '#00d4ff';
+        ctx.font = 'bold 20px "Orbitron", monospace';
+        ctx.fillText(`CURRENT MOVES: ${movesRef.current}`, CANVAS_SIZE / 2, 140);
 
-        ctx.font = '13px "Courier New", monospace';
-        ctx.textAlign = 'left';
-        ctx.fillStyle = isWin ? '#00ff88' : '#ff0055';
-        ctx.fillText(`> Memory stack trace terminal.`, 100, 190);
-        ctx.fillText(`> Total moves executed: ${movesRef.current}`, 100, 210);
+        ctx.fillStyle = '#00ff88';
+        ctx.fillText(`BEST MOVES: ${bestMoves}`, CANVAS_SIZE / 2, 170);
 
-        if (isWin) {
-          if (submitStatus === 'submitting') {
-            ctx.fillStyle = '#00d4ff';
-            ctx.fillText(`> Accessing core database node...`, 100, 240);
-            ctx.fillText(`> Writing highscore registry blocks...`, 100, 260);
-          } else if (submitStatus === 'submitted' && rewards) {
-            ctx.fillStyle = '#00ff88';
-            ctx.fillText(`> REGISTRY BLOCK UPLOAD VERIFIED.`, 100, 240);
-            ctx.fillStyle = '#ffd700';
-            ctx.fillText(`> CREDENTIAL CREDITS ACQUIRED:`, 100, 270);
-            ctx.fillText(`  🪙 +${rewards.coinsEarned} Arcade Coins`, 100, 290);
-            ctx.fillText(`  ⚡ +${rewards.expGained} Experience Nodes`, 100, 310);
-            if (rewards.leveledUp) {
-              ctx.fillStyle = '#a855f7';
-              ctx.fillText(`  [ALERT] NEON LEVEL ADVANCED: Level ${rewards.level}`, 100, 335);
-            }
-          } else if (submitStatus === 'failed') {
-            ctx.fillStyle = '#ff0055';
-            ctx.fillText(`> [CRITICAL_ERROR] DATABASE NODE REFUSED SYNC`, 100, 240);
-          } else if (submitStatus === 'offline') {
-            ctx.fillStyle = '#ffaa00';
-            ctx.fillText(`> [NOTICE] OFFLINE OPERATION DETECTED`, 100, 240);
-            ctx.fillText(`> Log in to authorize arcade reward tokens.`, 100, 265);
-          }
-        } else {
-          ctx.fillStyle = '#ff0055';
-          ctx.fillText(`> [CRITICAL] SIMULATION CLOCK TIMER TIMEOUT`, 100, 240);
-          ctx.fillText(`> CPU core memory buffer overflow.`, 100, 260);
-          ctx.fillText(`> Reflex calibration recommended.`, 100, 280);
-        }
+
 
         // Action Options
         const gameOverItems = [isWin ? 'PLAY AGAIN' : 'RE-LAUNCH', 'QUIT TO MENU'];
@@ -1381,20 +1347,7 @@ const MemoryCard = () => {
         </Link>
       ) : null}
 
-      {gameState === 'GAMEPLAY' ? (
-        <button
-          onClick={() => {
-            playSound('click', muted);
-            setGameState('PAUSE');
-            setMenuCol(0); // Reset selection
-          }}
-          className="floating-back-btn"
-          title="Pause Game"
-          style={{ cursor: 'pointer', outline: 'none' }}
-        >
-          <Pause size={20} />
-        </button>
-      ) : null}
+
 
       <div className="game-content-card">
         <div className="cabinet-screen crt-screen" onClick={handleCanvasClick} onMouseMove={handleCanvasMouseMove}>
@@ -1407,7 +1360,7 @@ const MemoryCard = () => {
             ref={canvasRef}
             width={CANVAS_SIZE}
             height={CANVAS_SIZE}
-            style={{ display: 'block', background: '#020105', width: '100%', height: 'auto', maxWidth: '600px' }}
+            style={{ display: 'block', background: '#020105', width: '100%', height: 'auto', maxWidth: '850px' }}
           />
         </div>
       </div>

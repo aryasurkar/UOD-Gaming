@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Pause } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import '../Css/SchulteGrid.css';
 
@@ -761,47 +761,17 @@ const SchulteGrid = () => {
         ctx.fillStyle = '#00ff88';
         ctx.font = 'bold 34px "Orbitron", monospace';
         ctx.textAlign = 'center';
-        ctx.fillText('DIAGNOSTIC COMPLETE', CANVAS_SIZE / 2, 100);
+        ctx.fillText('YOU WIN', CANVAS_SIZE / 2, 80);
 
-        // CLI Sync logger box
         ctx.shadowBlur = 0;
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-        ctx.fillRect(70, 140, 460, 270);
-        ctx.strokeStyle = 'rgba(0, 212, 255, 0.2)';
-        ctx.strokeRect(70, 140, 460, 270);
-
-        ctx.font = '13px "Courier New", monospace';
-        ctx.textAlign = 'left';
         ctx.fillStyle = '#00d4ff';
-        ctx.fillText(`> Sequence calibration parameters synced.`, 90, 170);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(`> Grid size profile: ${gridSize}x${gridSize} matrix`, 90, 195);
-        ctx.fillText(`> Calibration duration: ${elapsedTimeRef.current.toFixed(2)}s`, 90, 215);
-        ctx.fillText(`> Telemetry Final Score: ${scoreRef.current} pts`, 90, 235);
+        ctx.font = 'bold 20px "Orbitron", monospace';
+        ctx.fillText(`CURRENT SCORE: ${scoreRef.current}`, CANVAS_SIZE / 2, 120);
 
-        if (submitStatus === 'submitting') {
-          ctx.fillStyle = '#00d4ff';
-          ctx.fillText(`> Connecting to registry cloud database...`, 90, 270);
-          ctx.fillText(`> Authorizing signature blocks...`, 90, 290);
-        } else if (submitStatus === 'submitted' && rewards) {
-          ctx.fillStyle = '#00ff88';
-          ctx.fillText(`> DATA SYNC SUCCESS. ACCOUNT STORAGE UPDATED.`, 90, 270);
-          ctx.fillStyle = '#ffd700';
-          ctx.fillText(`> COMPILER REWARDS ISSUED:`, 90, 300);
-          ctx.fillText(`  🪙 +${rewards.coinsEarned} Arcade Coins`, 90, 320);
-          ctx.fillText(`  ⚡ +${rewards.expGained} Experience Nodes`, 90, 340);
-          if (rewards.leveledUp) {
-            ctx.fillStyle = '#a855f7';
-            ctx.fillText(`  [NOTICE] level capacity increased to ${rewards.level}`, 90, 365);
-          }
-        } else if (submitStatus === 'failed') {
-          ctx.fillStyle = '#ff0055';
-          ctx.fillText(`> [CRITICAL_ERROR] DATABASE NODE SYNC FAILURE.`, 90, 270);
-        } else if (submitStatus === 'offline') {
-          ctx.fillStyle = '#ffaa00';
-          ctx.fillText(`> [NOTICE] OFFLINE OPERATION DETECTED`, 90, 270);
-          ctx.fillText(`> Log in to authorize registry credentials.`, 90, 295);
-        }
+        ctx.fillStyle = '#00ff88';
+        ctx.fillText(`BEST SCORE: ${highScores[gridSize]}`, CANVAS_SIZE / 2, 150);
+
+
 
         // Action Options
         const gameOverItems = ['PLAY AGAIN', 'QUIT TO MENU'];
@@ -889,21 +859,7 @@ const SchulteGrid = () => {
         </Link>
       ) : null}
 
-      {gameState === 'GAMEPLAY' ? (
-        <button
-          onClick={() => {
-            playSound('click', muted);
-            pauseStartTimeRef.current = performance.now();
-            setGameState('PAUSE');
-            setMenuIndex(0);
-          }}
-          className="floating-back-btn"
-          title="Pause Game"
-          style={{ cursor: 'pointer', outline: 'none' }}
-        >
-          <Pause size={20} />
-        </button>
-      ) : null}
+
 
       <div className="game-content-card">
         <div 
@@ -920,7 +876,7 @@ const SchulteGrid = () => {
             ref={canvasRef}
             width={CANVAS_SIZE}
             height={CANVAS_SIZE}
-            style={{ display: 'block', background: '#030206', width: '100%', height: 'auto', maxWidth: '600px' }}
+            style={{ display: 'block', background: '#030206', width: '100%', height: 'auto', maxWidth: '850px' }}
           />
         </div>
       </div>

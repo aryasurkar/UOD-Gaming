@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Pause } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import '../Css/CyberFalcon.css';
 
@@ -557,45 +557,17 @@ const CyberFalcon = () => {
         ctx.fillStyle = '#ff007f';
         ctx.font = 'bold 34px "Orbitron", monospace';
         ctx.textAlign = 'center';
-        ctx.fillText('SYSTEM CRASHED', CANVAS_SIZE / 2, 110);
+        ctx.fillText('GAME OVER', CANVAS_SIZE / 2, 100);
 
-        // CLI Sync logger
         ctx.shadowBlur = 0;
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
-        ctx.fillRect(80, 160, 440, 230);
-        ctx.strokeStyle = 'rgba(255, 0, 127, 0.2)';
-        ctx.strokeRect(80, 160, 440, 230);
+        ctx.fillStyle = '#00d4ff';
+        ctx.font = 'bold 20px "Orbitron", monospace';
+        ctx.fillText(`CURRENT SCORE: ${scoreRef.current}`, CANVAS_SIZE / 2, 140);
 
-        ctx.font = '13px "Courier New", monospace';
-        ctx.textAlign = 'left';
-        ctx.fillStyle = '#ff007f';
-        ctx.fillText(`> Cyber Falcon hull impact detected.`, 100, 190);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(`> Final Distance Score: ${scoreRef.current} nodes`, 100, 210);
+        ctx.fillStyle = '#00ff88';
+        ctx.fillText(`BEST SCORE: ${highScore}`, CANVAS_SIZE / 2, 170);
 
-        if (submitStatus === 'submitting') {
-          ctx.fillStyle = '#00d4ff';
-          ctx.fillText(`> Connecting to registry node...`, 100, 240);
-          ctx.fillText(`> Syncing telemetry blocks...`, 100, 260);
-        } else if (submitStatus === 'submitted' && rewards) {
-          ctx.fillStyle = '#00ff88';
-          ctx.fillText(`> DATA UPLOAD SUCCESS. INTEGRATION STABLE.`, 100, 240);
-          ctx.fillStyle = '#ffd700';
-          ctx.fillText(`> REWARDS CREDITED:`, 100, 270);
-          ctx.fillText(`  🪙 +${rewards.coinsEarned} Arcade Coins`, 100, 290);
-          ctx.fillText(`  ⚡ +${rewards.expGained} Experience Nodes`, 100, 310);
-          if (rewards.leveledUp) {
-            ctx.fillStyle = '#00d4ff';
-            ctx.fillText(`  [NOTICE] LEVEL UP! New Level ${rewards.level}`, 100, 335);
-          }
-        } else if (submitStatus === 'failed') {
-          ctx.fillStyle = '#ff0055';
-          ctx.fillText(`> [CRITICAL_ERROR] CLOUD SYNC ABORT TIMEOUT`, 100, 240);
-        } else if (submitStatus === 'offline') {
-          ctx.fillStyle = '#ffaa00';
-          ctx.fillText(`> [NOTICE] OFFLINE OPERATION DETECTED`, 100, 240);
-          ctx.fillText(`> Log in to authorize rewards.`, 100, 265);
-        }
+
 
         // Action Options
         const gameOverItems = ['PLAY AGAIN', 'QUIT TO MENU'];
@@ -801,20 +773,7 @@ const CyberFalcon = () => {
         </Link>
       ) : null}
 
-      {gameState === 'GAMEPLAY' ? (
-        <button
-          onClick={() => {
-            playSound('click', muted);
-            setGameState('PAUSE');
-            setMenuIndex(0);
-          }}
-          className="floating-back-btn"
-          title="Pause Game"
-          style={{ cursor: 'pointer', outline: 'none' }}
-        >
-          <Pause size={20} />
-        </button>
-      ) : null}
+
 
       <div className="game-content-card">
         <div 
@@ -830,7 +789,7 @@ const CyberFalcon = () => {
             ref={canvasRef}
             width={CANVAS_SIZE}
             height={CANVAS_SIZE}
-            style={{ display: 'block', background: '#020205', width: '100%', height: 'auto', maxWidth: '600px' }}
+            style={{ display: 'block', background: '#020205', width: '100%', height: 'auto', maxWidth: '850px' }}
           />
         </div>
       </div>

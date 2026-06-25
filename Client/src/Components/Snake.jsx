@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { ArrowLeft, Pause } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import '../Css/Snake.css';
 
@@ -63,6 +63,7 @@ const playSound = (type, muted = false) => {
 
 const Snake = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [gameId, setGameId] = useState(null);
 
   // Fetch Game ID
@@ -389,8 +390,7 @@ const Snake = () => {
         } else if (menuIndex === 1) {
           launchGameplay();
         } else if (menuIndex === 2) {
-          setGameState('LOBBY');
-          setMenuIndex(0);
+          navigate('/UODGaming');
         }
       } else if (code === 'Escape') {
         playSound('click', isMuted);
@@ -405,8 +405,7 @@ const Snake = () => {
         if (menuIndex === 0) {
           launchGameplay();
         } else {
-          setGameState('LOBBY');
-          setMenuIndex(0);
+          navigate('/UODGaming');
         }
       }
     } else if (curState === 'GAMEPLAY') {
@@ -500,8 +499,7 @@ const Snake = () => {
       // EXIT
       else if (clickX >= 200 && clickX <= 400 && clickY >= 360 && clickY <= 400) {
         playSound('click', isMuted);
-        setGameState('LOBBY');
-        setMenuIndex(0);
+        navigate('/UODGaming');
       }
     } else if (curState === 'GAMEOVER') {
       // PLAY AGAIN
@@ -512,8 +510,7 @@ const Snake = () => {
       // QUIT TO MENU
       else if (clickX >= 150 && clickX <= 450 && clickY >= 505 && clickY <= 545) {
         playSound('click', isMuted);
-        setGameState('LOBBY');
-        setMenuIndex(0);
+        navigate('/UODGaming');
       }
     } else if (curState === 'GAMEPLAY') {
       // Allow clicking inside playing field to pause
@@ -737,50 +734,17 @@ const Snake = () => {
         ctx.fillStyle = '#ff007f';
         ctx.font = 'bold 38px "Orbitron", monospace';
         ctx.textAlign = 'center';
-        ctx.fillText('SYSTEM FAILURE', CANVAS_SIZE / 2, 110);
+        ctx.fillText('GAME OVER', CANVAS_SIZE / 2, 100);
 
         ctx.shadowBlur = 0;
-        ctx.fillStyle = '#b4b4c8';
-        ctx.font = '14px "Exo 2", sans-serif';
-        ctx.fillText(`Final grid size reached: ${snakeRef.current.length} segments`, CANVAS_SIZE / 2, 150);
+        ctx.fillStyle = '#00d4ff';
+        ctx.font = 'bold 20px "Orbitron", monospace';
+        ctx.fillText(`CURRENT SCORE: ${score}`, CANVAS_SIZE / 2, 140);
 
-        // Terminal style upload logs
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
-        ctx.fillRect(80, 180, 440, 210);
-        ctx.strokeStyle = 'rgba(255, 0, 127, 0.2)';
-        ctx.strokeRect(80, 180, 440, 210);
-
-        ctx.font = '13px "Courier New", monospace';
-        ctx.textAlign = 'left';
         ctx.fillStyle = '#00ff88';
-        ctx.fillText(`> Initializing core save routine...`, 100, 210);
-        ctx.fillText(`> Score achieved: ${score} grid nodes`, 100, 230);
+        ctx.fillText(`BEST SCORE: ${highScore}`, CANVAS_SIZE / 2, 170);
 
-        if (submitStatus === 'submitting') {
-          ctx.fillStyle = '#00d4ff';
-          ctx.fillText(`> Contacting secure database nodes...`, 100, 260);
-          ctx.fillText(`> Uploading block results...`, 100, 280);
-        } else if (submitStatus === 'submitted' && rewards) {
-          ctx.fillStyle = '#00ff88';
-          ctx.fillText(`> SCORE UPLOADED SUCCESSFULLY!`, 100, 260);
-          ctx.fillStyle = '#ffd700';
-          ctx.fillText(`> REWARDS DISPATCHED:`, 100, 290);
-          ctx.fillText(`  🪙 +${rewards.coinsEarned} Arcade Coins`, 100, 310);
-          ctx.fillText(`  ⚡ +${rewards.expGained} Experience Nodes`, 100, 330);
-          if (rewards.leveledUp) {
-            ctx.fillStyle = '#ff007f';
-            ctx.fillText(`  [SYSTEM NOTICE] LEVEL UP! Now Level ${rewards.level}`, 100, 355);
-          }
-        } else if (submitStatus === 'failed') {
-          ctx.fillStyle = '#ff0055';
-          ctx.fillText(`> [ERROR] CONNECTION PROTOCOL BROKEN`, 100, 260);
-          ctx.fillText(`> Unable to save highscore online.`, 100, 280);
-        } else if (submitStatus === 'offline') {
-          ctx.fillStyle = '#ffaa00';
-          ctx.fillText(`> [NOTICE] OFFLINE SESSION`, 100, 260);
-          ctx.fillText(`> Authentication token not found.`, 100, 280);
-          ctx.fillText(`> Sign in to earn Coins and EXP next run!`, 100, 300);
-        }
+
 
         // Action Options
         const gameOverItems = ['PLAY AGAIN', 'QUIT TO MENU'];
@@ -996,20 +960,6 @@ const Snake = () => {
         </Link>
       ) : null}
 
-      {gameState === 'GAMEPLAY' ? (
-        <button
-          onClick={() => {
-            playSound('click', isMuted);
-            setGameState('PAUSE');
-            setMenuIndex(0);
-          }}
-          className="floating-back-btn"
-          title="Pause Game"
-          style={{ cursor: 'pointer', outline: 'none' }}
-        >
-          <Pause size={20} />
-        </button>
-      ) : null}
 
       <div className="game-content-card">
         <div className="cabinet-screen crt-screen" onClick={handleCanvasClick}>
@@ -1042,7 +992,7 @@ const Snake = () => {
             ref={canvasRef} 
             width={CANVAS_SIZE} 
             height={CANVAS_SIZE}
-            style={{ display: 'block', background: '#020205', width: '100%', height: 'auto', maxWidth: '600px' }}
+            style={{ display: 'block', background: '#020205', width: '100%', height: 'auto', maxWidth: '850px' }}
           />
         </div>
       </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pause } from 'lucide-react';
 import axios from 'axios';
 import '../Css/TTT.css';
 
@@ -754,46 +754,17 @@ const TTT = () => {
           ctx.shadowColor = '#ff007f';
           ctx.fillStyle = '#ff007f';
         }
-        ctx.fillText(resultTitle, CANVAS_SIZE / 2, 110);
+        ctx.fillText(resultTitle, CANVAS_SIZE / 2, 80);
 
-        // Terminal style rewards logs
         ctx.shadowBlur = 0;
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
-        ctx.fillRect(80, 160, 440, 230);
-        ctx.strokeStyle = 'rgba(0, 212, 255, 0.2)';
-        ctx.strokeRect(80, 160, 440, 230);
-
-        ctx.font = '13px "Courier New", monospace';
-        ctx.textAlign = 'left';
         ctx.fillStyle = '#00ff88';
-        ctx.fillText(`> Combat session closed.`, 100, 190);
-        ctx.fillText(`> Match Result: ${gameResultRef.current.toUpperCase()}`, 100, 210);
+        ctx.font = 'bold 18px "Orbitron", monospace';
+        ctx.fillText(`PLAYER X: ${scores.X}  |  PLAYER O: ${scores.O}`, CANVAS_SIZE / 2, 120);
 
-        if (submitStatus === 'submitting') {
-          ctx.fillStyle = '#00d4ff';
-          ctx.fillText(`> Saving combat data to cloud network...`, 100, 240);
-          ctx.fillText(`> Synching transaction logs...`, 100, 260);
-        } else if (submitStatus === 'submitted' && rewards) {
-          ctx.fillStyle = '#00ff88';
-          ctx.fillText(`> DATA UPLOADED AND VERIFIED.`, 100, 240);
-          ctx.fillStyle = '#ffd700';
-          ctx.fillText(`> REWARDS CREDITED:`, 100, 270);
-          ctx.fillText(`  🪙 +${rewards.coinsEarned} Arcade Coins`, 100, 290);
-          ctx.fillText(`  ⚡ +${rewards.expGained} Experience Nodes`, 100, 310);
-          if (rewards.leveledUp) {
-            ctx.fillStyle = '#ff007f';
-            ctx.fillText(`  [NOTICE] LEVEL UP! New Level ${rewards.level}`, 100, 335);
-          }
-        } else if (submitStatus === 'failed') {
-          ctx.fillStyle = '#ff0055';
-          ctx.fillText(`> [ERROR] CONNECTION FAILURE`, 100, 240);
-          ctx.fillText(`> Unable to save highscore.`, 100, 260);
-        } else if (submitStatus === 'offline') {
-          ctx.fillStyle = '#ffaa00';
-          ctx.fillText(`> [NOTICE] OFFLINE SESSION`, 100, 240);
-          ctx.fillText(`> Authenticated player not found.`, 100, 260);
-          ctx.fillText(`> Log in to earn coins next match!`, 100, 280);
-        }
+        ctx.fillStyle = '#ffaa00';
+        ctx.fillText(`DRAWS: ${scores.draws}`, CANVAS_SIZE / 2, 150);
+
+
 
         // Action Options
         const gameOverItems = ['PLAY AGAIN', 'QUIT TO MENU'];
@@ -913,6 +884,18 @@ const TTT = () => {
         <Link to="/UODGaming" className="floating-back-btn" title="Back to Games">
           <ArrowLeft size={20} />
         </Link>
+      ) : gameState === 'GAMEPLAY' ? (
+        <button 
+          className="floating-back-btn" 
+          title="Pause Game" 
+          onClick={() => {
+            playSound('click');
+            setGameState('PAUSE');
+          }}
+          style={{ cursor: 'pointer' }}
+        >
+          <Pause size={20} />
+        </button>
       ) : null}
 
       <div className="game-content-card">
@@ -948,7 +931,7 @@ const TTT = () => {
             ref={canvasRef} 
             width={CANVAS_SIZE} 
             height={CANVAS_SIZE}
-            style={{ display: 'block', background: '#020205', width: '100%', height: 'auto', maxWidth: '600px' }}
+            style={{ display: 'block', background: '#020205', width: '100%', height: 'auto', maxWidth: '850px' }}
           />
         </div>
       </div>
