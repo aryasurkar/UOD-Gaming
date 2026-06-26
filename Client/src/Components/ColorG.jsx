@@ -362,34 +362,7 @@ const ColorG = () => {
     }
 
     const curState = gameState;
-    if (curState === 'LOBBY') {
-      if (clickX >= 180 && clickX <= 420 && clickY >= 300 && clickY <= 380) {
-        playSound('click', muted);
-        startGame();
-      }
-    } else if (curState === 'PAUSE') {
-      if (clickX >= 200 && clickX <= 400 && clickY >= 240 && clickY <= 280) {
-        playSound('click', muted);
-        lastTimeRef.current = performance.now();
-        setGameState('GAMEPLAY');
-      } else if (clickX >= 200 && clickX <= 400 && clickY >= 300 && clickY <= 340) {
-        playSound('click', muted);
-        startGame();
-      } else if (clickX >= 200 && clickX <= 400 && clickY >= 360 && clickY <= 400) {
-        playSound('click', muted);
-        setGameState('LOBBY');
-        setMenuIndex(0);
-      }
-    } else if (curState === 'GAMEOVER') {
-      if (clickX >= 150 && clickX <= 450 && clickY >= 455 && clickY <= 495) {
-        playSound('click', muted);
-        startGame();
-      } else if (clickX >= 150 && clickX <= 450 && clickY >= 510 && clickY <= 550) {
-        playSound('click', muted);
-        setGameState('LOBBY');
-        setMenuIndex(0);
-      }
-    } else if (curState === 'GAMEPLAY') {
+    if (curState === 'GAMEPLAY') {
       for (let r = 0; r < GRID_ROWS; r++) {
         for (let c = 0; c < GRID_COLS; c++) {
           const x = GRID_X_START + c * (CELL_WIDTH + HORIZ_GAP);
@@ -489,43 +462,9 @@ const ColorG = () => {
       const curState = gameStateRef.current;
 
       // ----------------------------------------------------
-      // STATE: LOBBY
+      // STATE: GAMEPLAY
       // ----------------------------------------------------
-      if (curState === 'LOBBY') {
-        ctx.shadowColor = '#d946ef';
-        ctx.shadowBlur = 15;
-        ctx.fillStyle = '#d946ef';
-        ctx.font = 'bold 36px "Orbitron", monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText('SPECTRAL RGB SCAN', CANVAS_SIZE / 2, 130);
-
-        ctx.shadowColor = '#00ff88';
-        ctx.fillStyle = '#8888a0';
-        ctx.font = '14px "Exo 2", sans-serif';
-        ctx.fillText('RGB CONTEXTUAL MATCHING MATRIX', CANVAS_SIZE / 2, 170);
-
-        // Row 1: START RUN button
-        ctx.shadowColor = '#d946ef';
-        ctx.shadowBlur = 10;
-        ctx.strokeStyle = '#d946ef';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(CANVAS_SIZE / 2 - 120, 340 - 26, 240, 36);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 17px "Orbitron", monospace';
-        ctx.fillText('START RUN', CANVAS_SIZE / 2, 340);
-
-        // Instructions
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = '#555568';
-        ctx.font = '12px "Exo 2", sans-serif';
-        ctx.fillText('USE ARROWS / WASD TO NAVIGATE • SPACEBAR TO CONFIRM', CANVAS_SIZE / 2, 510);
-        ctx.fillText(`BEST STREAK RECORD: ${bestStreak} ROUNDS`, CANVAS_SIZE / 2, 540);
-      }
-
-      // ----------------------------------------------------
-      // STATE: GAMEPLAY / PAUSE
-      // ----------------------------------------------------
-      else if (curState === 'GAMEPLAY' || curState === 'PAUSE') {
+      if (curState === 'GAMEPLAY') {
         // Draw HUD details
         ctx.textAlign = 'left';
         ctx.fillStyle = '#8888a0';
@@ -622,91 +561,6 @@ const ColorG = () => {
             }
           }
         }
-
-        if (curState === 'PAUSE') {
-          ctx.shadowBlur = 0;
-          ctx.fillStyle = 'rgba(5, 5, 10, 0.85)';
-          ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-
-          ctx.shadowColor = '#d946ef';
-          ctx.shadowBlur = 15;
-          ctx.fillStyle = '#d946ef';
-          ctx.font = 'bold 36px "Orbitron", monospace';
-          ctx.textAlign = 'center';
-          ctx.fillText('SYSTEM PAUSED', CANVAS_SIZE / 2, 160);
-
-          const pauseItems = ['RESUME', 'RESTART', 'BACK TO MENU'];
-          pauseItems.forEach((text, idx) => {
-            const isSelected = menuIndex === idx;
-            const y = 266 + idx * 60;
-
-            if (isSelected) {
-              ctx.shadowBlur = 10;
-              ctx.shadowColor = '#d946ef';
-              ctx.strokeStyle = '#d946ef';
-              ctx.lineWidth = 2;
-              ctx.strokeRect(CANVAS_SIZE / 2 - 110, y - 26, 220, 36);
-
-              ctx.fillStyle = '#ffffff';
-              ctx.font = 'bold 16px "Orbitron", monospace';
-            } else {
-              ctx.shadowBlur = 0;
-              ctx.fillStyle = '#8888a0';
-              ctx.font = '15px "Orbitron", monospace';
-            }
-            ctx.fillText(text, CANVAS_SIZE / 2, y);
-          });
-        }
-      }
-
-      // ----------------------------------------------------
-      // STATE: GAMEOVER
-      // ----------------------------------------------------
-      else if (curState === 'GAMEOVER') {
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = 'rgba(4, 4, 8, 0.9)';
-        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-
-        ctx.shadowColor = '#ff0055';
-        ctx.shadowBlur = 15;
-        ctx.fillStyle = '#ff0055';
-        ctx.font = 'bold 34px "Orbitron", monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText('GAME OVER', CANVAS_SIZE / 2, 80);
-
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = '#00d4ff';
-        ctx.font = 'bold 20px "Orbitron", monospace';
-        ctx.fillText(`CURRENT SCORE: ${scoreRef.current}`, CANVAS_SIZE / 2, 120);
-
-        ctx.fillStyle = '#00ff88';
-        ctx.fillText(`BEST SCORE: ${bestStreak}`, CANVAS_SIZE / 2, 150);
-
-
-
-        // Action Options
-        const gameOverItems = ['PLAY AGAIN', 'QUIT TO MENU'];
-        gameOverItems.forEach((text, idx) => {
-          const isSelected = menuIndex === idx;
-          const y = 475 + idx * 55;
-
-          ctx.textAlign = 'center';
-          if (isSelected) {
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#d946ef';
-            ctx.strokeStyle = '#d946ef';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(CANVAS_SIZE / 2 - 130, y - 26, 260, 36);
-
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 16px "Orbitron", monospace';
-          } else {
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = '#8888a0';
-            ctx.font = '15px "Orbitron", monospace';
-          }
-          ctx.fillText(text, CANVAS_SIZE / 2, y);
-        });
       }
 
       // Draw Global Speaker Icon
@@ -770,13 +624,9 @@ const ColorG = () => {
         </Link>
       ) : null}
 
-
-
       <div className="game-content-card">
         <div 
           className="cabinet-screen crt-screen"
-          onClick={handleCanvasClick}
-          onMouseMove={handleCanvasMouseMove}
         >
           {/* CRT scanlines, reflection and flicker overlay */}
           <div className="crt-scanlines"></div>
@@ -787,8 +637,83 @@ const ColorG = () => {
             ref={canvasRef}
             width={CANVAS_SIZE}
             height={CANVAS_SIZE}
-            style={{ display: 'block', background: '#030206', width: '100%', height: 'auto', maxWidth: '850px' }}
+            style={{ display: 'block', background: '#020205', width: '100%', height: 'auto', maxWidth: '650px' }}
+            onClick={handleCanvasClick}
+            onMouseMove={handleCanvasMouseMove}
           />
+
+        {/* DOM OVERLAYS */}
+        {gameState === 'LOBBY' && (
+          <div className="colorg-overlay">
+            <h1 className="colorg-title">SPECTRAL RGB SCAN</h1>
+            <p className="colorg-subtitle">RGB CONTEXTUAL MATCHING MATRIX</p>
+            <p className="colorg-subtitle" style={{ marginTop: '-30px', color: '#00ff88' }}>BEST STREAK RECORD: {bestStreak} ROUNDS</p>
+            
+            <div className="colorg-menu">
+              <button 
+                className="colorg-btn selected"
+                onClick={() => { playSound('click', mutedRef.current); startGame(); }}
+              >
+                START RUN
+              </button>
+            </div>
+          </div>
+        )}
+
+        {gameState === 'PAUSE' && (
+          <div className="colorg-overlay" style={{ background: 'rgba(5, 5, 10, 0.96)' }}>
+            <h1 className="colorg-title" style={{ color: '#ff007f', textShadow: '0 0 15px rgba(255, 0, 127, 0.8)' }}>SYSTEM PAUSED</h1>
+            <p className="colorg-subtitle" style={{ marginBottom: '60px' }}></p>
+            
+            <div className="colorg-menu">
+              {['RESUME', 'RESTART', 'QUIT TO MENU'].map((text, idx) => (
+                <button 
+                  key={idx}
+                  className={`colorg-btn ${menuIndex === idx ? 'selected' : ''}`}
+                  onMouseEnter={() => setMenuIndex(idx)}
+                  onClick={() => {
+                    playSound('click', mutedRef.current);
+                    if (idx === 0) { lastTimeRef.current = performance.now(); setGameState('GAMEPLAY'); }
+                    else if (idx === 1) startGame();
+                    else { setGameState('LOBBY'); setMenuIndex(0); }
+                  }}
+                >
+                  {text}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {gameState === 'GAMEOVER' && (
+          <div className="colorg-overlay" style={{ background: 'rgba(5, 5, 10, 0.96)' }}>
+            <h1 className="colorg-title" style={{ color: '#ff007f', textShadow: '0 0 20px rgba(255, 0, 127, 0.8)' }}>GAME OVER</h1>
+            <p className="colorg-subtitle" style={{ color: '#00d4ff', fontSize: '20px', marginBottom: '5px' }}>CURRENT SCORE: {score}</p>
+            <p className="colorg-subtitle" style={{ color: '#00ff88', fontSize: '16px', marginBottom: '20px' }}>BEST SCORE: {bestStreak}</p>
+            
+            <div style={{ marginBottom: '40px', textAlign: 'center' }}>
+              <p className="colorg-subtitle" style={{ color: '#ffaa00', marginBottom: '5px' }}>FINAL SIGNATURE MATRIX:</p>
+              <p style={{ color: targetColorRef.current, fontFamily: 'Courier New, monospace', fontSize: '20px', fontWeight: 'bold', textShadow: `0 0 15px ${targetColorRef.current}` }}>{pickedColorRef.current}</p>
+            </div>
+
+            <div className="colorg-menu">
+              <button 
+                className={`colorg-btn ${menuIndex === 0 ? 'selected' : ''}`}
+                onMouseEnter={() => setMenuIndex(0)}
+                onClick={() => { playSound('click', mutedRef.current); startGame(); }}
+              >
+                PLAY AGAIN
+              </button>
+              <button 
+                className={`colorg-btn ${menuIndex === 1 ? 'selected' : ''}`}
+                onMouseEnter={() => setMenuIndex(1)}
+                onClick={() => { playSound('click', mutedRef.current); setGameState('LOBBY'); }}
+              >
+                QUIT TO MENU
+              </button>
+            </div>
+          </div>
+        )}
         </div>
       </div>
     </div>

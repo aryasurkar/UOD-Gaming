@@ -1088,7 +1088,7 @@ const Tetris = () => {
             ref={canvasRef}
             width={CANVAS_SIZE}
             height={CANVAS_SIZE}
-            style={{ display: 'block', background: '#020106', width: '100%', height: 'auto', maxWidth: '850px' }}
+            style={{ display: 'block', background: '#020106', width: '100%', height: 'auto', maxWidth: '650px' }}
           />
         </div>
       </div>

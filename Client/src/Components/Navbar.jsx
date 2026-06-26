@@ -114,6 +114,34 @@ const Navbar = () => {
             </Link>
           </div>
 
+          {/* Desktop Navigation Links */}
+          <div className="navbar-desktop-links">
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              if (item.path === '/logout') {
+                return (
+                  <Link 
+                    key={item.path}
+                    to="/" 
+                    className="desktop-nav-link"
+                    onClick={handleLogout}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              }
+              return (
+                <Link 
+                  key={item.path}
+                  to={item.path} 
+                  className={`desktop-nav-link ${isActive ? 'active' : ''}`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+
           {/* Controls Wrapper */}
           <div className="navbar-controls-wrapper">
             <button 

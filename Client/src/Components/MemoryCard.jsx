@@ -726,95 +726,7 @@ const MemoryCard = () => {
     }
 
     const curState = gameState;
-    if (curState === 'LOBBY') {
-      // Row 0 (Difficulty)
-      if (clickY >= 165 && clickY <= 195) {
-        if (clickX >= 240 && clickX <= 330) {
-          playSound('click', muted);
-          setDifficulty('easy');
-          difficultyRef.current = 'easy';
-          setMenuRow(0); setMenuCol(0);
-        } else if (clickX >= 350 && clickX <= 440) {
-          playSound('click', muted);
-          setDifficulty('medium');
-          difficultyRef.current = 'medium';
-          setMenuRow(0); setMenuCol(1);
-        } else if (clickX >= 460 && clickX <= 550) {
-          playSound('click', muted);
-          setDifficulty('hard');
-          difficultyRef.current = 'hard';
-          setMenuRow(0); setMenuCol(2);
-        }
-      }
-      // Row 1 (Deck Type)
-      else if (clickY >= 235 && clickY <= 265) {
-        if (clickX >= 240 && clickX <= 350) {
-          playSound('click', muted);
-          setDeckType('neon');
-          deckTypeRef.current = 'neon';
-          setMenuRow(1); setMenuCol(0);
-        } else if (clickX >= 370 && clickX <= 480) {
-          playSound('click', muted);
-          setDeckType('emoji');
-          deckTypeRef.current = 'emoji';
-          setMenuRow(1); setMenuCol(1);
-        }
-      }
-      // Row 2 (Time Trial)
-      else if (clickY >= 305 && clickY <= 335) {
-        if (clickX >= 240 && clickX <= 320) {
-          playSound('click', muted);
-          setTimeTrial(false);
-          timeTrialRef.current = false;
-          setMenuRow(2); setMenuCol(0);
-        } else if (clickX >= 370 && clickX <= 450) {
-          playSound('click', muted);
-          setTimeTrial(true);
-          timeTrialRef.current = true;
-          setMenuRow(2); setMenuCol(1);
-        }
-      }
-      // Row 3 (Sound synth)
-      else if (clickY >= 375 && clickY <= 405) {
-        if (clickX >= 240 && clickX <= 320) {
-          playSound('click', !muted);
-          setMuted(true);
-          setMenuRow(3); setMenuCol(0);
-        } else if (clickX >= 370 && clickX <= 450) {
-          playSound('click', false);
-          setMuted(false);
-          setMenuRow(3); setMenuCol(1);
-        }
-      }
-      // Row 4 (Launch simulation button)
-      else if (clickX >= 150 && clickX <= 450 && clickY >= 460 && clickY <= 500) {
-        playSound('click', muted);
-        startGame();
-      }
-    } else if (curState === 'PAUSE') {
-      if (clickX >= 200 && clickX <= 400 && clickY >= 240 && clickY <= 280) {
-        playSound('click', muted);
-        lastFrameTimeRef.current = performance.now();
-        isTimerRunningRef.current = true;
-        setGameState('GAMEPLAY');
-      } else if (clickX >= 200 && clickX <= 400 && clickY >= 300 && clickY <= 340) {
-        playSound('click', muted);
-        startGame();
-      } else if (clickX >= 200 && clickX <= 400 && clickY >= 360 && clickY <= 400) {
-        playSound('click', muted);
-        setGameState('LOBBY');
-        setMenuRow(0); setMenuCol(0);
-      }
-    } else if (curState === 'GAMEOVER') {
-      if (clickX >= 150 && clickX <= 450 && clickY >= 440 && clickY <= 480) {
-        playSound('click', muted);
-        startGame();
-      } else if (clickX >= 150 && clickX <= 450 && clickY >= 495 && clickY <= 535) {
-        playSound('click', muted);
-        setGameState('LOBBY');
-        setMenuRow(0); setMenuCol(0);
-      }
-    } else if (curState === 'GAMEPLAY') {
+    if (curState === 'GAMEPLAY') {
       const limit = difficultyRef.current === 'hard' ? 24 : difficultyRef.current === 'easy' ? 8 : 16;
       for (let i = 0; i < limit; i++) {
         const bounds = getCardCoords(i);
@@ -928,186 +840,9 @@ const MemoryCard = () => {
       const curState = gameStateRef.current;
 
       // ----------------------------------------------------
-      // STATE: LOBBY (Matrix Setup selections)
+      // STATE HANDLING
       // ----------------------------------------------------
-      if (curState === 'LOBBY') {
-        ctx.shadowColor = '#a855f7';
-        ctx.shadowBlur = 15;
-        ctx.fillStyle = '#a855f7';
-        ctx.font = 'bold 36px "Orbitron", monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText('MEMORY MATCH SYSTEM', CANVAS_SIZE / 2, 80);
-
-        ctx.shadowColor = '#00d4ff';
-        ctx.fillStyle = '#8888a0';
-        ctx.font = '13px "Exo 2", sans-serif';
-        ctx.fillText('NEON MATRIX CALIBRATION', CANVAS_SIZE / 2, 115);
-
-        // Options details
-        ctx.shadowBlur = 0;
-        ctx.font = 'bold 12px "Orbitron", monospace';
-        ctx.textAlign = 'left';
-
-        // 1. Difficulty Row
-        ctx.fillStyle = menuRow === 0 ? '#ffffff' : '#6b7280';
-        ctx.fillText('GRID MATRIX:', 80, 180);
-        drawOptionButton(ctx, 'EASY', 240, 162, 90, 26, difficultyRef.current === 'easy', menuRow === 0 && menuCol === 0);
-        drawOptionButton(ctx, 'MEDIUM', 350, 162, 90, 26, difficultyRef.current === 'medium', menuRow === 0 && menuCol === 1);
-        drawOptionButton(ctx, 'HARD', 460, 162, 90, 26, difficultyRef.current === 'hard', menuRow === 0 && menuCol === 2);
-
-        // 2. Deck Type Row
-        ctx.fillStyle = menuRow === 1 ? '#ffffff' : '#6b7280';
-        ctx.fillText('SYMBOL DECK:', 80, 250);
-        drawOptionButton(ctx, 'NEON ICONS', 240, 232, 110, 26, deckTypeRef.current === 'neon', menuRow === 1 && menuCol === 0);
-        drawOptionButton(ctx, 'SPACE EMOJIS', 370, 232, 110, 26, deckTypeRef.current === 'emoji', menuRow === 1 && menuCol === 1);
-
-        // 3. Time Trial Row
-        ctx.fillStyle = menuRow === 2 ? '#ffffff' : '#6b7280';
-        ctx.fillText('TIME TRIAL:', 80, 320);
-        drawOptionButton(ctx, 'DISABLED', 240, 302, 110, 26, !timeTrialRef.current, menuRow === 2 && menuCol === 0);
-        drawOptionButton(ctx, 'ENABLED', 370, 302, 110, 26, timeTrialRef.current, menuRow === 2 && menuCol === 1);
-
-        // 4. Mute Row
-        ctx.fillStyle = menuRow === 3 ? '#ffffff' : '#6b7280';
-        ctx.fillText('SOUND SYNTH:', 80, 390);
-        drawOptionButton(ctx, 'MUTED', 240, 372, 110, 26, mutedRef.current, menuRow === 3 && menuCol === 0);
-        drawOptionButton(ctx, 'ENABLED', 370, 372, 110, 26, !mutedRef.current, menuRow === 3 && menuCol === 1);
-
-        // Arrow Pointer indicators
-        ctx.fillStyle = '#a855f7';
-        ctx.font = 'bold 16px "Orbitron", monospace';
-        if (menuRow < 4) {
-          ctx.fillText('>', 55, 182 + menuRow * 70);
-        }
-
-        // 5. Launch Button
-        const isLaunchSelected = menuRow === 4;
-        ctx.lineWidth = 2;
-        if (isLaunchSelected) {
-          ctx.shadowColor = '#a855f7';
-          ctx.shadowBlur = 12;
-          ctx.strokeStyle = '#ffffff';
-          ctx.fillStyle = '#a855f7';
-          ctx.fillRect(150, 460, 300, 45);
-          ctx.strokeRect(150, 460, 300, 45);
-
-          ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 18px "Orbitron", monospace';
-        } else {
-          ctx.strokeStyle = 'rgba(168, 85, 247, 0.4)';
-          ctx.strokeRect(150, 460, 300, 45);
-
-          ctx.fillStyle = '#a855f7';
-          ctx.font = 'bold 16px "Orbitron", monospace';
-        }
-        ctx.textAlign = 'center';
-        ctx.fillText('LAUNCH SIMULATION', CANVAS_SIZE / 2, 488);
-        ctx.shadowBlur = 0;
-
-        ctx.fillStyle = '#6b7280';
-        ctx.font = '12px "Exo 2", sans-serif';
-        ctx.fillText('USE WASD / ARROWS TO CONFIGURE • SPACEBAR TO SELECT', CANVAS_SIZE / 2, 555);
-      }
-
-      // ----------------------------------------------------
-      // STATE: PAUSE
-      // ----------------------------------------------------
-      else if (curState === 'PAUSE') {
-        drawGameplayHUD(ctx);
-        drawGridCards(ctx);
-
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = 'rgba(5, 5, 10, 0.85)';
-        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-
-        ctx.shadowColor = '#a855f7';
-        ctx.shadowBlur = 15;
-        ctx.fillStyle = '#a855f7';
-        ctx.font = 'bold 36px "Orbitron", monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText('SIMULATION PAUSED', CANVAS_SIZE / 2, 160);
-
-        const pauseItems = ['RESUME', 'RESTART', 'BACK TO MENU'];
-        pauseItems.forEach((text, idx) => {
-          const isSelected = menuCol === idx;
-          const y = 266 + idx * 60;
-
-          if (isSelected) {
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#00d4ff';
-            ctx.strokeStyle = '#00d4ff';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(CANVAS_SIZE / 2 - 110, y - 26, 220, 36);
-
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 16px "Orbitron", monospace';
-          } else {
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = '#8888a0';
-            ctx.font = '15px "Orbitron", monospace';
-          }
-          ctx.fillText(text, CANVAS_SIZE / 2, y);
-        });
-      }
-
-      // ----------------------------------------------------
-      // STATE: GAMEOVER
-      // ----------------------------------------------------
-      else if (curState === 'GAMEOVER') {
-        drawGameplayHUD(ctx);
-        drawGridCards(ctx);
-
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = 'rgba(5, 5, 10, 0.88)';
-        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-
-        const isWin = gameResultRef.current === 'win';
-        ctx.shadowColor = isWin ? '#00ff88' : '#ff0055';
-        ctx.shadowBlur = 15;
-        ctx.fillStyle = isWin ? '#00ff88' : '#ff0055';
-        ctx.font = 'bold 32px "Orbitron", monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText(isWin ? 'YOU WIN' : 'GAME OVER', CANVAS_SIZE / 2, 100);
-
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = '#00d4ff';
-        ctx.font = 'bold 20px "Orbitron", monospace';
-        ctx.fillText(`CURRENT MOVES: ${movesRef.current}`, CANVAS_SIZE / 2, 140);
-
-        ctx.fillStyle = '#00ff88';
-        ctx.fillText(`BEST MOVES: ${bestMoves}`, CANVAS_SIZE / 2, 170);
-
-
-
-        // Action Options
-        const gameOverItems = [isWin ? 'PLAY AGAIN' : 'RE-LAUNCH', 'QUIT TO MENU'];
-        gameOverItems.forEach((text, idx) => {
-          const isSelected = menuCol === idx;
-          const y = 460 + idx * 55;
-
-          ctx.textAlign = 'center';
-          if (isSelected) {
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#a855f7';
-            ctx.strokeStyle = '#a855f7';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(CANVAS_SIZE / 2 - 130, y - 26, 260, 36);
-
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 16px "Orbitron", monospace';
-          } else {
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = '#8888a0';
-            ctx.font = '15px "Orbitron", monospace';
-          }
-          ctx.fillText(text, CANVAS_SIZE / 2, y);
-        });
-      }
-
-      // ----------------------------------------------------
-      // STATE: GAMEPLAY
-      // ----------------------------------------------------
-      else if (curState === 'GAMEPLAY') {
+      if (curState === 'PAUSE' || curState === 'GAMEOVER' || curState === 'GAMEPLAY') {
         drawGameplayHUD(ctx);
         drawGridCards(ctx);
       }
@@ -1356,12 +1091,117 @@ const MemoryCard = () => {
           <div className="crt-reflection"></div>
           <div className="crt-flicker"></div>
 
-          <canvas
-            ref={canvasRef}
-            width={CANVAS_SIZE}
-            height={CANVAS_SIZE}
-            style={{ display: 'block', background: '#020105', width: '100%', height: 'auto', maxWidth: '850px' }}
+          <canvas 
+            ref={canvasRef} 
+            width={CANVAS_SIZE} 
+            height={CANVAS_SIZE} 
+            style={{ display: 'block', background: '#020205', width: '100%', height: 'auto', maxWidth: '650px' }}
           />
+
+          {/* DOM OVERLAYS */}
+          {gameState === 'LOBBY' && (
+            <div className="memorycard-overlay">
+              <h1 className="memorycard-title" style={{ color: '#a855f7', textShadow: '0 0 15px #a855f7' }}>MEMORY MATCH</h1>
+              <p className="memorycard-subtitle">NEON MATRIX CALIBRATION</p>
+              
+              <div style={{ width: '100%', maxWidth: '450px', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px' }}>
+                  <span style={{ color: '#ffffff', fontFamily: 'Orbitron', fontSize: '14px', fontWeight: 'bold' }}>GRID MATRIX:</span>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button className={`memorycard-btn ${difficulty === 'easy' ? 'selected' : ''}`} style={{ padding: '8px 12px', fontSize: '12px', color: difficulty === 'easy' ? '#fff' : '#6b7280', borderColor: difficulty === 'easy' ? '#a855f7' : 'rgba(255,255,255,0.1)', background: difficulty === 'easy' ? 'rgba(168, 85, 247, 0.15)' : 'transparent', boxShadow: difficulty === 'easy' ? '0 0 10px #a855f7' : 'none' }} onClick={() => { playSound('click', muted); setDifficulty('easy'); }}>EASY</button>
+                    <button className={`memorycard-btn ${difficulty === 'medium' ? 'selected' : ''}`} style={{ padding: '8px 12px', fontSize: '12px', color: difficulty === 'medium' ? '#fff' : '#6b7280', borderColor: difficulty === 'medium' ? '#a855f7' : 'rgba(255,255,255,0.1)', background: difficulty === 'medium' ? 'rgba(168, 85, 247, 0.15)' : 'transparent', boxShadow: difficulty === 'medium' ? '0 0 10px #a855f7' : 'none' }} onClick={() => { playSound('click', muted); setDifficulty('medium'); }}>MEDIUM</button>
+                    <button className={`memorycard-btn ${difficulty === 'hard' ? 'selected' : ''}`} style={{ padding: '8px 12px', fontSize: '12px', color: difficulty === 'hard' ? '#fff' : '#6b7280', borderColor: difficulty === 'hard' ? '#a855f7' : 'rgba(255,255,255,0.1)', background: difficulty === 'hard' ? 'rgba(168, 85, 247, 0.15)' : 'transparent', boxShadow: difficulty === 'hard' ? '0 0 10px #a855f7' : 'none' }} onClick={() => { playSound('click', muted); setDifficulty('hard'); }}>HARD</button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px' }}>
+                  <span style={{ color: '#ffffff', fontFamily: 'Orbitron', fontSize: '14px', fontWeight: 'bold' }}>SYMBOL DECK:</span>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button className={`memorycard-btn ${deckType === 'neon' ? 'selected' : ''}`} style={{ padding: '8px 12px', fontSize: '12px', color: deckType === 'neon' ? '#fff' : '#6b7280', borderColor: deckType === 'neon' ? '#a855f7' : 'rgba(255,255,255,0.1)', background: deckType === 'neon' ? 'rgba(168, 85, 247, 0.15)' : 'transparent', boxShadow: deckType === 'neon' ? '0 0 10px #a855f7' : 'none' }} onClick={() => { playSound('click', muted); setDeckType('neon'); }}>NEON ICONS</button>
+                    <button className={`memorycard-btn ${deckType === 'emoji' ? 'selected' : ''}`} style={{ padding: '8px 12px', fontSize: '12px', color: deckType === 'emoji' ? '#fff' : '#6b7280', borderColor: deckType === 'emoji' ? '#a855f7' : 'rgba(255,255,255,0.1)', background: deckType === 'emoji' ? 'rgba(168, 85, 247, 0.15)' : 'transparent', boxShadow: deckType === 'emoji' ? '0 0 10px #a855f7' : 'none' }} onClick={() => { playSound('click', muted); setDeckType('emoji'); }}>SPACE EMOJIS</button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px' }}>
+                  <span style={{ color: '#ffffff', fontFamily: 'Orbitron', fontSize: '14px', fontWeight: 'bold' }}>TIME TRIAL:</span>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button className={`memorycard-btn ${!timeTrial ? 'selected' : ''}`} style={{ padding: '8px 12px', fontSize: '12px', color: !timeTrial ? '#fff' : '#6b7280', borderColor: !timeTrial ? '#a855f7' : 'rgba(255,255,255,0.1)', background: !timeTrial ? 'rgba(168, 85, 247, 0.15)' : 'transparent', boxShadow: !timeTrial ? '0 0 10px #a855f7' : 'none' }} onClick={() => { playSound('click', muted); setTimeTrial(false); }}>DISABLED</button>
+                    <button className={`memorycard-btn ${timeTrial ? 'selected' : ''}`} style={{ padding: '8px 12px', fontSize: '12px', color: timeTrial ? '#fff' : '#6b7280', borderColor: timeTrial ? '#a855f7' : 'rgba(255,255,255,0.1)', background: timeTrial ? 'rgba(168, 85, 247, 0.15)' : 'transparent', boxShadow: timeTrial ? '0 0 10px #a855f7' : 'none' }} onClick={() => { playSound('click', muted); setTimeTrial(true); }}>ENABLED</button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '30px' }}>
+                  <span style={{ color: '#ffffff', fontFamily: 'Orbitron', fontSize: '14px', fontWeight: 'bold' }}>SOUND SYNTH:</span>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button className={`memorycard-btn ${muted ? 'selected' : ''}`} style={{ padding: '8px 12px', fontSize: '12px', color: muted ? '#fff' : '#6b7280', borderColor: muted ? '#a855f7' : 'rgba(255,255,255,0.1)', background: muted ? 'rgba(168, 85, 247, 0.15)' : 'transparent', boxShadow: muted ? '0 0 10px #a855f7' : 'none' }} onClick={() => { playSound('click', !muted); setMuted(true); }}>MUTED</button>
+                    <button className={`memorycard-btn ${!muted ? 'selected' : ''}`} style={{ padding: '8px 12px', fontSize: '12px', color: !muted ? '#fff' : '#6b7280', borderColor: !muted ? '#a855f7' : 'rgba(255,255,255,0.1)', background: !muted ? 'rgba(168, 85, 247, 0.15)' : 'transparent', boxShadow: !muted ? '0 0 10px #a855f7' : 'none' }} onClick={() => { playSound('click', false); setMuted(false); }}>ENABLED</button>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="memorycard-menu">
+                <button 
+                  className="memorycard-btn selected"
+                  style={{ borderColor: '#a855f7', color: '#fff', boxShadow: '0 0 15px #a855f7', textShadow: '0 0 8px #a855f7' }}
+                  onClick={() => { playSound('click', muted); startGame(); }}
+                >
+                  LAUNCH SIMULATION
+                </button>
+              </div>
+            </div>
+          )}
+
+          {gameState === 'PAUSE' && (
+            <div className="memorycard-overlay" style={{ background: 'rgba(5, 5, 10, 0.96)' }}>
+              <h1 className="memorycard-title" style={{ color: '#a855f7', textShadow: '0 0 15px #a855f7' }}>SIMULATION PAUSED</h1>
+              <p className="memorycard-subtitle" style={{ marginBottom: '60px' }}></p>
+              
+              <div className="memorycard-menu">
+                {['RESUME', 'RESTART', 'BACK TO MENU'].map((text, idx) => (
+                  <button 
+                    key={idx}
+                    className={`memorycard-btn ${menuCol === idx ? 'selected' : ''}`}
+                    onMouseEnter={() => setMenuCol(idx)}
+                    onClick={() => {
+                      playSound('click', muted);
+                      if (idx === 0) { lastFrameTimeRef.current = performance.now(); isTimerRunningRef.current = true; setGameState('GAMEPLAY'); }
+                      else if (idx === 1) startGame();
+                      else { setGameState('LOBBY'); }
+                    }}
+                  >
+                    {text}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {gameState === 'GAMEOVER' && (
+            <div className="memorycard-overlay" style={{ background: 'rgba(5, 5, 10, 0.96)' }}>
+              <h1 className="memorycard-title" style={{ color: gameResultRef.current === 'win' ? '#00ff88' : '#ff0055', textShadow: `0 0 20px ${gameResultRef.current === 'win' ? '#00ff88' : '#ff0055'}` }}>
+                {gameResultRef.current === 'win' ? 'YOU WIN' : 'GAME OVER'}
+              </h1>
+              <p className="memorycard-subtitle" style={{ color: '#00d4ff', fontSize: '20px', marginBottom: '5px' }}>CURRENT MOVES: {movesRef.current}</p>
+              <p className="memorycard-subtitle" style={{ color: '#00ff88', fontSize: '16px', marginBottom: '40px' }}>BEST MOVES: {bestMoves}</p>
+              
+              <div className="memorycard-menu">
+                <button 
+                  className={`memorycard-btn ${menuCol === 0 ? 'selected' : ''}`}
+                  onMouseEnter={() => setMenuCol(0)}
+                  onClick={() => { playSound('click', muted); startGame(); }}
+                >
+                  {gameResultRef.current === 'win' ? 'PLAY AGAIN' : 'RE-LAUNCH'}
+                </button>
+                <button 
+                  className={`memorycard-btn ${menuCol === 1 ? 'selected' : ''}`}
+                  onMouseEnter={() => setMenuCol(1)}
+                  onClick={() => { playSound('click', muted); setGameState('LOBBY'); }}
+                >
+                  QUIT TO MENU
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

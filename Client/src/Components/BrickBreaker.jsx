@@ -351,33 +351,9 @@ const BrickBreaker = () => {
   };
 
   const handleCanvasClick = (e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = CANVAS_SIZE / rect.width;
-    const scaleY = CANVAS_SIZE / rect.height;
-    const clickX = (e.clientX - rect.left) * scaleX;
-    const clickY = (e.clientY - rect.top) * scaleY;
-
     initAudio();
-    if (gameStateRef.current === 'LOBBY') {
-      if (clickX >= 150 && clickX <= 450 && clickY >= 400 && clickY <= 445) {
-        playSound('click', mutedRef.current);
-        startGame();
-      } else {
-        startGame(); // fallback
-      }
-    } else if (gameStateRef.current === 'GAMEPLAY') {
+    if (gameStateRef.current === 'GAMEPLAY') {
       triggerBallLaunch();
-    } else if (gameStateRef.current === 'GAMEOVER') {
-      if (clickX >= 150 && clickX <= 450 && clickY >= 440 && clickY <= 480) {
-        playSound('click', mutedRef.current);
-        startGame();
-      } else if (clickX >= 150 && clickX <= 450 && clickY >= 495 && clickY <= 535) {
-        playSound('click', mutedRef.current);
-        setGameState('LOBBY');
-      }
     }
   };
 
@@ -686,78 +662,7 @@ const BrickBreaker = () => {
 
       ctx.restore();
 
-      // UI Overlays
-      if (gameStateRef.current === 'LOBBY') {
-        ctx.fillStyle = 'rgba(5, 5, 10, 0.7)';
-        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
-        ctx.shadowColor = '#00d4ff';
-        ctx.shadowBlur = 20;
-        ctx.fillStyle = '#00d4ff';
-        ctx.font = 'bold 42px "Orbitron", monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText('NEON BRICK BREAKER', CANVAS_SIZE / 2, 250);
-
-        // Start Button
-        ctx.lineWidth = 2.5;
-        ctx.shadowColor = '#00ff88';
-        ctx.shadowBlur = 10;
-        ctx.fillStyle = '#00ff88';
-        ctx.fillRect(150, 400, 300, 45);
-        ctx.strokeStyle = '#ffffff';
-        ctx.strokeRect(150, 400, 300, 45);
-
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = '#050508';
-        ctx.font = 'bold 18px "Orbitron", monospace';
-        ctx.fillText('INITIALIZE SEQUENCE', CANVAS_SIZE / 2, 428);
-
-        ctx.fillStyle = '#6b7280';
-        ctx.font = '12px "Exo 2", sans-serif';
-        ctx.fillText('SPACEBAR TO LAUNCH', CANVAS_SIZE / 2, 550);
-      } else if (gameStateRef.current === 'GAMEOVER') {
-        ctx.fillStyle = 'rgba(5, 5, 10, 0.8)';
-        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-
-        ctx.shadowColor = '#ff007f';
-        ctx.shadowBlur = 20;
-        ctx.fillStyle = '#ff007f';
-        ctx.font = 'bold 48px "Orbitron", monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText('GAME OVER', CANVAS_SIZE / 2, 250);
-
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = '#00d4ff';
-        ctx.font = 'bold 20px "Orbitron", monospace';
-        ctx.fillText(`CURRENT SCORE: ${scoreRef.current}`, CANVAS_SIZE / 2, 310);
-
-        ctx.fillStyle = '#00ff88';
-        ctx.fillText(`BEST SCORE: ${highScore}`, CANVAS_SIZE / 2, 340);
-
-        // Action Options
-        const gameOverItems = ['PLAY AGAIN', 'QUIT TO MENU'];
-        gameOverItems.forEach((text, idx) => {
-          const isSelected = menuIndex === idx;
-          const y = 460 + idx * 55;
-
-          ctx.textAlign = 'center';
-          if (isSelected) {
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#00f0f0';
-            ctx.strokeStyle = '#00f0f0';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(CANVAS_SIZE / 2 - 130, y - 26, 260, 36);
-
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 16px "Orbitron", monospace';
-          } else {
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = '#8888a0';
-            ctx.font = '15px "Orbitron", monospace';
-          }
-          ctx.fillText(text, CANVAS_SIZE / 2, y);
-        });
-      }
 
       requestRef.current = requestAnimationFrame(render);
     };
@@ -802,6 +707,48 @@ const BrickBreaker = () => {
           onMouseMove={handleCanvasMouseMove}
           onClick={handleCanvasClick}
         />
+
+        {/* DOM OVERLAYS */}
+        {gameState === 'LOBBY' && (
+          <div className="brickbreaker-overlay">
+            <h1 className="brickbreaker-title">NEON BRICK BREAKER</h1>
+            <p className="brickbreaker-subtitle">SPACEBAR TO LAUNCH</p>
+            
+            <div className="brickbreaker-menu">
+              <button 
+                className="brickbreaker-btn selected"
+                onClick={() => { playSound('click', mutedRef.current); startGame(); }}
+              >
+                INITIALIZE SEQUENCE
+              </button>
+            </div>
+          </div>
+        )}
+
+        {gameState === 'GAMEOVER' && (
+          <div className="brickbreaker-overlay" style={{ background: 'rgba(5, 5, 10, 0.96)' }}>
+            <h1 className="brickbreaker-title" style={{ color: '#ff007f', textShadow: '0 0 20px rgba(255, 0, 127, 0.8)' }}>GAME OVER</h1>
+            <p className="brickbreaker-subtitle" style={{ color: '#00d4ff', fontSize: '20px', marginBottom: '5px' }}>CURRENT SCORE: {score}</p>
+            <p className="brickbreaker-subtitle" style={{ color: '#00ff88', fontSize: '16px', marginBottom: '40px' }}>BEST SCORE: {highScore}</p>
+            
+            <div className="brickbreaker-menu">
+              <button 
+                className={`brickbreaker-btn ${menuIndex === 0 ? 'selected' : ''}`}
+                onMouseEnter={() => setMenuIndex(0)}
+                onClick={() => { playSound('click', mutedRef.current); startGame(); }}
+              >
+                PLAY AGAIN
+              </button>
+              <button 
+                className={`brickbreaker-btn ${menuIndex === 1 ? 'selected' : ''}`}
+                onMouseEnter={() => setMenuIndex(1)}
+                onClick={() => { playSound('click', mutedRef.current); setGameState('LOBBY'); }}
+              >
+                QUIT TO MENU
+              </button>
+            </div>
+          </div>
+        )}
         
       </motion.div>
     </div>

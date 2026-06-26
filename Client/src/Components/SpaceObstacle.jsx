@@ -199,8 +199,7 @@ const SpaceObstacle = () => {
       setHighScore(scoreRef.current);
     }
     
-    axios.post('http://localhost:5000/api/games/update', {
-      gameName: 'Space Obstacle',
+    axios.post('/api/v1/games/score', {
       score: scoreRef.current
     }).catch(err => console.error("Score submit error", err));
   };
@@ -286,41 +285,9 @@ const SpaceObstacle = () => {
     const clickY = (e.clientY - rect.top) * scaleY;
 
     initAudio();
-    if (gameStateRef.current === 'LOBBY') {
-      if (clickX >= 150 && clickX <= 450) {
-        if (clickY >= 344 && clickY <= 380) {
-          currentDifficultyRef.current = 0;
-          playSound('click', mutedRef.current);
-          startGame();
-        } else if (clickY >= 399 && clickY <= 435) {
-          currentDifficultyRef.current = 1;
-          playSound('click', mutedRef.current);
-          startGame();
-        } else if (clickY >= 454 && clickY <= 490) {
-          currentDifficultyRef.current = 2;
-          playSound('click', mutedRef.current);
-          startGame();
-        }
-      }
-    } else if (gameStateRef.current === 'PAUSE') {
-      if (clickX >= 150 && clickX <= 450 && clickY >= 374 && clickY <= 410) {
-        playSound('click', mutedRef.current);
-        setGameState('GAMEPLAY');
-      } else if (clickX >= 150 && clickX <= 450 && clickY >= 429 && clickY <= 465) {
-        playSound('click', mutedRef.current);
-        startGame();
-      } else if (clickX >= 150 && clickX <= 450 && clickY >= 484 && clickY <= 520) {
-        playSound('click', mutedRef.current);
-        setGameState('LOBBY');
-      }
-    } else if (gameStateRef.current === 'GAMEOVER') {
-      if (clickX >= 150 && clickX <= 450 && clickY >= 434 && clickY <= 470) {
-        playSound('click', mutedRef.current);
-        startGame();
-      } else if (clickX >= 150 && clickX <= 450 && clickY >= 489 && clickY <= 525) {
-        playSound('click', mutedRef.current);
-        setGameState('LOBBY');
-      }
+    const curState = gameState;
+    if (curState === 'GAMEPLAY') {
+      // Game loop handles touch events and keys, no clicks inside gameplay except maybe something custom
     }
   };
 
@@ -540,122 +507,8 @@ const SpaceObstacle = () => {
 
       ctx.restore();
 
-      // UI Overlays
-      if (gameStateRef.current === 'LOBBY') {
-        ctx.fillStyle = 'rgba(2, 1, 6, 0.8)';
-        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      // UI overlays are now handled by DOM
 
-        ctx.shadowColor = '#00ff88';
-        ctx.shadowBlur = 20;
-        ctx.fillStyle = '#00ff88';
-        ctx.font = 'bold 48px "Orbitron", monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText('SPACE OBSTACLE', CANVAS_WIDTH / 2, 250);
-
-        // Action Options
-        const lobbyItems = ['EASY', 'MEDIUM', 'HARD'];
-        lobbyItems.forEach((text, idx) => {
-          const isSelected = menuIndex === idx;
-          const y = 370 + idx * 55;
-
-          ctx.textAlign = 'center';
-          if (isSelected) {
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#00f0f0';
-            ctx.strokeStyle = '#00f0f0';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(CANVAS_WIDTH / 2 - 130, y - 26, 260, 36);
-
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 16px "Orbitron", monospace';
-          } else {
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = '#8888a0';
-            ctx.font = '15px "Orbitron", monospace';
-          }
-          ctx.fillText(text, CANVAS_WIDTH / 2, y);
-        });
-
-        ctx.fillStyle = '#6b7280';
-        ctx.font = '12px "Exo 2", sans-serif';
-        ctx.fillText('USE LEFT/RIGHT ARROWS OR TOUCH SIDES TO STEER', CANVAS_WIDTH / 2, 580);
-      } else if (gameStateRef.current === 'PAUSE') {
-        ctx.fillStyle = 'rgba(2, 1, 6, 0.7)';
-        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-        ctx.shadowColor = '#00d4ff';
-        ctx.shadowBlur = 20;
-        ctx.fillStyle = '#00d4ff';
-        ctx.font = 'bold 48px "Orbitron", monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText('PAUSED', CANVAS_WIDTH / 2, 250);
-
-        // Action Options
-        const pauseItems = ['RESUME', 'RESTART', 'QUIT TO MENU'];
-        pauseItems.forEach((text, idx) => {
-          const isSelected = menuIndex === idx;
-          const y = 400 + idx * 55;
-
-          ctx.textAlign = 'center';
-          if (isSelected) {
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#00f0f0';
-            ctx.strokeStyle = '#00f0f0';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(CANVAS_WIDTH / 2 - 130, y - 26, 260, 36);
-
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 16px "Orbitron", monospace';
-          } else {
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = '#8888a0';
-            ctx.font = '15px "Orbitron", monospace';
-          }
-          ctx.fillText(text, CANVAS_WIDTH / 2, y);
-        });
-      } else if (gameStateRef.current === 'GAMEOVER') {
-        ctx.fillStyle = 'rgba(2, 1, 6, 0.85)';
-        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-        ctx.shadowColor = '#ff007f';
-        ctx.shadowBlur = 20;
-        ctx.fillStyle = '#ff007f';
-        ctx.font = 'bold 48px "Orbitron", monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText('GAME OVER', CANVAS_WIDTH / 2, 250);
-
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = '#00d4ff';
-        ctx.font = 'bold 20px "Orbitron", monospace';
-        ctx.fillText(`CURRENT SCORE: ${scoreRef.current}`, CANVAS_WIDTH / 2, 310);
-
-        ctx.fillStyle = '#00ff88';
-        ctx.fillText(`BEST SCORE: ${highScore}`, CANVAS_WIDTH / 2, 340);
-
-        // Action Options
-        const gameOverItems = ['PLAY AGAIN', 'QUIT TO MENU'];
-        gameOverItems.forEach((text, idx) => {
-          const isSelected = menuIndex === idx;
-          const y = 460 + idx * 55;
-
-          ctx.textAlign = 'center';
-          if (isSelected) {
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#00f0f0';
-            ctx.strokeStyle = '#00f0f0';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(CANVAS_WIDTH / 2 - 130, y - 26, 260, 36);
-
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 16px "Orbitron", monospace';
-          } else {
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = '#8888a0';
-            ctx.font = '15px "Orbitron", monospace';
-          }
-          ctx.fillText(text, CANVAS_WIDTH / 2, y);
-        });
-      }
 
       requestRef.current = requestAnimationFrame(render);
     };
@@ -686,17 +539,94 @@ const SpaceObstacle = () => {
           </div>
         </div>
 
-        <canvas
-          ref={canvasRef}
-          width={CANVAS_WIDTH}
-          height={CANVAS_HEIGHT}
-          className="spaceobstacle-canvas"
-          style={{ display: 'block', background: '#020106', width: '100%', height: 'auto', maxWidth: '850px' }}
-          onClick={handleCanvasClick}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-        />
-        
+        <div style={{ position: 'relative', width: '100%', maxWidth: '650px', margin: '0 auto' }}>
+          <canvas
+            ref={canvasRef}
+            width={CANVAS_WIDTH}
+            height={CANVAS_HEIGHT}
+            className="spaceobstacle-canvas"
+            style={{ display: 'block', background: '#020106', width: '100%', height: 'auto' }}
+            onClick={handleCanvasClick}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          />
+          
+          {/* DOM OVERLAYS */}
+          {gameState === 'LOBBY' && (
+            <div className="spaceobstacle-overlay">
+              <h1 className="spaceobstacle-title" style={{ color: '#00ff88', textShadow: '0 0 20px rgba(0, 255, 136, 0.8)' }}>SPACE OBSTACLE</h1>
+              <p className="spaceobstacle-subtitle" style={{ marginBottom: '60px' }}></p>
+              
+              <div className="spaceobstacle-menu">
+                {['EASY', 'MEDIUM', 'HARD'].map((text, idx) => (
+                  <button 
+                    key={idx}
+                    className={`spaceobstacle-btn ${menuIndex === idx ? 'selected' : ''}`}
+                    onMouseEnter={() => setMenuIndex(idx)}
+                    onClick={() => {
+                      currentDifficultyRef.current = idx;
+                      playSound('click', mutedRef.current);
+                      startGame();
+                    }}
+                  >
+                    {text}
+                  </button>
+                ))}
+              </div>
+              <p className="spaceobstacle-subtitle" style={{ marginTop: '40px', fontSize: '12px' }}>USE LEFT/RIGHT ARROWS OR TOUCH SIDES TO STEER</p>
+            </div>
+          )}
+
+          {gameState === 'PAUSE' && (
+            <div className="spaceobstacle-overlay" style={{ background: 'rgba(2, 1, 6, 0.96)' }}>
+              <h1 className="spaceobstacle-title" style={{ color: '#00d4ff', textShadow: '0 0 20px rgba(0, 212, 255, 0.8)' }}>PAUSED</h1>
+              <p className="spaceobstacle-subtitle" style={{ marginBottom: '60px' }}></p>
+              
+              <div className="spaceobstacle-menu">
+                {['RESUME', 'RESTART', 'QUIT TO MENU'].map((text, idx) => (
+                  <button 
+                    key={idx}
+                    className={`spaceobstacle-btn ${menuIndex === idx ? 'selected' : ''}`}
+                    onMouseEnter={() => setMenuIndex(idx)}
+                    onClick={() => {
+                      playSound('click', mutedRef.current);
+                      if (idx === 0) setGameState('GAMEPLAY');
+                      else if (idx === 1) startGame();
+                      else setGameState('LOBBY');
+                    }}
+                  >
+                    {text}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {gameState === 'GAMEOVER' && (
+            <div className="spaceobstacle-overlay" style={{ background: 'rgba(2, 1, 6, 0.96)' }}>
+              <h1 className="spaceobstacle-title" style={{ color: '#ff007f', textShadow: '0 0 20px rgba(255, 0, 127, 0.8)' }}>GAME OVER</h1>
+              <p className="spaceobstacle-subtitle" style={{ color: '#00d4ff', fontSize: '20px', marginBottom: '5px' }}>CURRENT SCORE: {score}</p>
+              <p className="spaceobstacle-subtitle" style={{ color: '#00ff88', fontSize: '16px', marginBottom: '40px' }}>BEST SCORE: {highScore}</p>
+              
+              <div className="spaceobstacle-menu">
+                {['PLAY AGAIN', 'QUIT TO MENU'].map((text, idx) => (
+                  <button 
+                    key={idx}
+                    className={`spaceobstacle-btn ${menuIndex === idx ? 'selected' : ''}`}
+                    onMouseEnter={() => setMenuIndex(idx)}
+                    onClick={() => {
+                      playSound('click', mutedRef.current);
+                      if (idx === 0) startGame();
+                      else setGameState('LOBBY');
+                    }}
+                  >
+                    {text}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
       </motion.div>
     </div>

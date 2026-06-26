@@ -20,6 +20,7 @@ export const registerUser = async (req, res) => {
     }
 
     const { username, email, password, displayName } = req.body;
+    delete req.body.role; // Fix for Role Injection Bypass
 
     // Check if user already exists
     const existingUser = await User.findOne({
@@ -295,7 +296,7 @@ export const updateProfile = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       userId,
       { 
-        ...updates,
+        $set: updates,
         updatedAt: new Date()
       },
       { new: true, runValidators: true }

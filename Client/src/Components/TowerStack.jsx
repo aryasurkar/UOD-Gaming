@@ -448,32 +448,7 @@ const TowerStack = () => {
     }
 
     const curState = gameState;
-    if (curState === 'LOBBY') {
-      if (clickX >= 150 && clickX <= 450 && clickY >= 300 && clickY <= 360) {
-        playSound('click', muted);
-        startGame();
-      }
-    } else if (curState === 'PAUSE') {
-      if (clickX >= 200 && clickX <= 400 && clickY >= 240 && clickY <= 280) {
-        playSound('click', muted);
-        lastFrameTimeRef.current = performance.now();
-        setGameState('GAMEPLAY');
-      } else if (clickX >= 200 && clickX <= 400 && clickY >= 300 && clickY <= 340) {
-        playSound('click', muted);
-        startGame();
-      } else if (clickX >= 200 && clickX <= 400 && clickY >= 360 && clickY <= 400) {
-        playSound('click', muted);
-        setGameState('LOBBY');
-      }
-    } else if (curState === 'GAMEOVER') {
-      if (clickX >= 150 && clickX <= 450 && clickY >= 440 && clickY <= 480) {
-        playSound('click', muted);
-        startGame();
-      } else if (clickX >= 150 && clickX <= 450 && clickY >= 495 && clickY <= 535) {
-        playSound('click', muted);
-        setGameState('LOBBY');
-      }
-    } else if (curState === 'GAMEPLAY') {
+    if (curState === 'GAMEPLAY') {
       dropBlock();
     }
   };
@@ -548,133 +523,9 @@ const TowerStack = () => {
       const curState = gameStateRef.current;
 
       // ----------------------------------------------------
-      // STATE: LOBBY
+      // STATE HANDLING
       // ----------------------------------------------------
-      if (curState === 'LOBBY') {
-        ctx.shadowColor = '#a855f7';
-        ctx.shadowBlur = 15;
-        ctx.fillStyle = '#a855f7';
-        ctx.font = 'bold 36px "Orbitron", monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText('NEON STACK TOWER', CANVAS_SIZE / 2, 130);
-
-        ctx.shadowColor = '#00ff88';
-        ctx.fillStyle = '#b4b4c8';
-        ctx.font = '14px "Exo 2", sans-serif';
-        ctx.fillText('COMBO EXPANSION ALIGNER', CANVAS_SIZE / 2, 170);
-
-        // Draw START RUN button centered
-        ctx.shadowColor = '#a855f7';
-        ctx.shadowBlur = 10;
-        ctx.strokeStyle = '#a855f7';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(CANVAS_SIZE / 2 - 130, 330 - 28, 260, 40);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 18px "Orbitron", monospace';
-        ctx.fillText('START RUN', CANVAS_SIZE / 2, 330);
-
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = '#6b7280';
-        ctx.font = '12px "Exo 2", sans-serif';
-        ctx.fillText('USE ARROWS / WASD TO NAVIGATE • SPACEBAR TO SELECT', CANVAS_SIZE / 2, 550);
-      }
-
-      // ----------------------------------------------------
-      // STATE: PAUSE
-      // ----------------------------------------------------
-      else if (curState === 'PAUSE') {
-        drawActiveGameElements(ctx);
-
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = 'rgba(5, 5, 10, 0.85)';
-        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-
-        ctx.shadowColor = '#a855f7';
-        ctx.shadowBlur = 15;
-        ctx.fillStyle = '#a855f7';
-        ctx.font = 'bold 36px "Orbitron", monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText('SYSTEM PAUSED', CANVAS_SIZE / 2, 160);
-
-        const pauseItems = ['RESUME', 'RESTART', 'BACK TO MENU'];
-        pauseItems.forEach((text, idx) => {
-          const isSelected = menuIndex === idx;
-          const y = 266 + idx * 60;
-
-          if (isSelected) {
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#00d4ff';
-            ctx.strokeStyle = '#00d4ff';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(CANVAS_SIZE / 2 - 100, y - 26, 200, 36);
-
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 16px "Orbitron", monospace';
-          } else {
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = '#8888a0';
-            ctx.font = '15px "Orbitron", monospace';
-          }
-          ctx.fillText(text, CANVAS_SIZE / 2, y);
-        });
-      }
-
-      // ----------------------------------------------------
-      // STATE: GAMEOVER
-      // ----------------------------------------------------
-      else if (curState === 'GAMEOVER') {
-        drawActiveGameElements(ctx);
-
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = 'rgba(5, 5, 10, 0.88)';
-        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-
-        ctx.shadowColor = '#ff0055';
-        ctx.shadowBlur = 15;
-        ctx.fillStyle = '#ff0055';
-        ctx.font = 'bold 34px "Orbitron", monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText('GAME OVER', CANVAS_SIZE / 2, 100);
-
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = '#00d4ff';
-        ctx.font = 'bold 20px "Orbitron", monospace';
-        ctx.fillText(`CURRENT SCORE: ${scoreRef.current}`, CANVAS_SIZE / 2, 140);
-
-        ctx.fillStyle = '#00ff88';
-        ctx.fillText(`BEST SCORE: ${highScore}`, CANVAS_SIZE / 2, 170);
-
-
-
-        // Action Options
-        const gameOverItems = ['PLAY AGAIN', 'QUIT TO MENU'];
-        gameOverItems.forEach((text, idx) => {
-          const isSelected = menuIndex === idx;
-          const y = 460 + idx * 55;
-
-          ctx.textAlign = 'center';
-          if (isSelected) {
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#a855f7';
-            ctx.strokeStyle = '#a855f7';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(CANVAS_SIZE / 2 - 130, y - 26, 260, 36);
-
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 16px "Orbitron", monospace';
-          } else {
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = '#8888a0';
-            ctx.font = '15px "Orbitron", monospace';
-          }
-          ctx.fillText(text, CANVAS_SIZE / 2, y);
-        });
-      }
-
-      // ----------------------------------------------------
-      // STATE: GAMEPLAY
-      // ----------------------------------------------------
-      else if (curState === 'GAMEPLAY') {
+      if (curState === 'PAUSE' || curState === 'GAMEOVER' || curState === 'GAMEPLAY') {
         drawActiveGameElements(ctx);
       }
 
@@ -869,8 +720,78 @@ const TowerStack = () => {
             ref={canvasRef}
             width={CANVAS_SIZE}
             height={CANVAS_SIZE}
-            style={{ display: 'block', background: '#030206', width: '100%', height: 'auto', maxWidth: '850px' }}
+            style={{ display: 'block', background: '#020205', width: '100%', height: 'auto', maxWidth: '650px' }}
+            onClick={handleCanvasClick}
           />
+          
+          {/* DOM OVERLAYS */}
+          {gameState === 'LOBBY' && (
+            <div className="towerstack-overlay">
+              <h1 className="towerstack-title" style={{ color: '#a855f7', textShadow: '0 0 15px #a855f7' }}>NEON TOWER</h1>
+              <p className="towerstack-subtitle">SYNTHETIC ARCHITECTURE PROTOCOL</p>
+              
+              <div className="towerstack-menu">
+                <button 
+                  className="towerstack-btn selected"
+                  style={{ borderColor: '#a855f7', color: '#fff', boxShadow: '0 0 15px #a855f7', textShadow: '0 0 8px #a855f7' }}
+                  onClick={() => { playSound('click', mutedRef.current); startGame(); }}
+                >
+                  START STACK
+                </button>
+              </div>
+              <p className="towerstack-subtitle" style={{ marginTop: '40px', fontSize: '12px' }}>PRESS SPACEBAR / TOUCH TO DROP THE BLOCK PRECISELY</p>
+            </div>
+          )}
+
+          {gameState === 'PAUSE' && (
+            <div className="towerstack-overlay" style={{ background: 'rgba(5, 5, 10, 0.96)' }}>
+              <h1 className="towerstack-title" style={{ color: '#00d4ff', textShadow: '0 0 15px rgba(0, 212, 255, 0.8)' }}>SYSTEM PAUSED</h1>
+              <p className="towerstack-subtitle" style={{ marginBottom: '60px' }}></p>
+              
+              <div className="towerstack-menu">
+                {['RESUME', 'RESTART', 'BACK TO MENU'].map((text, idx) => (
+                  <button 
+                    key={idx}
+                    className={`towerstack-btn ${menuIndex === idx ? 'selected' : ''}`}
+                    onMouseEnter={() => setMenuIndex(idx)}
+                    onClick={() => {
+                      playSound('click', mutedRef.current);
+                      if (idx === 0) { lastFrameTimeRef.current = performance.now(); setGameState('GAMEPLAY'); }
+                      else if (idx === 1) startGame();
+                      else { setGameState('LOBBY'); setMenuIndex(0); }
+                    }}
+                  >
+                    {text}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {gameState === 'GAMEOVER' && (
+            <div className="towerstack-overlay" style={{ background: 'rgba(5, 5, 10, 0.96)' }}>
+              <h1 className="towerstack-title" style={{ color: '#ff0055', textShadow: '0 0 20px rgba(255, 0, 85, 0.8)' }}>GAME OVER</h1>
+              <p className="towerstack-subtitle" style={{ color: '#00d4ff', fontSize: '20px', marginBottom: '5px' }}>CURRENT SCORE: {score}</p>
+              <p className="towerstack-subtitle" style={{ color: '#00ff88', fontSize: '16px', marginBottom: '40px' }}>BEST SCORE: {highScore}</p>
+              
+              <div className="towerstack-menu">
+                <button 
+                  className={`towerstack-btn ${menuIndex === 0 ? 'selected' : ''}`}
+                  onMouseEnter={() => setMenuIndex(0)}
+                  onClick={() => { playSound('click', mutedRef.current); startGame(); }}
+                >
+                  PLAY AGAIN
+                </button>
+                <button 
+                  className={`towerstack-btn ${menuIndex === 1 ? 'selected' : ''}`}
+                  onMouseEnter={() => setMenuIndex(1)}
+                  onClick={() => { playSound('click', mutedRef.current); setGameState('LOBBY'); setMenuIndex(0); }}
+                >
+                  QUIT TO MENU
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
