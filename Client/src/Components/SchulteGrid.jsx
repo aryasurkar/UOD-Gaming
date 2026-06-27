@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pause } from 'lucide-react';
 import axios from 'axios';
 import '../Css/SchulteGrid.css';
 
@@ -155,7 +155,7 @@ const SchulteGrid = () => {
 
   // Submit high score
   const submitGridScore = async (finalScore, selectedGridSize) => {
-    const token = localStorage.getItem('token');
+    const token = 'cookie-token';
     if (gameId && token && finalScore > 0) {
       setSubmitStatus('submitting');
       try {
@@ -291,10 +291,10 @@ const SchulteGrid = () => {
     if (curState === 'LOBBY') {
       if (code === 'ArrowUp' || code === 'KeyW') {
         playSound('click', mutedRef.current);
-        setMenuIndex(prev => (prev === 0 ? 1 : prev - 1));
+        setMenuIndex(prev => { const next = prev === 0 ? 2 : prev - 1; menuIndexRef.current = next; return next; });
       } else if (code === 'ArrowDown' || code === 'KeyS') {
         playSound('click', mutedRef.current);
-        setMenuIndex(prev => (prev === 1 ? 0 : prev + 1));
+        setMenuIndex(prev => { const next = prev === 2 ? 0 : prev + 1; menuIndexRef.current = next; return next; });
       } else if (code === 'ArrowLeft' || code === 'KeyA') {
         if (menuIndexRef.current === 0) {
           playSound('change', mutedRef.current);
@@ -307,7 +307,8 @@ const SchulteGrid = () => {
         }
       } else if (code === 'Space' || code === 'Enter') {
         playSound('click', mutedRef.current);
-        startGame();
+        if (menuIndexRef.current === 2) window.location.href = '/UODGaming';
+        else startGame();
       }
     } else if (curState === 'GAMEPLAY') {
       const size = gridSizeRef.current;
@@ -652,10 +653,19 @@ const SchulteGrid = () => {
   return (
     <div className="schulte-page-wrapper">
       {/* Floating circular back button (Only visible in Lobby, GameOver or Pause) */}
-      {gameState === 'LOBBY' || gameState === 'GAMEOVER' || gameState === 'PAUSE' ? (
+            {gameState === 'LOBBY' || gameState === 'GAMEOVER' || gameState === 'PAUSE' ? (
         <Link to="/UODGaming" className="floating-back-btn" title="Back to Games">
           <ArrowLeft size={20} />
         </Link>
+      ) : gameState === 'GAMEPLAY' ? (
+        <button 
+          onClick={() => { playSound('click', mutedRef.current); setGameState('PAUSE'); setMenuIndex && typeof setMenuIndex === 'function' ? setMenuIndex(0) : null; }} 
+          className="floating-back-btn" 
+          style={{ cursor: 'pointer' }}
+          title="Pause Game"
+        >
+          <Pause size={20} color="white" />
+        </button>
       ) : null}
 
 
@@ -700,10 +710,18 @@ const SchulteGrid = () => {
               
               <div className="schultegrid-menu">
                 <button 
-                  className="schultegrid-btn selected"
+                  className={`schultegrid-btn ${menuIndex === 1 ? 'selected' : ''}`}
+                  onMouseEnter={() => setMenuIndex(1)}
                   onClick={() => { playSound('click', mutedRef.current); startGame(); }}
                 >
                   START RUN
+                </button>
+                <button 
+                  className={`schultegrid-btn ${menuIndex === 2 ? 'selected' : ''}`}
+                  onMouseEnter={() => setMenuIndex(2)}
+                  onClick={() => { playSound('click', mutedRef.current); window.location.href = '/UODGaming'; }}
+                >
+                  EXIT TO MENU
                 </button>
               </div>
             </div>

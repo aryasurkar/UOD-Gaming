@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pause } from 'lucide-react';
 import axios from 'axios';
 import '../Css/TowerStack.css';
 
@@ -108,6 +108,8 @@ const TowerStack = () => {
 
   // Menu navigation index
   const [menuIndex, setMenuIndex] = useState(0);
+  const menuIndexRef = useRef(0);
+  useEffect(() => { menuIndexRef.current = menuIndex; }, [menuIndex]);
 
   // API sync states
   const [gameId, setGameId] = useState(null);
@@ -147,7 +149,7 @@ const TowerStack = () => {
 
   // Submit high score
   const submitStackScore = async (finalScore) => {
-    const token = localStorage.getItem('token');
+    const token = 'cookie-token';
     if (gameId && token && finalScore > 0) {
       setSubmitStatus('submitting');
       try {
@@ -365,26 +367,35 @@ const TowerStack = () => {
   const handleKeyboardNav = (code) => {
     const curState = gameStateRef.current;
     if (curState === 'LOBBY') {
-      if (code === 'Space' || code === 'Enter') {
+      if (code === 'ArrowUp' || code === 'KeyW' || code === 'ArrowDown' || code === 'KeyS') {
         playSound('click', mutedRef.current);
-        startGame();
+        setMenuIndex(prev => (prev === 0 ? 1 : 0));
+      } else if (code === 'Space' || code === 'Enter') {
+        playSound('click', mutedRef.current);
+        if (menuIndexRef.current === 0) startGame();
+        else window.location.href = '/UODGaming';
       }
     } else if (curState === 'PAUSE') {
       if (code === 'ArrowUp' || code === 'KeyW') {
         playSound('click', mutedRef.current);
         setMenuIndex(prev => (prev === 0 ? 2 : prev - 1));
+        menuIndexRef.current = (menuIndexRef.current === 0 ? 2 : menuIndexRef.current - 1);
+        setMenuIndex(menuIndexRef.current);
       } else if (code === 'ArrowDown' || code === 'KeyS') {
         playSound('click', mutedRef.current);
-        setMenuIndex(prev => (prev === 2 ? 0 : prev + 1));
+        menuIndexRef.current = (menuIndexRef.current === 2 ? 0 : menuIndexRef.current + 1);
+        setMenuIndex(menuIndexRef.current);
       } else if (code === 'Space' || code === 'Enter') {
         playSound('click', mutedRef.current);
-        if (menuIndex === 0) {
+        if (menuIndexRef.current === 0) {
           lastFrameTimeRef.current = performance.now();
           setGameState('GAMEPLAY');
-        } else if (menuIndex === 1) {
+        } else if (menuIndexRef.current === 1) {
           startGame();
         } else {
           setGameState('LOBBY');
+          menuIndexRef.current = 0;
+          setMenuIndex(0);
         }
       } else if (code === 'Escape') {
         playSound('click', mutedRef.current);
@@ -397,7 +408,7 @@ const TowerStack = () => {
         setMenuIndex(prev => (prev === 0 ? 1 : 0));
       } else if (code === 'Space' || code === 'Enter') {
         playSound('click', mutedRef.current);
-        if (menuIndex === 0) {
+        if (menuIndexRef.current === 0) {
           startGame();
         } else {
           setGameState('LOBBY');
@@ -698,10 +709,19 @@ const TowerStack = () => {
   return (
     <div className="stack-page-wrapper">
       {/* Floating circular navigation back button */}
-      {gameState === 'LOBBY' || gameState === 'GAMEOVER' || gameState === 'PAUSE' ? (
+            {gameState === 'LOBBY' || gameState === 'GAMEOVER' || gameState === 'PAUSE' ? (
         <Link to="/UODGaming" className="floating-back-btn" title="Back to Games">
           <ArrowLeft size={20} />
         </Link>
+      ) : gameState === 'GAMEPLAY' ? (
+        <button 
+          onClick={() => { playSound('click', mutedRef.current); setGameState('PAUSE'); setMenuIndex && typeof setMenuIndex === 'function' ? setMenuIndex(0) : null; }} 
+          className="floating-back-btn" 
+          style={{ cursor: 'pointer' }}
+          title="Pause Game"
+        >
+          <Pause size={20} color="white" />
+        </button>
       ) : null}
 
 
@@ -732,11 +752,20 @@ const TowerStack = () => {
               
               <div className="towerstack-menu">
                 <button 
-                  className="towerstack-btn selected"
-                  style={{ borderColor: '#a855f7', color: '#fff', boxShadow: '0 0 15px #a855f7', textShadow: '0 0 8px #a855f7' }}
+                  className={`towerstack-btn ${menuIndex === 0 ? 'selected' : ''}`}
+                  onMouseEnter={() => setMenuIndex(0)}
+                  style={menuIndex === 0 ? { borderColor: '#a855f7', color: '#fff', boxShadow: '0 0 15px #a855f7', textShadow: '0 0 8px #a855f7' } : {}}
                   onClick={() => { playSound('click', mutedRef.current); startGame(); }}
                 >
                   START STACK
+                </button>
+                <button 
+                  className={`towerstack-btn ${menuIndex === 1 ? 'selected' : ''}`}
+                  onMouseEnter={() => setMenuIndex(1)}
+                  style={menuIndex === 1 ? { borderColor: '#a855f7', color: '#fff', boxShadow: '0 0 15px #a855f7', textShadow: '0 0 8px #a855f7' } : {}}
+                  onClick={() => { playSound('click', mutedRef.current); window.location.href = '/UODGaming'; }}
+                >
+                  EXIT TO MENU
                 </button>
               </div>
               <p className="towerstack-subtitle" style={{ marginTop: '40px', fontSize: '12px' }}>PRESS SPACEBAR / TOUCH TO DROP THE BLOCK PRECISELY</p>

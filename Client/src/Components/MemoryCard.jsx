@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pause } from 'lucide-react';
 import axios from 'axios';
 import '../Css/MemoryCard.css';
 
@@ -267,15 +267,12 @@ const MemoryCard = () => {
   // Game state configurations
   const [difficulty, setDifficulty] = useState('medium'); // easy, medium, hard
   const [deckType, setDeckType] = useState('neon'); // neon, emoji
-  const [timeTrial, setTimeTrial] = useState(false);
   const [muted, setMuted] = useState(() => localStorage.getItem('arcade_muted') === 'true');
 
   const difficultyRef = useRef('medium');
   useEffect(() => { difficultyRef.current = difficulty; }, [difficulty]);
   const deckTypeRef = useRef('neon');
   useEffect(() => { deckTypeRef.current = deckType; }, [deckType]);
-  const timeTrialRef = useRef(false);
-  useEffect(() => { timeTrialRef.current = timeTrial; }, [timeTrial]);
   const mutedRef = useRef(false);
   useEffect(() => {
     mutedRef.current = muted;
@@ -316,8 +313,12 @@ const MemoryCard = () => {
   const [rewards, setRewards] = useState(null);
 
   // Menu navigation index (Lobby settings grid)
-  const [menuRow, setMenuRow] = useState(0); // 0: Difficulty, 1: Deck, 2: TimeTrial, 3: Sound, 4: Launch
-  const [menuCol, setMenuCol] = useState(0);
+  const [menuRow, setMenuRow] = useState(0); // LOBBY: 0=Diff, 1=Deck, 2=Audio, 3=Start, 4=Exit. PAUSE: 0=Resume. GAMEOVER: 0=Play Again
+  const menuRowRef = useRef(0);
+  useEffect(() => { menuRowRef.current = menuRow; }, [menuRow]);
+  const [menuCol, setMenuCol] = useState(0); // For multiple buttons in a row (e.g. PAUSE 0=Resume, 1=Restart, 2=Quit)
+  const menuColRef = useRef(0);
+  useEffect(() => { menuColRef.current = menuCol; }, [menuCol]);
 
   // Gameplay Cursor (card indices)
   const [gridCursor, setGridCursor] = useState(0);
@@ -340,14 +341,14 @@ const MemoryCard = () => {
 
   // Retrieve Best Record from Storage
   const loadBestRecord = () => {
-    const key = `memory_best_${difficultyRef.current}_${deckTypeRef.current}_${timeTrialRef.current ? 'trial' : 'normal'}`;
+    const key = `memory_best_${difficultyRef.current}_${deckTypeRef.current}_normal`;
     const saved = localStorage.getItem(key);
     setBestMoves(saved ? saved : '-');
   };
 
   useEffect(() => {
     loadBestRecord();
-  }, [difficulty, deckType, timeTrial, gameState]);
+  }, [difficulty, deckType, gameState]);
 
   // Load game info from db
   useEffect(() => {
@@ -361,7 +362,7 @@ const MemoryCard = () => {
 
   // Submit high score
   const submitMemoryScore = async (finalMoves) => {
-    const token = localStorage.getItem('token');
+    const token = 'cookie-token';
     if (gameId && token) {
       setSubmitStatus('submitting');
       try {
@@ -490,7 +491,7 @@ const MemoryCard = () => {
             setMenuIndex(0);
 
             // Record Best
-            const key = `memory_best_${difficultyRef.current}_${deckTypeRef.current}_${timeTrialRef.current ? 'trial' : 'normal'}`;
+            const key = `memory_best_${difficultyRef.current}_${deckTypeRef.current}_normal`;
             const currentBest = localStorage.getItem(key);
             if (!currentBest || nextMovesCount < parseInt(currentBest, 10)) {
               localStorage.setItem(key, nextMovesCount.toString());
@@ -518,33 +519,28 @@ const MemoryCard = () => {
     if (curState === 'LOBBY') {
       if (code === 'ArrowUp' || code === 'KeyW') {
         playSound('click', mutedRef.current);
-        setMenuRow(prev => (prev === 0 ? 4 : prev - 1));
-        setMenuCol(0);
+        setMenuRow(prev => { const next = prev === 0 ? 4 : prev - 1; menuRowRef.current = next; return next; });
+        setMenuCol(0); menuColRef.current = 0;
       } else if (code === 'ArrowDown' || code === 'KeyS') {
         playSound('click', mutedRef.current);
-        setMenuRow(prev => (prev === 4 ? 0 : prev + 1));
-        setMenuCol(0);
+        setMenuRow(prev => { const next = prev === 4 ? 0 : prev + 1; menuRowRef.current = next; return next; });
+        setMenuCol(0); menuColRef.current = 0;
       } else if (code === 'ArrowLeft' || code === 'KeyA') {
         playSound('click', mutedRef.current);
-        if (menuRow === 0) {
+        if (menuRowRef.current === 0) {
           // Difficulty: easy, medium, hard
           setDifficulty(prev => {
             const next = prev === 'easy' ? 'hard' : prev === 'medium' ? 'easy' : 'medium';
             difficultyRef.current = next;
             return next;
           });
-        } else if (menuRow === 1) {
+        } else if (menuRowRef.current === 1) {
           setDeckType(prev => {
             const next = prev === 'neon' ? 'emoji' : 'neon';
             deckTypeRef.current = next;
             return next;
           });
-        } else if (menuRow === 2) {
-          setTimeTrial(prev => {
-            timeTrialRef.current = !prev;
-            return !prev;
-          });
-        } else if (menuRow === 3) {
+        } else if (menuRowRef.current === 2) {
           setMuted(prev => {
             mutedRef.current = !prev;
             return !prev;
@@ -552,24 +548,19 @@ const MemoryCard = () => {
         }
       } else if (code === 'ArrowRight' || code === 'KeyD') {
         playSound('click', mutedRef.current);
-        if (menuRow === 0) {
+        if (menuRowRef.current === 0) {
           setDifficulty(prev => {
             const next = prev === 'easy' ? 'medium' : prev === 'medium' ? 'hard' : 'easy';
             difficultyRef.current = next;
             return next;
           });
-        } else if (menuRow === 1) {
+        } else if (menuRowRef.current === 1) {
           setDeckType(prev => {
             const next = prev === 'neon' ? 'emoji' : 'neon';
             deckTypeRef.current = next;
             return next;
           });
-        } else if (menuRow === 2) {
-          setTimeTrial(prev => {
-            timeTrialRef.current = !prev;
-            return !prev;
-          });
-        } else if (menuRow === 3) {
+        } else if (menuRowRef.current === 2) {
           setMuted(prev => {
             mutedRef.current = !prev;
             return !prev;
@@ -577,14 +568,11 @@ const MemoryCard = () => {
         }
       } else if (code === 'Space' || code === 'Enter') {
         playSound('click', mutedRef.current);
-        if (menuRow === 4) {
+        if (menuRowRef.current === 3) {
           startGame();
-        } else if (menuRow === 2) {
-          setTimeTrial(prev => {
-            timeTrialRef.current = !prev;
-            return !prev;
-          });
-        } else if (menuRow === 3) {
+        } else if (menuRowRef.current === 4) {
+          window.location.href = '/UODGaming';
+        } else if (menuRowRef.current === 2) {
           setMuted(prev => {
             mutedRef.current = !prev;
             return !prev;
@@ -594,22 +582,22 @@ const MemoryCard = () => {
     } else if (curState === 'PAUSE') {
       if (code === 'ArrowUp' || code === 'KeyW') {
         playSound('click', mutedRef.current);
-        setMenuCol(prev => (prev === 0 ? 2 : prev - 1)); // repurpose menuCol as list index
+        setMenuCol(prev => { const next = prev === 0 ? 2 : prev - 1; menuColRef.current = next; return next; });
       } else if (code === 'ArrowDown' || code === 'KeyS') {
         playSound('click', mutedRef.current);
-        setMenuCol(prev => (prev === 2 ? 0 : prev + 1));
+        setMenuCol(prev => { const next = prev === 2 ? 0 : prev + 1; menuColRef.current = next; return next; });
       } else if (code === 'Space' || code === 'Enter') {
         playSound('click', mutedRef.current);
-        if (menuCol === 0) {
+        if (menuColRef.current === 0) {
           lastFrameTimeRef.current = performance.now();
           isTimerRunningRef.current = true;
           setGameState('GAMEPLAY');
-        } else if (menuCol === 1) {
+        } else if (menuColRef.current === 1) {
           startGame();
         } else {
           setGameState('LOBBY');
-          setMenuRow(0);
-          setMenuCol(0);
+          setMenuRow(0); menuRowRef.current = 0;
+          setMenuCol(0); menuColRef.current = 0;
         }
       } else if (code === 'Escape') {
         playSound('click', mutedRef.current);
@@ -620,15 +608,15 @@ const MemoryCard = () => {
     } else if (curState === 'GAMEOVER') {
       if (code === 'ArrowUp' || code === 'KeyW' || code === 'ArrowDown' || code === 'KeyS') {
         playSound('click', mutedRef.current);
-        setMenuCol(prev => (prev === 0 ? 1 : 0));
+        setMenuCol(prev => { const next = prev === 0 ? 1 : 0; menuColRef.current = next; return next; });
       } else if (code === 'Space' || code === 'Enter') {
         playSound('click', mutedRef.current);
-        if (menuCol === 0) {
+        if (menuColRef.current === 0) {
           startGame();
         } else {
           setGameState('LOBBY');
-          setMenuRow(0);
-          setMenuCol(0);
+          setMenuRow(0); menuRowRef.current = 0;
+          setMenuCol(0); menuColRef.current = 0;
         }
       }
     } else if (curState === 'GAMEPLAY') {
@@ -798,25 +786,7 @@ const MemoryCard = () => {
 
       // Handle Timer subtraction
       if (gameStateRef.current === 'GAMEPLAY' && isTimerRunningRef.current) {
-        if (timeTrialRef.current) {
-          timeLeftRef.current = Math.max(0, timeLeftRef.current - dt);
-
-          const secondsLeft = Math.ceil(timeLeftRef.current / 1000);
-          if (secondsLeft <= 5 && secondsLeft > 0 && secondsLeft !== lastTickSecondRef.current) {
-            lastTickSecondRef.current = secondsLeft;
-            playSound('tick', mutedRef.current);
-          }
-
-          if (timeLeftRef.current <= 0) {
-            isTimerRunningRef.current = false;
-            playSound('gameover', mutedRef.current);
-            setGameResult('lose');
-            setGameState('GAMEOVER');
-            setMenuCol(0);
-          }
-        } else {
-          timerElapsedRef.current += dt;
-        }
+        timerElapsedRef.current += dt;
       }
 
       ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
@@ -887,7 +857,7 @@ const MemoryCard = () => {
       c.textAlign = 'left';
       c.fillStyle = '#8888a0';
       c.font = '11px "Orbitron", monospace';
-      c.fillText(timeTrialRef.current ? 'REMAINING TIME' : 'TIME ELAPSED', 50, 30);
+      c.fillText('TIME ELAPSED', 50, 30);
       c.fillText('MOVES', 220, 30);
       c.fillText('MATCHES', 330, 30);
       c.fillText('BEST', 460, 30);
@@ -896,21 +866,11 @@ const MemoryCard = () => {
       c.font = 'bold 15px "Orbitron", monospace';
 
       // Format time elapsed/left
-      let displayedSecs = 0;
-      if (timeTrialRef.current) {
-        displayedSecs = Math.ceil(timeLeftRef.current / 1000);
-      } else {
-        displayedSecs = Math.floor(timerElapsedRef.current / 1000);
-      }
+      let displayedSecs = Math.floor(timerElapsedRef.current / 1000);
       const mins = Math.floor(displayedSecs / 60);
       const remainingSecs = displayedSecs % 60;
       const formatted = `${mins.toString().padStart(2, '0')}:${remainingSecs.toString().padStart(2, '0')}`;
 
-      if (timeTrialRef.current && displayedSecs <= 10) {
-        c.fillStyle = '#ff0055';
-        c.shadowColor = '#ff0055';
-        c.shadowBlur = 10;
-      }
       c.fillText(formatted, 50, 50);
       c.shadowBlur = 0;
       c.fillStyle = '#ffffff';
@@ -1076,10 +1036,19 @@ const MemoryCard = () => {
   return (
     <div className="memory-page-wrapper">
       {/* Centered Logo-Aligned Floating Circular Back Button */}
-      {gameState === 'LOBBY' || gameState === 'GAMEOVER' || gameState === 'PAUSE' ? (
+            {gameState === 'LOBBY' || gameState === 'GAMEOVER' || gameState === 'PAUSE' ? (
         <Link to="/UODGaming" className="floating-back-btn" title="Back to Games">
           <ArrowLeft size={20} />
         </Link>
+      ) : gameState === 'GAMEPLAY' ? (
+        <button 
+          onClick={() => { playSound('click', mutedRef.current); setGameState('PAUSE'); setMenuIndex && typeof setMenuIndex === 'function' ? setMenuIndex(0) : null; }} 
+          className="floating-back-btn" 
+          style={{ cursor: 'pointer' }}
+          title="Pause Game"
+        >
+          <Pause size={20} color="white" />
+        </button>
       ) : null}
 
 
@@ -1122,13 +1091,7 @@ const MemoryCard = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px' }}>
-                  <span style={{ color: '#ffffff', fontFamily: 'Orbitron', fontSize: '14px', fontWeight: 'bold' }}>TIME TRIAL:</span>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button className={`memorycard-btn ${!timeTrial ? 'selected' : ''}`} style={{ padding: '8px 12px', fontSize: '12px', color: !timeTrial ? '#fff' : '#6b7280', borderColor: !timeTrial ? '#a855f7' : 'rgba(255,255,255,0.1)', background: !timeTrial ? 'rgba(168, 85, 247, 0.15)' : 'transparent', boxShadow: !timeTrial ? '0 0 10px #a855f7' : 'none' }} onClick={() => { playSound('click', muted); setTimeTrial(false); }}>DISABLED</button>
-                    <button className={`memorycard-btn ${timeTrial ? 'selected' : ''}`} style={{ padding: '8px 12px', fontSize: '12px', color: timeTrial ? '#fff' : '#6b7280', borderColor: timeTrial ? '#a855f7' : 'rgba(255,255,255,0.1)', background: timeTrial ? 'rgba(168, 85, 247, 0.15)' : 'transparent', boxShadow: timeTrial ? '0 0 10px #a855f7' : 'none' }} onClick={() => { playSound('click', muted); setTimeTrial(true); }}>ENABLED</button>
-                  </div>
-                </div>
+
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '30px' }}>
                   <span style={{ color: '#ffffff', fontFamily: 'Orbitron', fontSize: '14px', fontWeight: 'bold' }}>SOUND SYNTH:</span>
@@ -1141,11 +1104,20 @@ const MemoryCard = () => {
               
               <div className="memorycard-menu">
                 <button 
-                  className="memorycard-btn selected"
-                  style={{ borderColor: '#a855f7', color: '#fff', boxShadow: '0 0 15px #a855f7', textShadow: '0 0 8px #a855f7' }}
+                  className={`memorycard-btn ${menuRow === 3 ? 'selected' : ''}`}
+                  onMouseEnter={() => { setMenuRow(3); setMenuCol(0); }}
+                  style={menuRow === 3 ? { borderColor: '#a855f7', color: '#fff', boxShadow: '0 0 15px #a855f7', textShadow: '0 0 8px #a855f7' } : {}}
                   onClick={() => { playSound('click', muted); startGame(); }}
                 >
                   LAUNCH SIMULATION
+                </button>
+                <button 
+                  className={`memorycard-btn ${menuRow === 4 ? 'selected' : ''}`}
+                  onMouseEnter={() => { setMenuRow(4); setMenuCol(0); }}
+                  style={menuRow === 4 ? { borderColor: '#a855f7', color: '#fff', boxShadow: '0 0 15px #a855f7', textShadow: '0 0 8px #a855f7' } : {}}
+                  onClick={() => { playSound('click', muted); window.location.href = '/UODGaming'; }}
+                >
+                  EXIT TO MENU
                 </button>
               </div>
             </div>

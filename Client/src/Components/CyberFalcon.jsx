@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pause } from 'lucide-react';
 import axios from 'axios';
 import '../Css/CyberFalcon.css';
 
@@ -97,6 +97,8 @@ const CyberFalcon = () => {
 
   // Menu navigation index
   const [menuIndex, setMenuIndex] = useState(0);
+  const menuIndexRef = useRef(0);
+  useEffect(() => { menuIndexRef.current = menuIndex; }, [menuIndex]);
 
   // API sync states
   const [gameId, setGameId] = useState(null);
@@ -132,7 +134,7 @@ const CyberFalcon = () => {
 
   // Submit high score
   const submitFalconScore = async (finalScore) => {
-    const token = localStorage.getItem('token');
+    const token = 'cookie-token';
     if (gameId && token && finalScore > 0) {
       setSubmitStatus('submitting');
       try {
@@ -220,9 +222,13 @@ const CyberFalcon = () => {
   const handleKeyboardNav = (code) => {
     const curState = gameStateRef.current;
     if (curState === 'LOBBY') {
-      if (code === 'Space' || code === 'Enter') {
+      if (code === 'ArrowUp' || code === 'KeyW' || code === 'ArrowDown' || code === 'KeyS') {
         playSound('click', mutedRef.current);
-        startGame();
+        setMenuIndex(prev => (prev === 0 ? 1 : 0));
+      } else if (code === 'Space' || code === 'Enter') {
+        playSound('click', mutedRef.current);
+        if (menuIndexRef.current === 0) startGame();
+        else window.location.href = '/UODGaming';
       }
     } else if (curState === 'PAUSE') {
       if (code === 'ArrowUp' || code === 'KeyW') {
@@ -233,10 +239,10 @@ const CyberFalcon = () => {
         setMenuIndex(prev => (prev === 2 ? 0 : prev + 1));
       } else if (code === 'Space' || code === 'Enter') {
         playSound('click', mutedRef.current);
-        if (menuIndex === 0) {
+        if (menuIndexRef.current === 0) {
           lastFrameTimeRef.current = performance.now();
           setGameState('GAMEPLAY');
-        } else if (menuIndex === 1) {
+        } else if (menuIndexRef.current === 1) {
           startGame();
         } else {
           setGameState('LOBBY');
@@ -252,7 +258,7 @@ const CyberFalcon = () => {
         setMenuIndex(prev => (prev === 0 ? 1 : 0));
       } else if (code === 'Space' || code === 'Enter') {
         playSound('click', mutedRef.current);
-        if (menuIndex === 0) {
+        if (menuIndexRef.current === 0) {
           startGame();
         } else {
           setGameState('LOBBY');
@@ -618,10 +624,19 @@ const CyberFalcon = () => {
   return (
     <div className="falcon-page-wrapper">
       {/* Floating circular navigation button aligned vertically below logo */}
-      {gameState === 'LOBBY' || gameState === 'GAMEOVER' || gameState === 'PAUSE' ? (
+            {gameState === 'LOBBY' || gameState === 'GAMEOVER' || gameState === 'PAUSE' ? (
         <Link to="/UODGaming" className="floating-back-btn" title="Back to Games">
           <ArrowLeft size={20} />
         </Link>
+      ) : gameState === 'GAMEPLAY' ? (
+        <button 
+          onClick={() => { playSound('click', mutedRef.current); setGameState('PAUSE'); setMenuIndex && typeof setMenuIndex === 'function' ? setMenuIndex(0) : null; }} 
+          className="floating-back-btn" 
+          style={{ cursor: 'pointer' }}
+          title="Pause Game"
+        >
+          <Pause size={20} color="white" />
+        </button>
       ) : null}
 
 
@@ -651,10 +666,18 @@ const CyberFalcon = () => {
               
               <div className="cyberfalcon-menu">
                 <button 
-                  className="cyberfalcon-btn selected"
+                  className={`cyberfalcon-btn ${menuIndex === 0 ? 'selected' : ''}`}
+                  onMouseEnter={() => setMenuIndex(0)}
                   onClick={() => { playSound('click', mutedRef.current); startGame(); }}
                 >
                   START RUN
+                </button>
+                <button 
+                  className={`cyberfalcon-btn ${menuIndex === 1 ? 'selected' : ''}`}
+                  onMouseEnter={() => setMenuIndex(1)}
+                  onClick={() => { playSound('click', mutedRef.current); window.location.href = '/UODGaming'; }}
+                >
+                  EXIT TO MENU
                 </button>
               </div>
             </div>

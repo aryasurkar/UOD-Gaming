@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pause } from 'lucide-react';
 import axios from 'axios';
 import '../Css/Snake.css';
 
@@ -153,7 +153,7 @@ const Snake = () => {
 
   // Submit high score
   const submitScore = async (finalScore) => {
-    const token = localStorage.getItem('token');
+    const token = 'cookie-token';
     if (gameId && token) {
       setSubmitStatus('submitting');
       try {
@@ -344,30 +344,40 @@ const Snake = () => {
     if (curState === 'LOBBY') {
       if (code === 'ArrowUp' || code === 'KeyW') {
         playSound('click', isMuted);
-        setMenuIndex(prev => (prev === 0 ? 3 : prev - 1));
+        setMenuIndex(prev => {
+          const next = prev === 0 ? 4 : prev - 1;
+          menuIndexRef.current = next;
+          return next;
+        });
       } else if (code === 'ArrowDown' || code === 'KeyS') {
         playSound('click', isMuted);
-        setMenuIndex(prev => (prev === 3 ? 0 : prev + 1));
+        setMenuIndex(prev => {
+          const next = prev === 4 ? 0 : prev + 1;
+          menuIndexRef.current = next;
+          return next;
+        });
       } else if (code === 'ArrowLeft' || code === 'KeyA') {
         playSound('click', isMuted);
-        if (menuIndex === 1) {
+        if (menuIndexRef.current === 1) {
           setDifficulty(prev => prev === 'hard' ? 'medium' : prev === 'medium' ? 'easy' : 'hard');
-        } else if (menuIndex === 2) {
+        } else if (menuIndexRef.current === 2) {
           setIsMuted(prev => !prev);
         }
       } else if (code === 'ArrowRight' || code === 'KeyD') {
         playSound('click', isMuted);
-        if (menuIndex === 1) {
+        if (menuIndexRef.current === 1) {
           setDifficulty(prev => prev === 'easy' ? 'medium' : prev === 'medium' ? 'hard' : 'easy');
-        } else if (menuIndex === 2) {
+        } else if (menuIndexRef.current === 2) {
           setIsMuted(prev => !prev);
         }
       } else if (code === 'Space' || code === 'Enter') {
         playSound('click', isMuted);
-        if (menuIndex === 0) {
+        if (menuIndexRef.current === 0) {
           launchGameplay();
-        } else if (menuIndex === 3) {
+        } else if (menuIndexRef.current === 3) {
           setGameState('LEADERBOARD');
+        } else if (menuIndexRef.current === 4) {
+          window.location.href = '/UODGaming';
         }
       }
     } else if (curState === 'LEADERBOARD') {
@@ -385,11 +395,11 @@ const Snake = () => {
         setMenuIndex(prev => (prev === 2 ? 0 : prev + 1));
       } else if (code === 'Space' || code === 'Enter') {
         playSound('click', isMuted);
-        if (menuIndex === 0) {
+        if (menuIndexRef.current === 0) {
           setGameState('GAMEPLAY');
-        } else if (menuIndex === 1) {
+        } else if (menuIndexRef.current === 1) {
           launchGameplay();
-        } else if (menuIndex === 2) {
+        } else if (menuIndexRef.current === 2) {
           navigate('/UODGaming');
         }
       } else if (code === 'Escape') {
@@ -402,7 +412,7 @@ const Snake = () => {
         setMenuIndex(prev => (prev === 0 ? 1 : 0));
       } else if (code === 'Space' || code === 'Enter') {
         playSound('click', isMuted);
-        if (menuIndex === 0) {
+        if (menuIndexRef.current === 0) {
           launchGameplay();
         } else {
           navigate('/UODGaming');
@@ -669,10 +679,19 @@ const Snake = () => {
   return (
     <div className="snake-container">
       {/* Centered Logo-Aligned Floating Circular Back Button */}
-      {gameState === 'LOBBY' || gameState === 'LEADERBOARD' || gameState === 'GAMEOVER' || gameState === 'PAUSE' ? (
+            {gameState === 'LOBBY' || gameState === 'GAMEOVER' || gameState === 'PAUSE' ? (
         <Link to="/UODGaming" className="floating-back-btn" title="Back to Games">
           <ArrowLeft size={20} />
         </Link>
+      ) : gameState === 'GAMEPLAY' ? (
+        <button 
+          onClick={() => { playSound('click', mutedRef.current); setGameState('PAUSE'); setMenuIndex && typeof setMenuIndex === 'function' ? setMenuIndex(0) : null; }} 
+          className="floating-back-btn" 
+          style={{ cursor: 'pointer' }}
+          title="Pause Game"
+        >
+          <Pause size={20} color="white" />
+        </button>
       ) : null}
 
 
@@ -717,6 +736,13 @@ const Snake = () => {
                   onClick={() => { playSound('click', isMuted); setGameState('LEADERBOARD'); }}
                 >
                   LEADERBOARD
+                </button>
+                <button 
+                  className={`snake-btn ${menuIndex === 4 ? 'selected' : ''}`}
+                  onMouseEnter={() => setMenuIndex(4)}
+                  onClick={() => { playSound('click', isMuted); window.location.href = '/UODGaming'; }}
+                >
+                  EXIT TO MENU
                 </button>
               </div>
             </div>
@@ -773,7 +799,7 @@ const Snake = () => {
                       playSound('click', isMuted);
                       if (idx === 0) setGameState('GAMEPLAY');
                       else if (idx === 1) launchGameplay();
-                      else navigate('/UODGaming');
+                      else setGameState('LOBBY');
                     }}
                   >
                     {text}
@@ -798,7 +824,7 @@ const Snake = () => {
                     onClick={() => {
                       playSound('click', isMuted);
                       if (idx === 0) launchGameplay();
-                      else navigate('/UODGaming');
+                      else setGameState('LOBBY');
                     }}
                   >
                     {text}

@@ -21,6 +21,9 @@ class DatabaseConnection {
    */
   async connect() {
     try {
+      // Prevent NoSQL query selector injections
+      mongoose.set('strictQuery', true);
+
       // Enhanced connection options for production-ready setup
       const options = {
         // useNewUrlParser: true,

@@ -457,7 +457,39 @@ const UODGaming = () => {
         </div>
       </section>
 
-
+      {/* Filters Section */}
+      <section className="games-filters">
+        <div className="filters-container">
+          <div className="search-input-wrapper">
+            <Search className="search-icon" size={18} />
+            <input 
+              type="text" 
+              className="search-input" 
+              placeholder="Search games by title or tag..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          
+          <div className="filter-section">
+            <div className="category-filters">
+              {categories.map(cat => {
+                const Icon = cat.icon;
+                return (
+                  <button 
+                    key={cat.id}
+                    className={`category-btn ${selectedCategory === cat.id ? 'active' : ''}`}
+                    onClick={() => setSelectedCategory(cat.id)}
+                  >
+                    <Icon size={16} />
+                    <span>{cat.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Games Grid */}
       <section className="games-section">

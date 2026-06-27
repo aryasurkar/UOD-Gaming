@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pause } from 'lucide-react';
 import axios from 'axios';
 import '../Css/BrickBreaker.css';
 
@@ -163,6 +163,8 @@ const BrickBreaker = () => {
   });
 
   const [menuIndex, setMenuIndex] = useState(0);
+  const menuIndexRef = useRef(0);
+  useEffect(() => { menuIndexRef.current = menuIndex; }, [menuIndex]);
 
   const [isBallLaunched, setIsBallLaunched] = useState(false);
   const isBallLaunchedRef = useRef(false);
@@ -301,9 +303,13 @@ const BrickBreaker = () => {
         if (e.code === 'Space') triggerBallLaunch();
         if (e.code === 'Escape') setGameState('LOBBY'); // Simple exit back to lobby
       } else if (gameStateRef.current === 'LOBBY') {
-        if (e.code === 'Space' || e.code === 'Enter') {
+        if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'ArrowDown' || e.code === 'KeyS') {
           playSound('click', mutedRef.current);
-          startGame();
+          setMenuIndex(prev => (prev === 0 ? 1 : 0));
+        } else if (e.code === 'Space' || e.code === 'Enter') {
+          playSound('click', mutedRef.current);
+          if (menuIndexRef.current === 0) startGame();
+          else window.location.href = '/UODGaming';
         }
       } else if (gameStateRef.current === 'GAMEOVER') {
         if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'ArrowDown' || e.code === 'KeyS') {
@@ -311,7 +317,7 @@ const BrickBreaker = () => {
           setMenuIndex(prev => (prev === 0 ? 1 : 0));
         } else if (e.code === 'Space' || e.code === 'Enter') {
           playSound('click', mutedRef.current);
-          if (menuIndex === 0) {
+          if (menuIndexRef.current === 0) {
             startGame();
           } else {
             setGameState('LOBBY');
@@ -677,27 +683,54 @@ const BrickBreaker = () => {
   return (
     <div className="brickbreaker-page-wrapper">
       {/* Floating Circular Back Button */}
-      {gameState === 'LOBBY' || gameState === 'GAMEOVER' ? (
+      {gameState === 'LOBBY' || gameState === 'GAMEOVER' || gameState === 'PAUSE' ? (
         <Link to="/UODGaming" className="floating-back-btn" title="Back to Games">
           <ArrowLeft size={20} />
         </Link>
+      ) : gameState === 'GAMEPLAY' ? (
+        <button 
+          onClick={() => { playSound('click', mutedRef.current); setGameState('PAUSE'); setMenuIndex(0); }} 
+          className="floating-back-btn" 
+          style={{ cursor: 'pointer' }}
+          title="Pause Game"
+        >
+          <Pause size={20} color="white" />
+        </button>
       ) : null}
 
       <motion.div 
-        className="brickbreaker-container"
+        className="game-content-card"
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="brickbreaker-header">
-          <h1 className="bb-title">NEON BREAKOUT</h1>
-          <div className="bb-stats">
-            <div className="bb-stat-item"><span>LVL</span>{level}</div>
-            <div className="bb-stat-item"><span>SCORE</span>{score}</div>
-            <div className="bb-stat-item"><span>LIVES</span>{'❤️'.repeat(lives)}</div>
-            <div className="bb-stat-item"><span>BEST</span>{highScore}</div>
-          </div>
-        </div>
+        <div className="cabinet-screen crt-screen">
+          <div className="crt-scanlines"></div>
+          <div className="crt-reflection"></div>
+          <div className="crt-flicker"></div>
+          
+          {gameState === 'GAMEPLAY' && (
+            <div className="game-hud-container">
+              <div className="game-hud-item">
+                <span className="game-hud-label">Score</span>
+                <span className="game-hud-value">{String(score).padStart(3, '0')}</span>
+              </div>
+              <div className="game-hud-item">
+                <span className="game-hud-label">Lvl</span>
+                <span className="game-hud-value" style={{ color: 'var(--primary-neon)' }}>{level}</span>
+              </div>
+              <div className="game-hud-item">
+                <span className="game-hud-label">Lives</span>
+                <span className="game-hud-value" style={{ color: '#ff0055' }}>{'❤️'.repeat(lives)}</span>
+              </div>
+              <div className="game-hud-item">
+                <span className="game-hud-label">Best</span>
+                <span className="game-hud-value" style={{ color: 'var(--accent-yellow)', textShadow: '0 0 8px rgba(255, 255, 0, 0.4)' }}>
+                  {String(highScore).padStart(3, '0')}
+                </span>
+              </div>
+            </div>
+          )}
 
         <canvas
           ref={canvasRef}
@@ -716,10 +749,18 @@ const BrickBreaker = () => {
             
             <div className="brickbreaker-menu">
               <button 
-                className="brickbreaker-btn selected"
+                className={`brickbreaker-btn ${menuIndex === 0 ? 'selected' : ''}`}
+                onMouseEnter={() => setMenuIndex(0)}
                 onClick={() => { playSound('click', mutedRef.current); startGame(); }}
               >
                 INITIALIZE SEQUENCE
+              </button>
+              <button 
+                className={`brickbreaker-btn ${menuIndex === 1 ? 'selected' : ''}`}
+                onMouseEnter={() => setMenuIndex(1)}
+                onClick={() => { playSound('click', mutedRef.current); window.location.href = '/UODGaming'; }}
+              >
+                EXIT TO MENU
               </button>
             </div>
           </div>
@@ -749,7 +790,7 @@ const BrickBreaker = () => {
             </div>
           </div>
         )}
-        
+        </div>
       </motion.div>
     </div>
   );

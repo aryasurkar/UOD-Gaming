@@ -8,6 +8,7 @@ import compression from "compression";
 import morgan from "morgan";
 import mongoSanitize from "express-mongo-sanitize";
 import xss from "xss-clean";
+import cookieParser from "cookie-parser";
 
 // Import enhanced configurations
 import dbConnection from "./config/database.js";
@@ -15,7 +16,8 @@ import {
   helmetConfig, 
   rateLimiters, 
   securityHeaders, 
-  sanitizeRequest 
+  sanitizeRequest,
+  csrfProtection
 } from "./config/security.js";
 import { 
   logger, 
@@ -158,9 +160,15 @@ app.use(express.urlencoded({
     parameterLimit: 1000
 }));
 
+// Cookie parsing middleware
+app.use(cookieParser());
+
 // Global sanitization against NoSQL injection and XSS
 app.use(mongoSanitize());
 app.use(xss());
+
+// CSRF Protection
+app.use(csrfProtection);
 
 // Trust proxy for rate limiting and real IP detection
 app.set('trust proxy', process.env.NODE_ENV === 'production' ? 1 : false);

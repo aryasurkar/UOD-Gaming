@@ -33,34 +33,7 @@
   display: block;
 }
 
-.brickbreaker-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding: 0 10px;
-}
 
-.bb-title {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 24px;
-  color: #fff;
-  text-shadow: 0 0 10px rgba(0, 212, 255, 0.8);
-  margin: 0;
-}
-
-.bb-stats {
-  display: flex;
-  gap: 20px;
-  font-family: 'Courier New', monospace;
-  color: #00ff88;
-  font-size: 14px;
-}
-
-.bb-stat-item span {
-  color: #8b5cf6;
-  margin-right: 5px;
-}
 
 /* --- DOM UI OVERLAYS --- */
 .brickbreaker-overlay {
@@ -162,4 +135,80 @@
 }
 .brickbreaker-leaderboard-item:last-child {
   border-bottom: none;
+}
+
+
+/* --- ARCADE CABINET UI --- */
+.brickbreaker-page-wrapper .game-content-card {
+  width: 95%;
+  max-width: 650px;
+  margin: 5px auto;
+  padding: 8px 12px;
+  background: rgba(10, 10, 15, 0.95);
+  border: 2px solid rgba(0, 212, 255, 0.2);
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: 
+    0 0 35px rgba(0, 212, 255, 0.08), 
+    inset 0 0 25px rgba(0, 212, 255, 0.02);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.brickbreaker-page-wrapper .cabinet-screen.crt-screen {
+  position: relative;
+  width: 100%;
+  max-width: calc(75vh - 140px);
+  border-radius: var(--radius-md, 8px);
+  overflow: hidden;
+  box-shadow: 
+    0 0 25px rgba(0, 212, 255, 0.15),
+    inset 0 0 35px rgba(0, 0, 0, 0.95);
+  background: #030206;
+}
+
+.brickbreaker-page-wrapper .crt-scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.25) 50%
+  );
+  background-size: 100% 4px;
+}
+
+.brickbreaker-page-wrapper .crt-reflection {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  background: radial-gradient(
+    circle at 50% 0%, 
+    rgba(255, 255, 255, 0.06) 0%, 
+    transparent 70%
+  );
+}
+
+.brickbreaker-page-wrapper .crt-flicker {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  background: rgba(18, 16, 16, 0.02);
+  opacity: 0.15;
+  animation: crt-flicker-anim 0.15s infinite;
+}
+
+@media (max-width: 768px) {
+  .brickbreaker-page-wrapper .game-content-card {
+    padding: 6px;
+    margin: 5px;
+    max-width: 100%;
+  }
+
+  .brickbreaker-page-wrapper .cabinet-screen.crt-screen {
+    max-width: 100%;
+  }
 }

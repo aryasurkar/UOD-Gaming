@@ -108,6 +108,8 @@ const TTT = () => {
 
   // Menu items selection
   const [menuIndex, setMenuIndex] = useState(0);
+  const menuIndexRef = useRef(0);
+  useEffect(() => { menuIndexRef.current = menuIndex; }, [menuIndex]);
 
   // Grid Selection Cursor (for keyboard controls)
   const [gridCursor, setGridCursor] = useState(4); // default center cell index (0-8)
@@ -162,7 +164,7 @@ const TTT = () => {
 
   // Submit high score
   const submitTttResult = async (scoreToSubmit) => {
-    const token = localStorage.getItem('token');
+    const token = 'cookie-token';
     if (gameId && token) {
       setSubmitStatus('submitting');
       try {
@@ -362,18 +364,28 @@ const TTT = () => {
     if (curState === 'LOBBY') {
       if (code === 'ArrowUp' || code === 'KeyW') {
         playSound('click');
-        setMenuIndex(prev => (prev === 0 ? 2 : prev - 1));
+        setMenuIndex(prev => {
+          const next = prev === 0 ? 3 : prev - 1;
+          menuIndexRef.current = next;
+          return next;
+        });
       } else if (code === 'ArrowDown' || code === 'KeyS') {
         playSound('click');
-        setMenuIndex(prev => (prev === 2 ? 0 : prev + 1));
+        setMenuIndex(prev => {
+          const next = prev === 3 ? 0 : prev + 1;
+          menuIndexRef.current = next;
+          return next;
+        });
       } else if (code === 'Space' || code === 'Enter') {
         playSound('click');
-        if (menuIndex === 0) {
+        if (menuIndexRef.current === 0) {
           launchGameplay('cpu');
-        } else if (menuIndex === 1) {
+        } else if (menuIndexRef.current === 1) {
           launchGameplay('duo');
-        } else if (menuIndex === 2) {
+        } else if (menuIndexRef.current === 2) {
           setGameState('LEADERBOARD');
+        } else if (menuIndexRef.current === 3) {
+          window.location.href = '/UODGaming';
         }
       }
     } else if (curState === 'LEADERBOARD') {
@@ -385,19 +397,28 @@ const TTT = () => {
     } else if (curState === 'PAUSE') {
       if (code === 'ArrowUp' || code === 'KeyW') {
         playSound('click');
-        setMenuIndex(prev => (prev === 0 ? 2 : prev - 1));
+        setMenuIndex(prev => {
+          const next = prev === 0 ? 2 : prev - 1;
+          menuIndexRef.current = next;
+          return next;
+        });
       } else if (code === 'ArrowDown' || code === 'KeyS') {
         playSound('click');
-        setMenuIndex(prev => (prev === 2 ? 0 : prev + 1));
+        setMenuIndex(prev => {
+          const next = prev === 2 ? 0 : prev + 1;
+          menuIndexRef.current = next;
+          return next;
+        });
       } else if (code === 'Space' || code === 'Enter') {
         playSound('click');
-        if (menuIndex === 0) {
+        if (menuIndexRef.current === 0) {
           setGameState('GAMEPLAY');
-        } else if (menuIndex === 1) {
+        } else if (menuIndexRef.current === 1) {
           launchGameplay(gameModeRef.current);
-        } else if (menuIndex === 2) {
+        } else if (menuIndexRef.current === 2) {
           setGameState('LOBBY');
           setMenuIndex(0);
+          menuIndexRef.current = 0;
         }
       } else if (code === 'Escape') {
         playSound('click');
@@ -406,14 +427,19 @@ const TTT = () => {
     } else if (curState === 'GAMEOVER') {
       if (code === 'ArrowUp' || code === 'KeyW' || code === 'ArrowDown' || code === 'KeyS') {
         playSound('click');
-        setMenuIndex(prev => (prev === 0 ? 1 : 0));
+        setMenuIndex(prev => {
+          const next = prev === 0 ? 1 : 0;
+          menuIndexRef.current = next;
+          return next;
+        });
       } else if (code === 'Space' || code === 'Enter') {
         playSound('click');
-        if (menuIndex === 0) {
+        if (menuIndexRef.current === 0) {
           launchGameplay(gameModeRef.current);
         } else {
           setGameState('LOBBY');
           setMenuIndex(0);
+          menuIndexRef.current = 0;
         }
       }
     } else if (curState === 'GAMEPLAY') {
@@ -659,6 +685,13 @@ const TTT = () => {
                   onClick={() => { playSound('click'); setGameState('LEADERBOARD'); }}
                 >
                   SYSTEM RANKINGS
+                </button>
+                <button 
+                  className={`ttt-btn ${menuIndex === 3 ? 'selected' : ''}`}
+                  onMouseEnter={() => setMenuIndex(3)}
+                  onClick={() => { playSound('click'); window.location.href = '/UODGaming'; }}
+                >
+                  EXIT TO MENU
                 </button>
               </div>
             </div>

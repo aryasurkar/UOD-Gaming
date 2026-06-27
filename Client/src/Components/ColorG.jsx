@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pause } from 'lucide-react';
 import axios from 'axios';
 import '../Css/ColorG.css';
 
@@ -97,8 +97,8 @@ const ColorG = () => {
     return parseInt(localStorage.getItem('colorg_beststreak') || '0', 10);
   });
 
-  const [lives, setLives] = useState(3);
-  const livesRef = useRef(3);
+  const [lives, setLives] = useState(5);
+  const livesRef = useRef(5);
   useEffect(() => { livesRef.current = lives; }, [lives]);
 
   // Menu navigation index
@@ -114,18 +114,15 @@ const ColorG = () => {
   // Colors state
   const colorsRef = useRef([]);
   const pickedColorRef = useRef('');
+  const showingResultRef = useRef(false);
+  const selectedIdxRef = useRef(null);
 
   // API sync states
   const [gameId, setGameId] = useState(null);
   const [submitStatus, setSubmitStatus] = useState('');
   const [rewards, setRewards] = useState(null);
 
-  // Time Limit parameters
-  const [timeLeft, setTimeLeft] = useState(10);
-  const timeLeftRef = useRef(10);
-  useEffect(() => { timeLeftRef.current = timeLeft; }, [timeLeft]);
   
-  const lastTimeRef = useRef(0);
 
   // Canvas Refs & Loops
   const canvasRef = useRef(null);
@@ -135,12 +132,12 @@ const ColorG = () => {
 
   // Grid positioning
   const GRID_ROWS = 3;
-  const GRID_COLS = 2;
-  const CELL_WIDTH = 170;
+  const GRID_COLS = 1;
+  const CELL_WIDTH = 440;
   const CELL_HEIGHT = 80;
-  const GRID_X_START = 110;
+  const GRID_X_START = 80;
   const GRID_Y_START = 220;
-  const HORIZ_GAP = 40;
+  const HORIZ_GAP = 0;
   const VERT_GAP = 20;
 
   // Retrieve game info on mount
@@ -155,7 +152,7 @@ const ColorG = () => {
 
   // Submit high score
   const submitColorScore = async (finalScore) => {
-    const token = localStorage.getItem('token');
+    const token = 'cookie-token';
     if (gameId && token && finalScore > 0) {
       setSubmitStatus('submitting');
       try {
@@ -195,29 +192,38 @@ const ColorG = () => {
     }
   };
 
-  const randomColor = () => {
-    const r = Math.floor(Math.random() * 256);
-    const g = Math.floor(Math.random() * 256);
-    const b = Math.floor(Math.random() * 256);
-    return `rgb(${r}, ${g}, ${b})`;
+  const hslToRgb = (h, s, l) => {
+    s /= 100;
+    l /= 100;
+    const k = n => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    return `rgb(${Math.round(f(0) * 255)}, ${Math.round(f(8) * 255)}, ${Math.round(f(4) * 255)})`;
   };
 
   const generateNewRound = () => {
     const arr = [];
-    for (let i = 0; i < 6; i++) {
-      arr.push(randomColor());
+    const baseHue = Math.floor(Math.random() * 360);
+    for (let i = 0; i < 3; i++) {
+      const h = (baseHue + i * 120 + Math.floor(Math.random() * 30 - 15)) % 360;
+      const s = 60 + Math.floor(Math.random() * 40);
+      const l = 40 + Math.floor(Math.random() * 30);
+      arr.push(hslToRgb(h, s, l));
+    }
+    // Shuffle options
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
     }
     colorsRef.current = arr;
     pickedColorRef.current = arr[Math.floor(Math.random() * arr.length)];
-    setTimeLeft(10);
-    lastTimeRef.current = performance.now();
   };
 
   // Start fresh game
   const startGame = () => {
     setScore(0);
     setStreak(0);
-    setLives(3);
+    setLives(5);
     setRewards(null);
     setSubmitStatus('');
     setMenuIndex(0);
@@ -230,7 +236,7 @@ const ColorG = () => {
 
   // Process guess at grid index
   const selectChoice = (idx) => {
-    if (gameStateRef.current !== 'GAMEPLAY') return;
+    if (gameStateRef.current !== 'GAMEPLAY' || showingResultRef.current) return;
 
     const chosenColor = colorsRef.current[idx];
     const targetColor = pickedColorRef.current;
@@ -251,15 +257,20 @@ const ColorG = () => {
       setStreak(0);
       const remainingLives = livesRef.current - 1;
       setLives(remainingLives);
+      showingResultRef.current = true;
+      selectedIdxRef.current = idx;
 
-      if (remainingLives <= 0) {
-        playSound('wrong', mutedRef.current);
-        setGameState('GAMEOVER');
-        setMenuIndex(0);
-        submitColorScore(scoreRef.current);
-      } else {
-        generateNewRound();
-      }
+      setTimeout(() => {
+        showingResultRef.current = false;
+        if (remainingLives <= 0) {
+          playSound('wrong', mutedRef.current);
+          setGameState('GAMEOVER');
+          setMenuIndex(0);
+          submitColorScore(scoreRef.current);
+        } else {
+          generateNewRound();
+        }
+      }, 1500);
     }
   };
 
@@ -267,9 +278,13 @@ const ColorG = () => {
   const handleKeyboardNav = (code) => {
     const curState = gameStateRef.current;
     if (curState === 'LOBBY') {
-      if (code === 'Space' || code === 'Enter') {
+      if (code === 'ArrowUp' || code === 'KeyW' || code === 'ArrowDown' || code === 'KeyS') {
         playSound('click', mutedRef.current);
-        startGame();
+        setMenuIndex(prev => (prev === 0 ? 1 : 0));
+      } else if (code === 'Space' || code === 'Enter') {
+        playSound('click', mutedRef.current);
+        if (menuIndexRef.current === 0) startGame();
+        else window.location.href = '/UODGaming';
       }
     } else if (curState === 'GAMEPLAY') {
       const cursor = gridCursorRef.current;
@@ -299,7 +314,6 @@ const ColorG = () => {
       } else if (code === 'Space' || code === 'Enter') {
         playSound('click', mutedRef.current);
         if (menuIndexRef.current === 0) {
-          lastTimeRef.current = performance.now();
           setGameState('GAMEPLAY');
         } else if (menuIndexRef.current === 1) {
           startGame();
@@ -309,7 +323,6 @@ const ColorG = () => {
         }
       } else if (code === 'Escape') {
         playSound('click', mutedRef.current);
-        lastTimeRef.current = performance.now();
         setGameState('GAMEPLAY');
       }
     } else if (curState === 'GAMEOVER') {
@@ -413,32 +426,7 @@ const ColorG = () => {
     const ctx = canvas.getContext('2d');
 
     const render = (time) => {
-      // Manage timer count inside gameplay state
-      if (gameStateRef.current === 'GAMEPLAY') {
-        if (!lastTimeRef.current) lastTimeRef.current = time;
-        const dt = (time - lastTimeRef.current) / 1000;
-        lastTimeRef.current = time;
-
-        const nextTime = Math.max(0, timeLeftRef.current - dt);
-        setTimeLeft(nextTime);
-
-        if (nextTime <= 0) {
-          // Timeout counts as a wrong choice
-          playSound('wrong', mutedRef.current);
-          setStreak(0);
-          const remainingLives = livesRef.current - 1;
-          setLives(remainingLives);
-
-          if (remainingLives <= 0) {
-            playSound('wrong', mutedRef.current);
-            setGameState('GAMEOVER');
-            setMenuIndex(0);
-            submitColorScore(scoreRef.current);
-          } else {
-            generateNewRound();
-          }
-        }
-      }
+      
 
       // Render backgrounds
       ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
@@ -482,7 +470,7 @@ const ColorG = () => {
 
         // Draw Lives (Energy Batteries)
         const currentLives = livesRef.current;
-        for (let l = 0; l < 3; l++) {
+        for (let l = 0; l < 5; l++) {
           const lx = 380 + l * 20;
           ctx.strokeStyle = l < currentLives ? '#00ff88' : '#333340';
           ctx.fillStyle = l < currentLives ? 'rgba(0, 255, 136, 0.6)' : 'transparent';
@@ -520,12 +508,7 @@ const ColorG = () => {
         ctx.font = 'bold 20px "Orbitron", monospace';
         ctx.fillText(pickedColorRef.current.toUpperCase(), CANVAS_SIZE / 2, 150);
 
-        // Time countdown bar
-        const barWidth = 440 * (timeLeftRef.current / 10);
-        ctx.fillStyle = timeLeftRef.current <= 3 ? '#ff0055' : '#00ff88';
-        ctx.fillRect(80, 182, barWidth, 6);
-        ctx.fillStyle = 'rgba(255,255,255,0.05)';
-        ctx.fillRect(80 + barWidth, 182, 440 - barWidth, 6);
+
 
         // Render swatches options
         const cursor = gridCursorRef.current;
@@ -548,7 +531,23 @@ const ColorG = () => {
             // Draw a subtle border outline
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
             ctx.lineWidth = 1.5;
+
+            if (showingResultRef.current) {
+              if (currentColors[idx] === pickedColorRef.current) {
+                ctx.strokeStyle = '#00ff88';
+                ctx.lineWidth = 4;
+                ctx.shadowColor = '#00ff88';
+                ctx.shadowBlur = 15;
+              } else if (idx === selectedIdxRef.current) {
+                ctx.strokeStyle = '#ff0055';
+                ctx.lineWidth = 4;
+                ctx.shadowColor = '#ff0055';
+                ctx.shadowBlur = 15;
+              }
+            }
+
             ctx.stroke();
+            ctx.shadowBlur = 0;
 
             // Draw selection ring cursor
             if (cursor.row === r && cursor.col === c) {
@@ -613,7 +612,7 @@ const ColorG = () => {
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
     };
-  }, [gameState, score, streak, lives, muted, submitStatus, rewards, menuIndex, gridCursor, bestStreak, timeLeft]);
+  }, [gameState, score, streak, lives, muted, submitStatus, rewards, menuIndex, gridCursor, bestStreak]);
 
   return (
     <div className="color-g-container">
@@ -622,6 +621,15 @@ const ColorG = () => {
         <Link to="/UODGaming" className="floating-back-btn" title="Back to Games">
           <ArrowLeft size={20} />
         </Link>
+      ) : gameState === 'GAMEPLAY' ? (
+        <button 
+          onClick={() => { playSound('click', mutedRef.current); setGameState('PAUSE'); setMenuIndex(0); }} 
+          className="floating-back-btn" 
+          style={{ cursor: 'pointer' }}
+          title="Pause Game"
+        >
+          <Pause size={20} color="white" />
+        </button>
       ) : null}
 
       <div className="game-content-card">
@@ -651,10 +659,18 @@ const ColorG = () => {
             
             <div className="colorg-menu">
               <button 
-                className="colorg-btn selected"
+                className={`colorg-btn ${menuIndex === 0 ? 'selected' : ''}`}
+                onMouseEnter={() => setMenuIndex(0)}
                 onClick={() => { playSound('click', mutedRef.current); startGame(); }}
               >
                 START RUN
+              </button>
+              <button 
+                className={`colorg-btn ${menuIndex === 1 ? 'selected' : ''}`}
+                onMouseEnter={() => setMenuIndex(1)}
+                onClick={() => { playSound('click', mutedRef.current); window.location.href = '/UODGaming'; }}
+              >
+                EXIT TO MENU
               </button>
             </div>
           </div>
@@ -673,7 +689,7 @@ const ColorG = () => {
                   onMouseEnter={() => setMenuIndex(idx)}
                   onClick={() => {
                     playSound('click', mutedRef.current);
-                    if (idx === 0) { lastTimeRef.current = performance.now(); setGameState('GAMEPLAY'); }
+                    if (idx === 0) { setGameState('GAMEPLAY'); }
                     else if (idx === 1) startGame();
                     else { setGameState('LOBBY'); setMenuIndex(0); }
                   }}
@@ -689,12 +705,7 @@ const ColorG = () => {
           <div className="colorg-overlay" style={{ background: 'rgba(5, 5, 10, 0.96)' }}>
             <h1 className="colorg-title" style={{ color: '#ff007f', textShadow: '0 0 20px rgba(255, 0, 127, 0.8)' }}>GAME OVER</h1>
             <p className="colorg-subtitle" style={{ color: '#00d4ff', fontSize: '20px', marginBottom: '5px' }}>CURRENT SCORE: {score}</p>
-            <p className="colorg-subtitle" style={{ color: '#00ff88', fontSize: '16px', marginBottom: '20px' }}>BEST SCORE: {bestStreak}</p>
-            
-            <div style={{ marginBottom: '40px', textAlign: 'center' }}>
-              <p className="colorg-subtitle" style={{ color: '#ffaa00', marginBottom: '5px' }}>FINAL SIGNATURE MATRIX:</p>
-              <p style={{ color: targetColorRef.current, fontFamily: 'Courier New, monospace', fontSize: '20px', fontWeight: 'bold', textShadow: `0 0 15px ${targetColorRef.current}` }}>{pickedColorRef.current}</p>
-            </div>
+            <p className="colorg-subtitle" style={{ color: '#00ff88', fontSize: '16px', marginBottom: '40px' }}>BEST SCORE: {bestStreak}</p>
 
             <div className="colorg-menu">
               <button 

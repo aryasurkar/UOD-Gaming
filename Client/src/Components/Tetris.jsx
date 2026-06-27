@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pause } from 'lucide-react';
 import axios from 'axios';
 import '../Css/Tetris.css';
 
@@ -183,6 +183,8 @@ const Tetris = () => {
 
   // Menu choices indices
   const [menuIndex, setMenuIndex] = useState(0);
+  const menuIndexRef = useRef(0);
+  useEffect(() => { menuIndexRef.current = menuIndex; }, [menuIndex]);
 
   // API sync states
   const [gameId, setGameId] = useState(null);
@@ -210,7 +212,7 @@ const Tetris = () => {
 
   // Submit high score
   const submitTetrisScore = async (finalScore) => {
-    const token = localStorage.getItem('token');
+    const token = 'cookie-token';
     if (gameId && token && finalScore > 0) {
       setSubmitStatus('submitting');
       try {
@@ -520,9 +522,17 @@ const Tetris = () => {
       } else if (code === 'ArrowRight' || code === 'KeyD') {
         playSound('click', mutedRef.current);
         setStartLevel(prev => (prev === 5 ? 1 : prev + 1));
+      } else if (code === 'ArrowUp' || code === 'KeyW' || code === 'ArrowDown' || code === 'KeyS') {
+        playSound('click', mutedRef.current);
+        setMenuIndex(prev => {
+          const next = prev === 0 ? 1 : 0;
+          menuIndexRef.current = next;
+          return next;
+        });
       } else if (code === 'Space' || code === 'Enter') {
         playSound('click', mutedRef.current);
-        startGame();
+        if (menuIndexRef.current === 0) startGame();
+        else window.location.href = '/UODGaming';
       }
     } else if (curState === 'PAUSE') {
       if (code === 'ArrowUp' || code === 'KeyW') {
@@ -530,17 +540,23 @@ const Tetris = () => {
         setMenuIndex(prev => (prev === 0 ? 2 : prev - 1));
       } else if (code === 'ArrowDown' || code === 'KeyS') {
         playSound('click', mutedRef.current);
-        setMenuIndex(prev => (prev === 2 ? 0 : prev + 1));
+        setMenuIndex(prev => {
+          const next = prev === 2 ? 0 : prev + 1;
+          menuIndexRef.current = next;
+          return next;
+        });
       } else if (code === 'Space' || code === 'Enter') {
         playSound('click', mutedRef.current);
-        if (menuIndex === 0) {
+        if (menuIndexRef.current === 0) {
           lastFrameTimeRef.current = performance.now();
           setGameState('GAMEPLAY');
-        } else if (menuIndex === 1) {
+        } else if (menuIndexRef.current === 1) {
           startGame();
         } else {
           setGameState('LOBBY');
           setStartLevel(1);
+          setMenuIndex(0);
+          menuIndexRef.current = 0;
         }
       } else if (code === 'Escape') {
         playSound('click', mutedRef.current);
@@ -550,14 +566,20 @@ const Tetris = () => {
     } else if (curState === 'GAMEOVER') {
       if (code === 'ArrowUp' || code === 'KeyW' || code === 'ArrowDown' || code === 'KeyS') {
         playSound('click', mutedRef.current);
-        setMenuIndex(prev => (prev === 0 ? 1 : 0));
+        setMenuIndex(prev => {
+          const next = prev === 0 ? 1 : 0;
+          menuIndexRef.current = next;
+          return next;
+        });
       } else if (code === 'Space' || code === 'Enter') {
         playSound('click', mutedRef.current);
-        if (menuIndex === 0) {
+        if (menuIndexRef.current === 0) {
           startGame();
         } else {
           setGameState('LOBBY');
           setStartLevel(1);
+          setMenuIndex(0);
+          menuIndexRef.current = 0;
         }
       }
     } else if (curState === 'GAMEPLAY') {
@@ -624,9 +646,14 @@ const Tetris = () => {
         }
       }
       // Start button click
-      if (clickX >= 150 && clickX <= 450 && clickY >= 400 && clickY <= 445) {
+      if (clickX >= 150 && clickX <= 450 && clickY >= 380 && clickY <= 425) {
         playSound('click', muted);
         startGame();
+      }
+      // Exit button click
+      if (clickX >= 150 && clickX <= 450 && clickY >= 440 && clickY <= 485) {
+        playSound('click', muted);
+        window.location.href = '/UODGaming';
       }
     } else if (curState === 'PAUSE') {
       if (clickX >= 200 && clickX <= 400 && clickY >= 240 && clickY <= 280) {
@@ -743,17 +770,29 @@ const Tetris = () => {
 
         // Start Button
         ctx.lineWidth = 2.5;
-        ctx.shadowColor = '#a000f0';
-        ctx.shadowBlur = 10;
-        ctx.fillStyle = '#a000f0';
-        ctx.fillRect(150, 400, 300, 45);
-        ctx.strokeStyle = '#ffffff';
-        ctx.strokeRect(150, 400, 300, 45);
+        ctx.shadowColor = menuIndexRef.current === 0 ? '#a000f0' : 'transparent';
+        ctx.shadowBlur = menuIndexRef.current === 0 ? 10 : 0;
+        ctx.fillStyle = menuIndexRef.current === 0 ? '#a000f0' : 'rgba(160, 0, 240, 0.2)';
+        ctx.fillRect(150, 380, 300, 45);
+        ctx.strokeStyle = menuIndexRef.current === 0 ? '#ffffff' : '#6b7280';
+        ctx.strokeRect(150, 380, 300, 45);
 
         ctx.shadowBlur = 0;
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = menuIndexRef.current === 0 ? '#ffffff' : '#a0a0a0';
         ctx.font = 'bold 18px "Orbitron", monospace';
-        ctx.fillText('INITIALIZE SEQUENCE', CANVAS_SIZE / 2, 428);
+        ctx.fillText('INITIALIZE SEQUENCE', CANVAS_SIZE / 2, 408);
+
+        // Exit Button
+        ctx.shadowColor = menuIndexRef.current === 1 ? '#ff0055' : 'transparent';
+        ctx.shadowBlur = menuIndexRef.current === 1 ? 10 : 0;
+        ctx.fillStyle = menuIndexRef.current === 1 ? '#ff0055' : 'rgba(255, 0, 85, 0.2)';
+        ctx.fillRect(150, 440, 300, 45);
+        ctx.strokeStyle = menuIndexRef.current === 1 ? '#ffffff' : '#6b7280';
+        ctx.strokeRect(150, 440, 300, 45);
+
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = menuIndexRef.current === 1 ? '#ffffff' : '#a0a0a0';
+        ctx.fillText('EXIT TO MENU', CANVAS_SIZE / 2, 468);
 
         ctx.fillStyle = '#6b7280';
         ctx.font = '12px "Exo 2", sans-serif';
@@ -1073,6 +1112,15 @@ const Tetris = () => {
         <Link to="/UODGaming" className="floating-back-btn" title="Back to Games">
           <ArrowLeft size={20} />
         </Link>
+      ) : gameState === 'GAMEPLAY' ? (
+        <button 
+          onClick={() => { playSound('click', mutedRef.current); setGameState('PAUSE'); setMenuIndex(0); }} 
+          className="floating-back-btn" 
+          style={{ cursor: 'pointer' }}
+          title="Pause Game"
+        >
+          <Pause size={20} color="white" />
+        </button>
       ) : null}
 
 

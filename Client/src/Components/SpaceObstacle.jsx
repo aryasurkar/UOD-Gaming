@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pause } from 'lucide-react';
 import axios from 'axios';
 import '../Css/SpaceObstacle.css';
 
@@ -65,6 +65,8 @@ const SpaceObstacle = () => {
   const [highScore, setHighScore] = useState(() => parseInt(localStorage.getItem('space_obstacle_high_score') || '0', 10));
   const [gameState, setGameState] = useState('LOBBY'); // LOBBY, GAMEPLAY, GAMEOVER
   const [menuIndex, setMenuIndex] = useState(0);
+  const menuIndexRef = useRef(0);
+  useEffect(() => { menuIndexRef.current = menuIndex; }, [menuIndex]);
   const [muted, setMuted] = useState(false);
 
   // Game Refs (mutated in animation frame)
@@ -226,35 +228,59 @@ const SpaceObstacle = () => {
           setGameState('GAMEPLAY');
         } else if (e.code === 'ArrowUp' || e.code === 'KeyW') {
           playSound('click', mutedRef.current);
-          setMenuIndex(prev => (prev > 0 ? prev - 1 : 2));
+          setMenuIndex(prev => {
+            const next = prev > 0 ? prev - 1 : 2;
+            menuIndexRef.current = next;
+            return next;
+          });
         } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
           playSound('click', mutedRef.current);
-          setMenuIndex(prev => (prev < 2 ? prev + 1 : 0));
+          setMenuIndex(prev => {
+            const next = prev < 2 ? prev + 1 : 0;
+            menuIndexRef.current = next;
+            return next;
+          });
         } else if (e.code === 'Space' || e.code === 'Enter') {
           playSound('click', mutedRef.current);
-          if (menuIndex === 0) setGameState('GAMEPLAY');
-          else if (menuIndex === 1) startGame();
+          if (menuIndexRef.current === 0) setGameState('GAMEPLAY');
+          else if (menuIndexRef.current === 1) startGame();
           else setGameState('LOBBY');
         }
       } else if (curState === 'LOBBY') {
         if (e.code === 'ArrowUp' || e.code === 'KeyW') {
           playSound('click', mutedRef.current);
-          setMenuIndex(prev => (prev > 0 ? prev - 1 : 2));
+          setMenuIndex(prev => {
+            const next = prev > 0 ? prev - 1 : 3;
+            menuIndexRef.current = next;
+            return next;
+          });
         } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
           playSound('click', mutedRef.current);
-          setMenuIndex(prev => (prev < 2 ? prev + 1 : 0));
+          setMenuIndex(prev => {
+            const next = prev < 3 ? prev + 1 : 0;
+            menuIndexRef.current = next;
+            return next;
+          });
         } else if (e.code === 'Space' || e.code === 'Enter') {
           playSound('click', mutedRef.current);
-          currentDifficultyRef.current = menuIndex;
-          startGame();
+          if (menuIndexRef.current === 3) {
+            window.location.href = '/UODGaming';
+          } else {
+            currentDifficultyRef.current = menuIndexRef.current;
+            startGame();
+          }
         }
       } else if (curState === 'GAMEOVER') {
         if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'ArrowDown' || e.code === 'KeyS') {
           playSound('click', mutedRef.current);
-          setMenuIndex(prev => (prev === 0 ? 1 : 0));
+          setMenuIndex(prev => {
+            const next = prev === 0 ? 1 : 0;
+            menuIndexRef.current = next;
+            return next;
+          });
         } else if (e.code === 'Space' || e.code === 'Enter') {
           playSound('click', mutedRef.current);
-          if (menuIndex === 0) startGame();
+          if (menuIndexRef.current === 0) startGame();
           else setGameState('LOBBY');
         }
       }
@@ -271,7 +297,7 @@ const SpaceObstacle = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [menuIndex]);
+  }, []);
 
   // Click
   const handleCanvasClick = (e) => {
@@ -519,27 +545,41 @@ const SpaceObstacle = () => {
 
   return (
     <div className="spaceobstacle-page-wrapper">
-      {gameState === 'LOBBY' || gameState === 'GAMEOVER' || gameState === 'PAUSE' ? (
+            {gameState === 'LOBBY' || gameState === 'GAMEOVER' || gameState === 'PAUSE' ? (
         <Link to="/UODGaming" className="floating-back-btn" title="Back to Games">
           <ArrowLeft size={20} />
         </Link>
+      ) : gameState === 'GAMEPLAY' ? (
+        <button 
+          onClick={() => { playSound('click', mutedRef.current); setGameState('PAUSE'); setMenuIndex && typeof setMenuIndex === 'function' ? setMenuIndex(0) : null; }} 
+          className="floating-back-btn" 
+          style={{ cursor: 'pointer' }}
+          title="Pause Game"
+        >
+          <Pause size={20} color="white" />
+        </button>
       ) : null}
 
       <motion.div 
-        className="spaceobstacle-container"
+        className="game-content-card"
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="spaceobstacle-header">
-          <h1 className="so-title">SPACE OBSTACLE</h1>
-          <div className="so-stats">
-            <div className="so-stat-item"><span>DISTANCE</span>{score}</div>
-            <div className="so-stat-item"><span>BEST</span>{highScore}</div>
-          </div>
-        </div>
+        <div className="cabinet-screen crt-screen">
+          <div className="crt-scanlines"></div>
+          <div className="crt-reflection"></div>
+          <div className="crt-flicker"></div>
 
-        <div style={{ position: 'relative', width: '100%', maxWidth: '650px', margin: '0 auto' }}>
+          <div className="spaceobstacle-header" style={{ position: 'absolute', top: 0, width: '100%', boxSizing: 'border-box', zIndex: 11, padding: '15px' }}>
+            <h1 className="so-title">SPACE OBSTACLE</h1>
+            <div className="so-stats">
+              <div className="so-stat-item"><span>DISTANCE</span>{score}</div>
+              <div className="so-stat-item"><span>BEST</span>{highScore}</div>
+            </div>
+          </div>
+
+          <div style={{ position: 'relative', width: '100%', height: '100%' }}>
           <canvas
             ref={canvasRef}
             width={CANVAS_WIDTH}
@@ -563,15 +603,18 @@ const SpaceObstacle = () => {
                     key={idx}
                     className={`spaceobstacle-btn ${menuIndex === idx ? 'selected' : ''}`}
                     onMouseEnter={() => setMenuIndex(idx)}
-                    onClick={() => {
-                      currentDifficultyRef.current = idx;
-                      playSound('click', mutedRef.current);
-                      startGame();
-                    }}
+                    onClick={() => { playSound('click', mutedRef.current); currentDifficultyRef.current = idx; startGame(); }}
                   >
                     {text}
                   </button>
                 ))}
+                <button 
+                  className={`spaceobstacle-btn ${menuIndex === 3 ? 'selected' : ''}`}
+                  onMouseEnter={() => setMenuIndex(3)}
+                  onClick={() => { playSound('click', mutedRef.current); window.location.href = '/UODGaming'; }}
+                >
+                  EXIT TO MENU
+                </button>
               </div>
               <p className="spaceobstacle-subtitle" style={{ marginTop: '40px', fontSize: '12px' }}>USE LEFT/RIGHT ARROWS OR TOUCH SIDES TO STEER</p>
             </div>
@@ -626,8 +669,8 @@ const SpaceObstacle = () => {
               </div>
             </div>
           )}
+          </div>
         </div>
-
       </motion.div>
     </div>
   );
